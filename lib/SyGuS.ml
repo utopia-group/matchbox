@@ -62,6 +62,7 @@ let to_string ({funs; variables; constraints} : t) =
   let vars = variables |> concat_map ~sep:"\n" ~f:(var_decl) in
   let cnstrs = constraints |> concat_map ~sep:"\n" ~f:(constraint_to_sygus) in
   Printf.sprintf {|
+(set-logic BV)
 ;; Functions to Synthesize
 %s
 ;; Variables
@@ -70,3 +71,8 @@ let to_string ({funs; variables; constraints} : t) =
 %s
 (check-synth)
 |} fs vars cnstrs
+
+let run (process : string) (sygus : t) : string =
+  let r = Runner.init process in
+  let s = to_string sygus in 
+  Runner.run r s

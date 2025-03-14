@@ -1,6 +1,8 @@
 open Gpl
 open Stijl
 
+let cvc5 = "/usr/bin/cvc5 --lang=sygus"
+
 let v32 str = Var.make str 32
 let v9 str = Var.make str 9
 let v48 str = Var.make str 48
@@ -77,5 +79,5 @@ let () =
     ])
   in
   SygusGen.gen_assumption p q pre post
-  |> SyGuS.to_string
-  |> Printf.printf "%s\n%!"
+  |> SyGuS.run cvc5
+  |> Printf.printf "%s"
