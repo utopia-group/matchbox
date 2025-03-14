@@ -1,0 +1,3 @@
+(test
+ (name stijl)
+ (libraries stijl gpl))

@@ -1,0 +1,4 @@
+(executable
+ (public_name stijl)
+ (name main)
+ (libraries stijl))
