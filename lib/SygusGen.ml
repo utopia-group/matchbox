@@ -73,6 +73,43 @@ let vcgen_lifted (p : GPL.t) (phi : BExpr.t): Var.t List.t * BExpr.t =
   in
   wp phi p
 
+
+let get_pieces x = Var.str x |> String.split ~on:'$'
+let get_table_name x = get_pieces x |> List.hd_exn
+
+let is_decimal_str i = 
+  try String.(i = (Int.of_string i |> Int.to_string))
+  with Failure _ -> false
+
+let get_outputs abs_vars = 
+  let f x = 
+    match get_pieces x with 
+    | [_; "action"] -> true 
+    | [_;i;_] -> is_decimal_str i
+    | _ -> 
+      failwithf "unrecognized variable naming convention %s" (Var.str x) ()
+  in
+  List.filter abs_vars ~f
+
+let get_same_inputs abs_vars x =
+  let x_table_name = get_table_name x in 
+  let f y = 
+    match get_pieces y with 
+    | [table_name; _; i] when String.(table_name = x_table_name) -> is_decimal_str i
+    | _ -> false
+
+  in
+  List.filter abs_vars ~f
+
+let reconstruct_invocations abs_vars : (Var.t * Var.t list) list = 
+  let outputs = get_outputs abs_vars in 
+  let inputs = get_same_inputs abs_vars in 
+  List.map outputs ~f:(fun o -> 
+    let varname = Var.str o in 
+    let funname = Var.make (String.capitalize varname) (Var.width o) in 
+    (funname, inputs o)
+  )
+
 let vcgen (p : GPL.t) (obs_vars : Var.t List.t) (phi : BExpr.t): BExpr.t = 
   let rec wp phi p =
     let open GPL in 
@@ -150,17 +187,27 @@ let gen_fun ((f : Var.t), (args : Var.t List.t))  : SynthFun.t =
     grammar = bv_grammar ~width:(Var.width f) ~over:args
   }
 
-
-let invocations : BExpr.t -> (Var.t * Var.t list) List.t= 
+let uniq ~equal xs =
+  let rec uniq' xs seen =
+    match xs with 
+    | [] -> seen
+    | x::xs ->
+      if List.exists seen ~f:(equal x) then 
+        uniq' xs seen
+      else
+        uniq' xs (x::seen)
+  in
+  uniq' xs []
+  
+let invocations (phi : BExpr.t) : (Var.t * Var.t list) List.t= 
   let rec invocations_expr =
     let open Expr in 
     function
     | BV _ | Var _ -> []
     | UnOp (_, e) -> invocations_expr e
     | BinOp(_, e1, e2) -> invocations_expr e1 @ invocations_expr e2
-    | Apply(f, es) -> 
-      let widths = List.map ~f:Expr.width es in
-      let params = List.mapi widths ~f:(fun i w -> Var.make (Printf.sprintf "x$%d" i) w) in
+    | Apply(f, ws, es) -> 
+      let params = List.mapi ws ~f:(fun i w -> Var.make (Printf.sprintf "x$%d" i) w) in
       (f, params) :: List.bind es ~f:invocations_expr 
   in
   let rec invocations' = 
@@ -173,31 +220,23 @@ let invocations : BExpr.t -> (Var.t * Var.t list) List.t=
     | TNot phi | Forall(_,phi) | Exists(_,phi) ->
       invocations' phi
   in
-  invocations'
-
-let uniq ~equal xs =
-  let rec uniq' xs seen =
-    match xs with 
-    | [] -> seen
-    | x::xs ->
-      if List.exists seen ~f:(equal x) then 
-        uniq' xs seen
-      else
-        uniq' xs (x::seen)
-  in
-  uniq' xs []
-
-let gen_funs phi = 
-  invocations phi
+  invocations' phi
   |> uniq ~equal:(fun (x,_) (y,_) -> Var.equal x y) 
-  |> List.map ~f:gen_fun
+
+let gen_funs = List.map ~f:gen_fun
 
 let ( ==> ) phi psi = BExpr.imp [phi; psi]
 
-let gen_assumption (source : GPL.t) (target : GPL.t) (pre : BExpr.t) (post : BExpr.t) : SyGuS.t = 
+let migrate (source : GPL.t) (target : GPL.t) (pre : BExpr.t) (post : BExpr.t) : string = 
   let obs_vars, phi = vcgen_lifted source post in 
   let phi = vcgen target obs_vars phi in
-  { funs = gen_funs phi;
+  let invocations = invocations phi in 
+  let sygus = { 
+    funs = gen_funs invocations;
     variables = Var.Set.(to_list (BExpr.free_vars phi));
     constraints = [pre ==> phi];
-  }
+  } in 
+  let solutions = SyGuS.run "/usr/bin/cvc5 --lang=sygus" sygus |> Solution.extract in
+  List.map ~f:(Solution.pretty_print obs_vars (reconstruct_invocations obs_vars)) solutions
+  |> String.concat ~sep:"\n"
+  

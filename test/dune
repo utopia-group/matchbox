@@ -1,3 +1,3 @@
 (test
- (name stijl)
- (libraries stijl gpl))
+ (name stijl_test)
+ (libraries stijl gpl alcotest))
