@@ -369,33 +369,112 @@ let identity_mapping () =
     run cfg map
     |> equal_output cfg' 
 
-let ternary = 
-  let open BitVector in
+(* let trit = 
   Alcotest.testable 
-    (Fmt.of_to_string Ternary.to_string)
-    (Ternary.equal)  
+    (Fmt.of_to_string Trit.to_string)
+    (Trit.equal)   *)
+
+let vectorset = 
+  let open Bit in 
+  Alcotest.testable 
+    (Fmt.of_to_string VectorSet.to_string)
+    (VectorSet.equal)
+
+let bv = 
+  let open Bit in 
+  Alcotest.testable 
+    (Fmt.of_to_string Vector.to_string)
+    Vector.equal
+
+let tv = 
+  let open Trit in 
+  Alcotest.testable
+    (Fmt.of_to_string Vector.to_string)
+    Vector.equal 
+
 let negation () = 
-  let check = BitVector.(eq_pres1 ~f:BitVector.not ~g:not) in
-  List.init 100 ~f:(fun _ -> Random.int 4 |> BitVector.random)
+  let check = Trit.Vector.(eq_pres1 ~f:Bit.Vector.not ~g:not) in
+  List.init 1000 ~f:(fun _ -> Random.int 20 |> Trit.Vector.random)
   |> List.find ~f:(fun bs -> not (check bs))
-  |> Alcotest.(check (option (list ternary))) "could not find equality violation" None
+  |> Alcotest.(check (option tv)) "could not find equality violation" None
 
 let check_binary ~f ~g = 
-  let check = BitVector.eq_pres2 ~f ~g in
+  let check = Trit.Vector.eq_pres2 ~f ~g in
   List.init 100 ~f:(fun _ -> 
     let n = Random.int 4 in
-    BitVector.random n, 
-    BitVector.random n
+    Trit.Vector.random n, 
+    Trit.Vector.random n
   )
   |> List.find ~f:(fun (xs, ys) -> not (check xs ys))
-  |> Alcotest.(check (option (pair (list ternary) (list ternary)))) 
+  |> Alcotest.(check (option (pair tv tv))) 
     "could not find equality violation" None
 
 
+let raw_additions = 
+  let open Bit.Vector in 
+  [
+    "01", "10", "11";
+    "000", "000", "000";
+    "111", "111", "110";
+    "010", "011", "101";
+  ]
+  |> List.map ~f:(fun (x, y, z) -> 
+    let a = of_string x in 
+    let b = of_string y in 
+    let s = of_string z in 
+    Alcotest.test_case (Printf.sprintf "RAW %s + %s = %s" x y z) `Quick 
+    (begin fun () -> 
+      Alcotest.(check bv) "same bitvector" s Bit.Vector.(a + b)
+    end)
+  )
 
-let bitwise_and () = BitVector.(check_binary ~f:(BitVector.(&&)) ~g:(&&))
-let bitwise_or () = BitVector.(check_binary ~f:(BitVector.(||)) ~g:(||))
-let bitwise_xor () = BitVector.(check_binary ~f:(BitVector.(^)) ~g:(^))
+
+let bitwise_and () = check_binary ~f:(Bit.Vector.(&&)) ~g:Trit.Vector.(&&)
+let bitwise_or () = check_binary ~f:(Bit.Vector.(||)) ~g:Trit.Vector.(||)
+let bitwise_xor () = check_binary ~f:(Bit.Vector.(^)) ~g:Trit.Vector.(^)
+
+let addition () = 
+  let open Trit in
+  Vector.([F;U;U] + [F; F; U])
+  |> Bit.VectorSet.union_map ~f:Vector.denote 
+  |> (Bit.VectorSet.cartesian_map (Vector.denote [F; U; U]) (Vector.denote [F; F; U]) ~f:(Bit.Vector.(+))
+  |> Alcotest.(check vectorset) "same vectorset")
+
+let overlap () =
+  let open Trit in 
+  Vector.overlap [F;U;U] [T;U;U]
+  |> Alcotest.(check bool) "do overlap, expect true" false
+
+let simple_encodings  = 
+  let open ADD in
+  ["11*"; "*"; "*1*"; "**0"]
+  |> List.map ~f:(fun tv_str -> 
+    begin fun () -> 
+      of_matchstring tv_str |> to_ternary
+      |> Alcotest.(check @@ pair (list tv) (list tv)) "same sets" ([Trit.Vector.of_string tv_str],[])
+    end 
+    |> Alcotest.test_case (Printf.sprintf "check round trip of %s" tv_str) `Quick )
+
+let add_paths () = 
+  let open ADD in 
+  Branch {
+    tru = DontCare (Branch {
+      tru = Out ("ctrl");
+      fls = Out ("drop")
+    });
+    fls = Branch {
+      tru = DontCare (Out ("ctrl"));
+      fls = DontCare (Out ("drop"));
+    }
+  }
+  |> get_paths
+  |> Alcotest.(check @@ list @@ pair tv string) "paths" Trit.Vector.[
+    of_string "1*1", "ctrl";
+    of_string "1*0", "drop";
+    of_string "01*", "ctrl";
+    of_string "00*", "drop"
+  ]
+
 
 let () =
   let open Alcotest in 
@@ -423,5 +502,11 @@ let () =
       test_case "bitwise and" `Quick bitwise_and;
       test_case "bitwise or" `Quick bitwise_or;
       test_case "bitwise xor" `Quick bitwise_xor;
+      test_case "addition" `Quick addition;
+      test_case "bitwise overlap" `Quick overlap;
+    ] @ raw_additions;
+    "BDDs", simple_encodings;
+    "ADDs", [
+      test_case "generate paths" `Quick add_paths
     ]
   ]
