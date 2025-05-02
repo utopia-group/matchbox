@@ -475,6 +475,34 @@ let add_paths () =
     of_string "00*", "drop"
   ]
 
+let hex input expected () = 
+  Trit.Vector.bitstring_of_hexchar input
+  |> Alcotest.(check string) "equivalent bitstrings" expected
+
+let range_gen width lo hi () = 
+  let tvs = Intify.bitvectors_from_range "x" width (lo, hi) in
+  List.iter tvs ~f:(fun tv -> 
+    Printf.printf "%s\n%!" (Trit.Vector.to_string tv)
+  );
+  Alcotest.(check bool) "finished" true true
+
+let tv_math () =
+  let f (tstr, op) = 
+    let tv = Trit.Vector.of_string tstr in 
+    let x = Intify.of_tv tv in 
+    let y = Intify.(eval (op (simplify x))) in 
+    Intify.bitvectors_from_range "x" (String.length tstr) y
+    |> List.map ~f:Trit.Vector.to_string
+  in
+  [
+    ("011*", Intify.incr);
+    ("01*0", Intify.incr);
+  ] |> List.map ~f
+    |> Alcotest.(check @@ list @@ list string) "is correct" [
+      ["0111"; "1000"];
+      ["01*0"];
+    ]
+
 
 let () =
   let open Alcotest in 
@@ -508,5 +536,32 @@ let () =
     "BDDs", simple_encodings;
     "ADDs", [
       test_case "generate paths" `Quick add_paths
-    ]
+    ];
+    "Trits", [
+      test_case "hex parsing 0" `Quick (hex '0' "0000");
+      test_case "hex parsing 1" `Quick (hex '1' "0001");
+      test_case "hex parsing 2" `Quick (hex '2' "0010");
+      test_case "hex parsing 3" `Quick (hex '3' "0011");
+      test_case "hex parsing 4" `Quick (hex '4' "0100");
+      test_case "hex parsing 5" `Quick (hex '5' "0101");
+      test_case "hex parsing 6" `Quick (hex '6' "0110");
+      test_case "hex parsing 7" `Quick (hex '7' "0111");
+      test_case "hex parsing 8" `Quick (hex '8' "1000");
+      test_case "hex parsing 9" `Quick (hex '9' "1001");
+      test_case "hex parsing a" `Quick (hex 'a' "1010");
+      test_case "hex parsing b" `Quick (hex 'b' "1011");
+      test_case "hex parsing c" `Quick (hex 'c' "1100");
+      test_case "hex parsing d" `Quick (hex 'd' "1101");
+      test_case "hex parsing e" `Quick (hex 'e' "1110");
+      test_case "hex parsing f" `Quick (hex 'f' "1111");
+    ];
+    "GenerateTVs", [
+      test_case "x in [0..1]" `Quick (range_gen 4 0 1);
+      test_case "x in [0..15]" `Quick (range_gen 4 0 15);
+      test_case "x in [1..2]" `Quick (range_gen 4 1 2);
+      test_case "x in [2..10]" `Quick (range_gen 4 2 10);
+    ];
+    "TVMath",[
+      test_case "011* + 1" `Quick tv_math;
+    ];
   ]
