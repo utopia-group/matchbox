@@ -1,99 +1,145 @@
 open Core
 
-type t =
-  | Range of {lo: int; hi: int}
-  | Add of t * t
-  | Sub of t * t
-  | Exp of t * t
-  | Times of t * t
+module Exp = struct 
+  type op = 
+  | Mod
+  | Add
+  | Sub
+  | Mul
+  | Div
 
-let rec to_string = 
-  let recurse op e1 e2 = Printf.sprintf "(%s %s %s)" (to_string e1) op (to_string e2) in 
-  function 
-  | Range {lo;hi} -> 
-    if lo = hi then 
-      Printf.sprintf "%d" lo
-    else 
-      Printf.sprintf "[%d,%d]" lo hi
-  | Add (e1, e2) -> recurse "+" e1 e2
-  | Sub (e1, e2) -> recurse "-" e1 e2
-  | Exp (e1, e2) -> recurse "**" e1 e2
-  | Times (e1, e2) -> recurse "*" e1 e2
+  let op_to_string op : string -> string -> string = 
+    let infix op arg1 arg2 = Printf.sprintf "(%s%s%s)" arg1 op arg2 in 
+    match op with 
+    | Mod -> 
+      infix " mod "
+    | Add -> 
+      infix " + "
+    | Sub -> 
+      infix " - "
+    | Mul -> 
+      infix "*"
+    | Div -> 
+      infix "/"
 
-let const i = Range {lo = i; hi = i}
+  let op_to_smt = function 
+    | Mod -> SMT.(mod)
+    | Add -> SMT.(+)
+    | Sub -> SMT.(-)
+    | Mul -> SMT.( * )
+    | Div -> SMT.div
 
-let times e1 e2 = Times (e1, e2)
-let shl = times (const 2)
-let wc = Range {lo = 0; hi = 1}
+  type t =
+  | Int of int
+  | Var of string
+  | AOp of op * t * t
 
-let add e1 e2 = Add(e1, e2)
+  let rec to_string = function 
+    | Int i -> Int.to_string i
+    | Var x -> x
+    | AOp (a, e1, e2) -> 
+      op_to_string a (to_string e1) (to_string e2)
 
-let incr = add (const 1)
+  let rec to_smt = function 
+    | Int i -> SMT.int i
+    | Var x -> SMT.var x
+    | AOp (op, e1, e2) -> 
+      op_to_smt op [to_smt e1; to_smt e2]
 
-let range lo hi = Range {lo; hi}
-let range' (lo,hi) = range lo hi
+  let const i = Int i 
+  let var x = Var x
 
-let rec ( ** ) x y = 
-  if y < 0 then 
-    failwith "integer exponentiation is not closed for negative exponents"
-  else if y = 0 then 
+  let mkop op e1 e2 = AOp (op, e1, e2) 
+
+  let times = mkop Mul
+  let add = mkop Add
+  let div = mkop Div
+  let rec cexp e i = 
+    if i < 0 then 
+      failwith "negative exponentiation is not closed in the integers"
+    else if i = 0 then 
+      const 1
+    else if i = 1 then 
+      e
+    else
+      times e (cexp e (i-1))
+
+  let modi e i = mkop Mod e (const i)
+
+  let xdiv x = div (var x)
+      
+  let incr = add (const 1)
+  let rec exp2' i =
+    if i < 0 then 
+      failwith "[exp2] cannot take a negative exponent of 2"      
+  else if i = 0 then 
     1
-  else 
-    x * (x ** y)
+  else 2 * exp2' (i - 1)
 
-let rec eval exp : int * int =
-  match exp with 
-  | Range {lo;hi} -> lo, hi
-  | Add (e1, e2) -> 
-    let lo1, hi1 = eval e1 in 
-    let lo2, hi2 = eval e2 in 
-    (lo1 + lo2, hi1 + hi2)
-  | Sub (e1, e2) -> 
-    let lo1, hi1 = eval e1 in 
-    let lo2, hi2 = eval e2 in 
-    (lo1 + hi2, hi1 - lo2)
-  | Exp (base, power) -> 
-    let lobase, hibase = eval base in 
-    let lopower, hipower = eval power in 
-    (lobase ** lopower, hibase ** hipower)
-  | Times (e1, e2) -> 
-    let lo1, hi1 = eval e1 in 
-    let lo2, hi2 = eval e2 in 
-    (lo1 * lo2, hi1 * hi2)
+  let exp2 i : t = const (exp2' i)
 
-let simplify exp = eval exp |> range'
+end 
 
-let of_tv tv = (*tv in big-endian*)
-  let rec loop tv = (* tv in little endian*)
-    match tv with 
-    | [] -> const 0
-    | t :: tv' -> 
-      let range = 
-        let open Trit in 
-        match t with 
-        | T -> const 1
-        | F -> const 0
-        | U -> wc
-      in 
-      loop tv'
-      |> shl
-      |> add range
-    
-  in
-  List.rev tv
-  |> loop
+module Form = struct 
+  type lop =
+    | And | Or | Iff | Imp
+
+  type cmp = 
+    | Gt | Lt | Ge | Le | Eq
+
+  type t = 
+    | True
+    | False 
+    | Not of t
+    | LOp of lop * t * t
+    | Cmp of cmp * Exp.t * Exp.t
 
 
-let gen_mask_str x bitwidth i = 
-  let bv = Printf.sprintf "%s_%d_bv" x i in
-  let mask = Printf.sprintf "%s_%d_mask" x i in
-  Printf.sprintf "(= (bvand ((_ int2bv %d) %s) %s) (bvand %s %s))" bitwidth x mask bv mask
-
-let gen_smt_sketch x bitwidth size = 
-  List.init size ~f:(gen_mask_str x bitwidth)
-  |> String.concat ~sep:" "
-  |> Printf.sprintf "(or %s)"
+  let mkcmp c e1 e2 = Cmp (c, e1, e2)
   
+  let eq e1 e2 = mkcmp Eq e1 e2
+
+  let xeq x e = eq Exp.(var x) e
+
+  let mkop o e1 e2 = LOp (o, e1, e2)
+
+  let and_ = mkop And
+  
+  let of_tv x tv : t = (*tv in big-endian*)
+    let rec loop i tv = (* tv in little endian*)
+      let open Trit in  
+      match tv with 
+      | [] -> xeq x Exp.(const 0)
+      | U :: tv' -> loop (i+1) tv'
+      | b :: tv' -> 
+        let ith_bit = Exp.(modi (xdiv x (exp2 i)) 2) in
+        let b_int = if get_bit_exn b then Exp.const 1 else Exp.const 0 in
+        and_ (eq ith_bit b_int) (loop (i+1) tv')
+    in
+    List.rev tv
+    |> loop 0 
+
+end
+
+let e_sp x e bitwidth =
+  let x' = x ^ "$1" in 
+  let modulus = Exp.(to_smt (exp2 bitwidth)) in 
+  (x' , SMT.(modeq (var x') e modulus))
+
+
+let gen_mask x_str bitwidth i = 
+  let open SMT in 
+  let x = var x_str in 
+  let bv = var (Printf.sprintf "%s_%d_bv" x_str i) in
+  let mask = var (Printf.sprintf "%s_%d_mask" x_str i) in
+  (=) [
+    bvand [(int2bv bitwidth x); mask]; 
+    bvand [bv; mask]
+  ]
+
+  let gen_smt_sketch x bitwidth size = 
+  SMT.or_ (List.init size ~f:(gen_mask x bitwidth))
+    
 let var_convention x idx suffix =
   let root = Printf.sprintf "%s_%d" x idx in 
   match suffix with 
@@ -108,45 +154,45 @@ let gen_vars x size =
   ) |> List.concat
 
 let var_decls xs w = 
-  let typ = Printf.sprintf "(_ BitVec %d)" w in 
-  List.map xs ~f:(fun x -> Printf.sprintf "(declare-const %s %s)" x typ)
-  |> String.concat ~sep:"\n"
+  let decl x = SMT.(declare_const x (bv_sort w)) in 
+  List.map xs ~f:decl
 
-let gen_tv_sketch x bitwidth lo hi size =
-  let vars = gen_vars x size in 
-  let vars_str = String.concat vars ~sep:" " in 
-  let decls = var_decls vars bitwidth in
-  let sketch = gen_smt_sketch x bitwidth size in 
-  let max_int_value = Float.(of_int 2 ** of_int bitwidth |> to_int) in 
-  Printf.sprintf "%s\n(assert (forall ((%s Int)) \n\t(=> (and (< %s %d) (>= %s 0)) (= (and (<= %s %d) (<= %d %s)) \n\t%s))))\n(check-sat)\n(get-value (%s))\n%!" decls x x max_int_value x x hi lo x sketch vars_str
-
-let parse_model str =
-  Printf.printf "Model:\n%s\n%!" str;
-  let sexp_model = Parsexp.Many.parse_string_exn str in 
-  match sexp_model with 
-  | [Atom "sat"; List rst] ->
-    List.fold rst ~init:(String.Map.empty) ~f:(fun model sexp -> 
-      begin match sexp with 
-      | Sexp.List [Atom var; Atom value] -> 
-        String.Map.set model ~key:var ~data:(Trit.Vector.of_string value)
-      | _ -> 
-        failwithf "unrecognized sexp %s" (Sexp.to_string sexp) ()
-      end
-    ) |> Option.some
-  | (Atom "unsat")::_ ->
-    None
-  | _ -> failwithf "Unrecognized pattern %s" str ()
+let matches_tv x_str tv = 
+  let open SMT in 
+  let bitwidth = List.length tv in 
+  let (v, m) = Trit.Vector.to_bitmask tv in 
+  let value = bv' v in 
+  let mask = bv' m in 
+  (=) [
+    bvand [int2bv bitwidth (var x_str); mask];
+    bvand [value; mask]
+  ]
 
 
-let get_model sketch = 
-  let z3 = Runner.init "/usr/bin/z3 -in" in 
-  let response = Runner.run z3 sketch in 
-  Printf.printf "%s\n%!" response;
-  parse_model response
+let gen_tv_sketch x tv e size : string * SMT.program =
+  let bitwidth = Trit.Vector.length tv in 
+  let precond = matches_tv x tv in
+  let (x', postcond) = e_sp x (Exp.to_smt e) bitwidth in 
+  let sketch = gen_smt_sketch x' bitwidth size in 
+  let vars = gen_vars x' size in 
+  x',
+  SMT.(List.concat [
+    var_decls vars bitwidth;
+    [assert_ (forall [x, int_sort; x', int_sort] @@ 
+      implies [
+        postcond;
+        iff [precond; sketch]
+      ])
+    ];
+    [check_sat];
+    [get_value vars]
+  ])
+
 
 let get_from_model model x idx suffix = 
   let varname = var_convention x idx suffix in 
-  String.Map.find_exn model varname
+  SMT.Model.find_exn model varname
+  |> Trit.Vector.of_string
 
 let extract_tbv_sequence x size model = 
   let lookup = get_from_model model x in
@@ -156,15 +202,13 @@ let extract_tbv_sequence x size model =
   in
   List.init size ~f
 
-let bitvectors_from_range x bitwidth (lo, hi) = 
+let realize_operation x tv op  = 
   let rec loop size =
-    if size > (1 + hi - lo) then 
-      failwithf "something went wrong... tried up to size %d, but the naive solution should only take %d (= %d - %d) bitvectors" (size - 1) (hi - lo) hi lo ()
-    else
-      let sketch = gen_tv_sketch x bitwidth lo hi size in
-      match get_model sketch with 
-      | None -> loop (size + 1)
-      | Some model -> 
-        extract_tbv_sequence x size model
+    let x', sketch = gen_tv_sketch x tv op size in
+    let result = SMT.run (Runner.init "z3 -smt2 -in") sketch in
+    match SMT.check result with
+    | None -> loop (size + 1)
+    | Some model ->
+      extract_tbv_sequence x' size model
   in
   loop 1

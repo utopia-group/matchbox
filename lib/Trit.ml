@@ -83,6 +83,11 @@ module Trit = struct
   | T -> T
   | U -> failwith "unexpected * in Trit.maskify operation"
 
+  let get_bit_exn = function 
+  | F -> false
+  | T -> true
+  | U -> failwith "tried to get bit from * trit"
+
 end
 
 module Vector = struct 
@@ -122,6 +127,15 @@ module Vector = struct
       (* if the first two characters are bits, assume its a bv*)
       cleaned_to_ternary bs
     | _ -> failwithf "unrecognized tv %s" bs ()
+
+  let to_bitmask tv : Bit.Vector.t * Bit.Vector.t =
+    let open Trit in 
+    List.map tv ~f:(function 
+      | T -> (true, true)
+      | F -> (false, true)
+      | U -> (false, false) (* could also be true, false, but this is cannoncial*)
+      )
+    |> List.unzip
 
   let equal = List.equal Trit.equal
   let length : t -> int = List.length

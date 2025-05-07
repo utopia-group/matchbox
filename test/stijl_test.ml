@@ -479,28 +479,19 @@ let hex input expected () =
   Trit.Vector.bitstring_of_hexchar input
   |> Alcotest.(check string) "equivalent bitstrings" expected
 
-let range_gen width lo hi () = 
-  let tvs = Intify.bitvectors_from_range "x" width (lo, hi) in
-  List.iter tvs ~f:(fun tv -> 
-    Printf.printf "%s\n%!" (Trit.Vector.to_string tv)
-  );
-  Alcotest.(check bool) "finished" true true
-
 let tv_math () =
   let f (tstr, op) = 
     let tv = Trit.Vector.of_string tstr in 
-    let x = Intify.of_tv tv in 
-    let y = Intify.(eval (op (simplify x))) in 
-    Intify.bitvectors_from_range "x" (String.length tstr) y
+    Intify.realize_operation "x" tv op
     |> List.map ~f:Trit.Vector.to_string
   in
   [
-    ("011*", Intify.incr);
-    ("01*0", Intify.incr);
+    ("011*", Intify.Exp.(incr (var "x")));
+    ("01*0", Intify.Exp.(incr (var "x")));
   ] |> List.map ~f
     |> Alcotest.(check @@ list @@ list string) "is correct" [
-      ["0111"; "1000"];
-      ["01*0"];
+      ["1000"; "0111"];
+      ["01*1"];
     ]
 
 
@@ -554,12 +545,6 @@ let () =
       test_case "hex parsing d" `Quick (hex 'd' "1101");
       test_case "hex parsing e" `Quick (hex 'e' "1110");
       test_case "hex parsing f" `Quick (hex 'f' "1111");
-    ];
-    "GenerateTVs", [
-      test_case "x in [0..1]" `Quick (range_gen 4 0 1);
-      test_case "x in [0..15]" `Quick (range_gen 4 0 15);
-      test_case "x in [1..2]" `Quick (range_gen 4 1 2);
-      test_case "x in [2..10]" `Quick (range_gen 4 2 10);
     ];
     "TVMath",[
       test_case "011* + 1" `Quick tv_math;

@@ -1,83 +1,208 @@
 open Core
-open Gpl
+
+type tactical = Sexp.t
+let t_to_string = Sexp.to_string
+
+type sort = Sexp.t
+let s_to_string = Sexp.to_string
+
+type expr = Sexp.t
+let e_to_string = Sexp.to_string
+
+type command = Sexp.t
+let c_to_string = Sexp.to_string
+
+type program = command list
+let p_to_string sexps = 
+  List.map sexps ~f:Sexp.to_string
+  |> String.concat ~sep:"\n"
+
+let bv_sort w = Sexp.(List [
+    Atom "_";
+    Atom "BitVec";
+    Atom (Int.to_string w)
+  ])
+
+let bv value width = 
+  Sexp.(List [
+    Atom "_";
+    Atom (Printf.sprintf "bv%d" value);
+    Atom (Int.to_string width)
+  ])
+
+let bv' bits = 
+  Sexp.Atom ("#b" ^ Bit.Vector.to_string bits)
+
+let var x = Sexp.Atom x
+let int i = Sexp.Atom (Printf.sprintf "%d" i)
+let real i = Sexp.Atom (Printf.sprintf "%f" i)
+
+let int_sort = Sexp.Atom "Int"
+let real_sort = Sexp.Atom "Real"
+let check_sat = Sexp.(List [Atom "check-sat"])
+
+let check_sat_using tactical = 
+  Sexp.(List [Atom "check-sat-using"; tactical])
+
+let get_model = Sexp.(List [Atom "get-model";])
+let exit = Sexp.(List [Atom "exit"])
+let declare_const x sort = 
+  Sexp.(List [
+    Atom "declare-const";
+    Atom x;
+    sort
+  ])
+
+let tactical name tacticals = Sexp.(List (Atom name :: tacticals))
+let then_ = tactical "then"
+let par_then = tactical "par-then"
+let par_or = tactical "par-or"
+let or_else = tactical "or-else"
+let repeat t = tactical "repeat" [t]
+let repeat' t n = tactical "repeat" [t; int n]
+let try_for t ms = tactical "repeat" [t; real ms]
+let using_params (t : tactical) params =
+  tactical "using-params" @@ 
+  t :: (
+    List.bind params ~f:(fun (param, arg) -> 
+      [Sexp.Atom (":" ^ param);
+      arg]
+    )
+  )
+
+let tactic tact : tactical = Sexp.Atom tact
 
 
-type tactic = SMT
+let get_value variables = 
+  let xs = List.map variables ~f:(fun x -> Sexp.Atom x) in 
+  Sexp.(List [Atom "get-value"; List xs])
 
-type command = 
-  | CheckSat of tactic option
-  | GetModel
+let assert_ (sexp : expr) : command = Sexp.List [(Atom "assert"); sexp]
+let apply_sexp a es = Sexp.List (a :: es)
+let apply f = apply_sexp (Sexp.Atom f)
 
-let c_to_string = function 
-  | CheckSat None -> "(check-sat)"
-  | CheckSat (Some SMT) -> "(check-sat-using :smt)"
-  | GetModel -> "(get-model)"
+(* logic *)
+let and_ = apply "and"
+let iff = apply "="
+let or_ = apply "or"
+let implies = apply "=>"
 
-type t = {
-  consts : Var.t list;
-  funcs : (Var.t * (int list)) list; 
-  assts : (BExpr.t) list;
-  cmnds : command list;
-}
+(* quantifiers *)
+let quantifier q (sorted_vars : (string * sort) list) (phi : expr) =
+  Sexp.(
+    let variables = 
+      List.map sorted_vars ~f:(fun (x, s) -> 
+        List [Atom x; s]
+      )
+    in
+    List [
+      Atom q; 
+      List variables;
+      phi
+    ]
+  )
 
-let concatmap ~f ~sep xs =
-  List.map xs ~f |> String.concat ~sep
-
-let to_string ({consts; funcs; assts; cmnds} : t) = 
-  let consts_str = consts |> concatmap ~f:Var.to_smtlib_decl ~sep:"\n" in
-  let funcs_str = funcs |> concatmap ~sep:"\n" ~f:(fun (f,ins) ->
-    let ins_str = ins |> concatmap ~f:(Printf.sprintf "(_ BitVec %d)") ~sep:" " in
-    Printf.sprintf "(declare-fun %s (%s) (_ BitVec %d))" (Var.str f) ins_str (Var.width f)
-  ) in
-  let assts_str = assts |> concatmap ~sep:"\n" ~f:(fun phi -> Printf.sprintf "(assert %s)" (BExpr.to_smtlib phi))in
-  let cmnds_str = cmnds |> concatmap ~f:c_to_string ~sep:"\n" in
-  [ consts_str
-  ; funcs_str
-  ; assts_str
-  ; cmnds_str ] |> String.concat ~sep:"\n"
-  
-
-let smt_gen (phi : BExpr.t) : t = 
-  let consts = BExpr.free_vars phi |> Var.Set.to_list in 
-  let funcs = BExpr.get_funs phi |> List.dedup_and_sort ~compare:(fun (x,_) (y, _) -> Var.compare x y) in 
-  let assts = [phi] in 
-  let cmnds = [CheckSat None] in 
-  {
-    consts; funcs; assts; cmnds
-  }
-
-(** lowercased [str] [contains] lowercased [substring] *)
-let contains str substring = 
-  String.lowercase str
-  |> String.is_substring ~substring:(String.lowercase substring)
+let forall = quantifier "forall"
+let exists = quantifier "exists"
 
 
-let is_unknown (result : string) : bool = 
-  contains result "unknown"
+(* arithmetic operators *)
+let (+) = apply "+"
+let (-) = apply "-"
+let ( * ) = apply "*"
+let div = apply "div"
+let ( mod ) = apply "mod"
+let ( = ) = apply "="
+let ( < ) = apply "<"
+let ( > ) =  apply ">"
+let (<=) = apply "<="
+let (>=) = apply ">="
+let distinct = apply "distinct"
 
-let is_unsat (result : string) : bool = 
-  Printf.printf "%s\n%!" result;  
-  contains result "unsat" && not (is_unknown result)
-    
-let is_sat (result : string) : bool = 
-  contains result "sat" 
-  && not (is_unsat result) 
-  && not (is_unknown result)
+let modeq e1 e2 m =
+  (=) [(mod) [e1; m]; (mod) [e2; m]]
+
+(* conversion from int to bitvector *)
+let int2bv w (x : expr) : expr = 
+  Sexp.List [
+    (apply "_" [Atom "int2bv"; int w]);
+    x
+  ]
 
 
-let check phi =
-  phi
-  |> smt_gen
-  |> to_string
-  |> Runner.(run (init "/usr/bin/z3 -smt2 -in"))
+(* bitvector arithmetic *)
+let bvadd = apply "bvadd"
+let bvmul = apply "bvmul"
+let bvsub = apply "bvsub"
+
+(* bitvector resizing *)
+let concat = apply "concat"
+let extract ~hi ~lo = 
+  apply_sexp Sexp.(List [
+    Atom "_"; 
+    Atom "extract";
+    Atom (Int.to_string hi);
+    Atom (Int.to_string lo)])
+
+(* bitwise operations *)
+let bvand = apply "bvand"
+let bvor = apply "bvor"
 
 
-let satisfiable (phi : BExpr.t) : bool = 
-  check phi 
-  |> is_sat
+(* unsigned comparison *)
+let bvult = apply "bvult"
+let bvule = apply "bvule"
+let bvugt = apply "bvugt"
+let bvuge = apply "bvuge"
+(* signed comparison *)
+let bvsle = apply "bvsle"
+let bvslt = apply "bvslt"
+let bvsgt = apply "bvsgt"
+let bvsge = apply "bvsge"
+
+type response = Sexp.t list
+
+let run (r : Runner.t) (p : program) : response =
+  Runner.run r (p_to_string p)
+  |> Parsexp.Many.parse_string_exn
 
 
-let verify (phi : BExpr.t) : bool = 
-  BExpr.not_ phi
-  |> check
-  |> is_unsat
+module Model = struct
+  type 'a t = 'a String.Map.t
+
+  let extract sexp_model = 
+    match sexp_model with 
+    | Sexp.List rst ->
+      List.fold rst ~init:(String.Map.empty) ~f:(fun model sexp -> 
+        begin match sexp with 
+        | Sexp.List [Atom var; Atom value] -> 
+          String.Map.set model ~key:var ~data:value
+        | _ -> 
+          failwithf "unrecognized sexp %s" (Sexp.to_string sexp) ()
+        end
+      )
+    | _ -> failwithf "Unrecognized pattern %s" (Sexp.to_string sexp_model) ()
+
+
+  let parse str =    
+    Printf.printf "Model:\n%s\n%!" str;
+    Parsexp.Single.parse_string_exn str
+    |> extract
+
+
+  let map (model : 'a t) ~f : 'b t = 
+    String.Map.map model ~f
+
+  let find_exn (model : 'a t) (key : string) = 
+    String.Map.find_exn model key
+end
+
+let check (resp : response) : string Model.t option =
+  match resp with 
+  | [] -> failwith "Received empty response from solver"
+  | (Atom "sat") :: rst -> 
+    let model_sexp = List.hd_exn rst in 
+    Some (Model.extract model_sexp)
+  | (Atom "unsat"):: _ -> None
+  | _ -> failwithf "Did not recognize response from solver %s" (Sexp.to_string (Sexp.List resp)) ()
+

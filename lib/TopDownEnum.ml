@@ -367,9 +367,9 @@ let init_search pre abs tgt pst =
   let tgt_funs = List.filter all_funs ~f:(Fn.non (List.mem abs_funs ~equal:(fun (x, _, _) (y, _, _) -> String.(x = y)))) in
   abs_funs, tgt_funs, begin fun mapping -> 
     Printf.printf "-------------------+\n%s\n----------------------+\n%!" (BExpr.to_smtlib mapping);
-    SMT.satisfiable mapping &&
+    UFBV.satisfiable mapping &&
     BExpr.(imp [quantify `All mapping; pre; ver_cnsq]
-      |> SMT.verify)
+      |> UFBV.verify)
   end
 
 (** [phi |==> psi] returns true when phi is strictly stronger than psi. that is
@@ -379,7 +379,7 @@ let ( |==> ) phi psi =
   ands [
     imp [phi; psi];
     not_ (imp [psi; phi])
-  ] |> SMT.verify
+  ] |> UFBV.verify
 
 let synthesize gas pre abs tgt pst =
   let abs_funs, tgt_funs, is_correct = init_search pre abs tgt pst in 
