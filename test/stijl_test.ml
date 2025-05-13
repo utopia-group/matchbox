@@ -296,7 +296,7 @@ let identity_mapping () =
               table =  Table "S";
               callbacks = String.Map.of_alist_exn
                 [ "route", Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
-                  "drop", Pipe(RenameActionTo "nop", DataSlice[]);
+                "drop", Pipe(RenameActionTo "nop", DataSlice[]);
                 ];
             };
           }
@@ -494,6 +494,72 @@ let tv_math () =
       ["01*1"];
     ]
 
+let incr_is_generated () = 
+  let open QueueSearch in 
+  let get_next = rexp_extend ["ttl"; "src"; "dst"] in 
+  let candidates = List.(get_next RHole >>= get_next >>= get_next) in 
+  let open DSLv2 in 
+  let desired = MapKey ("ttl", ["ttl"], Incr (Var "ttl")) in
+  (* Printf.printf "looking for %s\n%!" (rowexp_to_string desired); *)
+  let f cand = 
+    (* Printf.printf "%s\n%!" (rowexp_to_string cand); *)
+    rowexp_equal cand desired 
+  in 
+  assert (List.exists candidates ~f);
+  Alcotest.(check pass) "finishes without failing" () ()
+
+
+let rename_slice () =
+  let open QueueSearch in 
+  let names = ["rewrite"; "dmac"; "fwd"; "p"; "nop"] in 
+  let get_next = rexp_extend names in 
+  let candidates = List.(DSLv2.([RHole] >>= get_next >>= get_next)) in 
+  let desired = DSLv2.[
+    Pipe(RenameActionTo "fwd", DataSlice ["p"]);
+    Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
+    Pipe(RenameActionTo "nop", DataSlice[]);
+  ] in
+  let f cand =
+    Printf.printf "%s\n%!" DSLv2.(rowexp_to_string cand);
+    List.exists desired ~f:DSLv2.(rowexp_equal cand)
+  in
+  assert (List.exists candidates ~f);
+  Alcotest.(check pass) "finishes" () ()
+
+let two_to_one_gen () =
+  let open DSLv2 in 
+  let sketch =
+    Case { table = Table "S"; callbacks = String.Map.of_alist_exn [
+      "route", RHole;
+      "drop", RHole;
+    ]}
+  in
+  let desired = [
+    Case {
+      table = Table "S"; 
+      callbacks = String.Map.of_alist_exn [
+        "route", Pipe(RenameActionTo "fwd", DataSlice ["p"]);
+        "drop", Id];
+    };
+    (* Case {
+      table =  Table "S";
+      callbacks = String.Map.of_alist_exn [
+        "route", Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
+        "drop", Pipe(RenameActionTo "nop", DataSlice[]);
+      ]
+    }]; *)
+    ]
+  in
+  let next = QueueSearch.extend ["next"; "rewrite"; "dmac"; "nop"; "fwd"; "p"] in 
+  let candidates = List.([sketch] >>= next >>= next) in 
+  let f cand =
+    Printf.printf "%s\n%!" (exp_to_string cand);
+    List.exists desired ~f:(exp_equiv cand)
+  in
+  assert (List.length candidates > 0);
+  assert (List.exists candidates ~f);
+  Alcotest.(check pass) "finished" () ()
+  
 
 let () =
   let open Alcotest in 
@@ -549,4 +615,11 @@ let () =
     "TVMath",[
       test_case "011* + 1" `Quick tv_math;
     ];
+    "RowSynthGen", [
+      test_case "ttl = ttl + 1 is generated" `Quick incr_is_generated;
+      test_case "rename/slice pattern is generated" `Quick rename_slice;
+    ];
+    "DSLv2SynthGen", [
+      test_case "two-to-one is generated" `Quick two_to_one_gen;
+    ]
   ]
