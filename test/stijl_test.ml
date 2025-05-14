@@ -283,23 +283,19 @@ let identity_mapping () =
       ]
     ] in 
     let map = 
-        Seq [
-          Assign {table = "T1"; from = ["S"];
-            body = Case { 
-              table = Table "S"; 
-              callbacks = String.Map.of_alist_exn
-                ["route", Pipe(RenameActionTo "fwd", DataSlice ["p"]);
-                "drop", Id];}
-          };
-          Assign {table = "T2"; from = ["S"];
-            body = Case {
-              table =  Table "S";
-              callbacks = String.Map.of_alist_exn
-                [ "route", Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
-                "drop", Pipe(RenameActionTo "nop", DataSlice[]);
-                ];
-            };
-          }
+      Seq [
+        Assign {table = "T1"; from = ["S"];
+          body = case' "S" [
+            "route", Pipe(RenameActionTo "fwd", DataSlice ["p"]);
+            "drop", Id
+          ];
+        };
+        Assign {table = "T2"; from = ["S"];
+          body = case' "S" [
+            "route", Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
+            "drop", Pipe(RenameActionTo "nop", DataSlice[]);
+          ]
+        };
       ]
     in
     let cfg' = of_aslist [
@@ -519,45 +515,38 @@ let rename_slice () =
     Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
     Pipe(RenameActionTo "nop", DataSlice[]);
   ] in
-  let f cand =
-    Printf.printf "%s\n%!" DSLv2.(rowexp_to_string cand);
-    List.exists desired ~f:DSLv2.(rowexp_equal cand)
+  let f d =
+    List.exists candidates ~f:DSLv2.(rowexp_equal d)
   in
-  assert (List.exists candidates ~f);
+  assert (List.for_all desired ~f);
   Alcotest.(check pass) "finishes" () ()
 
 let two_to_one_gen () =
   let open DSLv2 in 
   let sketch =
-    Case { table = Table "S"; callbacks = String.Map.of_alist_exn [
+    case' "S" [
       "route", RHole;
       "drop", RHole;
-    ]}
+    ]
   in
   let desired = [
-    Case {
-      table = Table "S"; 
-      callbacks = String.Map.of_alist_exn [
-        "route", Pipe(RenameActionTo "fwd", DataSlice ["p"]);
-        "drop", Id];
-    };
-    (* Case {
-      table =  Table "S";
-      callbacks = String.Map.of_alist_exn [
-        "route", Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
-        "drop", Pipe(RenameActionTo "nop", DataSlice[]);
-      ]
-    }]; *)
+    case' "S" [
+      "route", Pipe(RenameActionTo "fwd", DataSlice ["p"]);
+      "drop", Id
+    ];
+    case' "S" [
+      "route", Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
+      "drop", Pipe(RenameActionTo "nop", DataSlice[]);
+    ]
     ]
   in
   let next = QueueSearch.extend ["next"; "rewrite"; "dmac"; "nop"; "fwd"; "p"] in 
   let candidates = List.([sketch] >>= next >>= next) in 
-  let f cand =
-    Printf.printf "%s\n%!" (exp_to_string cand);
-    List.exists desired ~f:(exp_equiv cand)
+  let f d =
+    List.exists candidates ~f:(exp_equiv d)
   in
   assert (List.length candidates > 0);
-  assert (List.exists candidates ~f);
+  assert (List.for_all desired ~f);
   Alcotest.(check pass) "finished" () ()
   
 

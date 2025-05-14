@@ -144,7 +144,11 @@ type exp =
   | Table of string
   | Map of (exp * rowexp)
   | Compose of exp * exp
-  | Case of { table : exp; callbacks : rowexp String.Map.t }
+  | Case of { 
+    table : exp; 
+    callbacks : rowexp String.Map.t option
+    (* None corresponds to a hole*)
+  }
 
 let rec exp_equiv e1 e2 =
   match e1, e2 with 
@@ -156,7 +160,7 @@ let rec exp_equiv e1 e2 =
     exp_equiv e1 e1' && exp_equiv e2 e2'
   | Case case1, Case case2 -> 
     exp_equiv case1.table case2.table
-    && String.Map.equal rowexp_equal case1.callbacks case2.callbacks
+    && Option.equal (String.Map.equal rowexp_equal) case1.callbacks case2.callbacks
   | _, _ -> false
 
 let rec exp_to_string = function
@@ -164,7 +168,9 @@ let rec exp_to_string = function
   | Table t -> t
   | Map (e, r) -> Printf.sprintf "Map(%s,%s)" (exp_to_string e) (rowexp_to_string r)
   | Compose (e1, e2) -> Printf.sprintf "Compose(%s, %s)" (exp_to_string e1) (exp_to_string e2)
-  | Case {table;callbacks} -> 
+  | Case {table;callbacks = None} -> 
+    Printf.sprintf "Case(%s, ?)" (exp_to_string table)
+  | Case {table;callbacks = Some callbacks} ->
     (String.Map.fold callbacks ~init:"" ~f:(fun ~key ~data acc -> Printf.sprintf "%s, %s->%s" acc key (rowexp_to_string data)))
     |> Printf.sprintf "Case(%s%s)" (exp_to_string table) 
 
@@ -174,21 +180,27 @@ let rec exp_size = function
   | Map (e, r) -> exp_size e + 1 + rexp_size r
   | Compose (e1, e2) -> exp_size e1 + exp_size e2
   | Case {table; callbacks} -> 
-    exp_size table + String.Map.fold callbacks ~init:1 ~f:(fun ~key:_ ~data acc -> 
-      rexp_size data + acc
-    )
+    match callbacks with 
+    | None -> exp_size table + 1
+    | Some callbacks -> 
+      exp_size table + 
+      String.Map.fold callbacks ~init:1 
+        ~f:(fun ~key:_ ~data acc -> 
+          rexp_size data + acc
+        )
 
 let rec exp_hole_free = function
-  | EHole -> false
+  | EHole | Case {callbacks=None; _} -> false
   | Table _ -> true
   | Map (e, r) -> exp_hole_free e && rexp_hole_free r
   | Compose (e1, e2) -> exp_hole_free e1 && exp_hole_free e2
-  | Case {table; callbacks} -> 
-    exp_hole_free table && String.Map.for_all callbacks ~f:(rexp_hole_free)
+  | Case {table; callbacks = Some callbacks} ->
+    exp_hole_free table && 
+    String.Map.for_all callbacks ~f:(rexp_hole_free)
 
 let rec e_eval (valuation : Value.t String.Map.t) (e : exp) : Value.t =
   match e with 
-  | EHole -> failwith "cannot evaluate holes"
+  | EHole | Case {callbacks = None;_} -> failwith "cannot evaluate holes"
   | Table x -> 
     String.Map.find_exn valuation x
   | Map (exp, rexp) ->
@@ -198,7 +210,7 @@ let rec e_eval (valuation : Value.t String.Map.t) (e : exp) : Value.t =
     let tbl1 = e_eval valuation e1 in 
     let tbl2 = e_eval valuation e2 in 
     Value.compose tbl1 tbl2
-  | Case {table; callbacks} -> 
+  | Case {table; callbacks = Some callbacks} -> 
     let t = e_eval valuation table in 
     let f (ma : MatchAction.t) : MatchAction.t = 
       let action_name = Action.get_name ma.action in
@@ -221,6 +233,13 @@ let rec run (cfg : Config.t) : t -> Config.t = function
     String.Map.set cfg ~key:table ~data:(e_eval cfg' body)
   | Seq cs -> 
     List.fold cs ~init:cfg ~f:run
+
+let case' tablename actions = 
+  Case {
+    table = Table tablename;
+    callbacks = Some (String.Map.of_alist_exn actions)
+  }
+
 
 let find queue ~f ~extend ~pop ~add_all = 
   let rec loop queue = 

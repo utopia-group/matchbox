@@ -83,8 +83,10 @@ let rec extend names exp =
   | EHole -> 
     List.concat [
       List.map names ~f:(fun tbl -> Table tbl);
-      [Map (EHole, RHole)];
-      [Compose (EHole, EHole)];
+      [ Map (EHole, RHole);
+        Compose (EHole, EHole);
+        Case {table = EHole; callbacks = None}
+      ]
     ]
   | Table _ -> []
   | Map (e, r) -> 
@@ -101,15 +103,17 @@ let rec extend names exp =
       List.map (extend names e2) ~f:(fun e2' -> 
         Compose (e1', e2')
     ))
-  | Case {table; callbacks} when exp_hole_free table ->
+  | Case {table; callbacks = Some callbacks} when exp_hole_free table ->
     List.map (extend_callbacks names callbacks) ~f:(fun callbacks -> 
-      Case {table; callbacks}
+      Case {table; callbacks = Some callbacks}
     ) 
+  | Case {table; callbacks = None} when exp_hole_free table -> 
+    failwith "Need type information to do this sensibly"
   | Case {table; callbacks} -> 
-    List.bind (extend names table) ~f:(fun table -> 
-      List.map (extend_callbacks names callbacks) ~f:(fun callbacks ->
-        Case {table; callbacks}
-      )
+    (* if the table has a hole, callbacks should be a hole *)
+    assert (Option.is_none callbacks);
+    List.map (extend names table) ~f:(fun table -> 
+      Case {table; callbacks = None}
     )
 
 
