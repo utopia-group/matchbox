@@ -83,6 +83,9 @@ type rowexp =
   | MapData of string * string list * bvexp
   | Pipe of rowexp * rowexp
 
+let rename_action_to s = RenameActionTo s
+let data_slice ps = DataSlice ps
+
 let rec rowexp_to_string = function 
   | RHole -> "?"
   | Id -> "Id"

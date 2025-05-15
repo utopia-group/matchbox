@@ -492,13 +492,18 @@ let tv_math () =
 
 let incr_is_generated () = 
   let open QueueSearch in 
-  let get_next = rexp_extend ["ttl"; "src"; "dst"] in 
+  let context = String.Map.of_alist_exn Type.[
+    "ttl", Var 8;
+    "src", Var 32;
+    "dst", Var 32
+  ] in
+  let get_next = rexp_extend context in 
   let candidates = List.(get_next RHole >>= get_next >>= get_next) in 
   let open DSLv2 in 
   let desired = MapKey ("ttl", ["ttl"], Incr (Var "ttl")) in
-  (* Printf.printf "looking for %s\n%!" (rowexp_to_string desired); *)
+  Printf.printf "looking for %s\n%!" (rowexp_to_string desired);
   let f cand = 
-    (* Printf.printf "%s\n%!" (rowexp_to_string cand); *)
+    Printf.printf "%s\n%!" (rowexp_to_string cand);
     rowexp_equal cand desired 
   in 
   assert (List.exists candidates ~f);
@@ -507,8 +512,13 @@ let incr_is_generated () =
 
 let rename_slice () =
   let open QueueSearch in 
-  let names = ["rewrite"; "dmac"; "fwd"; "p"; "nop"] in 
-  let get_next = rexp_extend names in 
+  let context = String.Map.of_alist_exn Type.[
+    "rewrite", Action ["dmac"]; 
+    "dmac", Var 48; 
+    "fwd", Action ["p"]; 
+    "p", Var 9; 
+    "nop", Action []] in 
+  let get_next = rexp_extend context in 
   let candidates = List.(DSLv2.([RHole] >>= get_next >>= get_next)) in 
   let desired = DSLv2.[
     Pipe(RenameActionTo "fwd", DataSlice ["p"]);
@@ -540,7 +550,20 @@ let two_to_one_gen () =
     ]
     ]
   in
-  let next = QueueSearch.extend ["next"; "rewrite"; "dmac"; "nop"; "fwd"; "p"] in 
+  let context = String.Map.of_alist_exn Type.[
+    "S", Table {keys = ["dst"]; actions = ["route"; "drop"]};
+    "T1", Table {keys = ["dst"]; actions = ["fwd"; "drop"]};
+    "T2", Table {keys = ["dst"]; actions = ["rewrite"; "nop"]};
+    "dst", Var 32;
+    "route", Action ["p"; "dmac"];
+    "nop", Action [];
+    "fwd", Action ["p"];
+    "drop", Action [];
+    "rewrite", Action ["dmac"];
+    "p", Var 9;
+    "dmac", Var 48;
+  ] in
+  let next = QueueSearch.extend context in 
   let candidates = List.([sketch] >>= next >>= next) in 
   let f d =
     List.exists candidates ~f:(exp_equiv d)
