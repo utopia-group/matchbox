@@ -339,7 +339,7 @@ module Value = struct
     | Data (exp, name) ->
       let+ state, vlus = eval state cfg exp in 
       let acts = get_action <$> vlus in 
-      let data = Action.get_data' name <$> acts in
+      let data = Action.get_data_exn' name <$> acts in
       (state, bv <$> data)
     | LiteralAction(name, arg_exprs) -> 
       let+ state, argss = 
@@ -374,11 +374,11 @@ module Value = struct
       state, vs1 @ vs2
     | Function (name, inputs, typ, halgo) -> 
       begin match halgo, typ with 
-      | Incr, Expr _ -> begin
+      | Incr, Expr width -> begin
         let lookup state in_values : (State.t * t, string) result = 
           let in_ints = get_vectorset <$> in_values in
           let (state, out) = State.fresh state name in_ints in 
-          Ok (state, v (Exact out))
+          Ok (state, v (Exact Bit.Vector.(of_int ~width out)))
         in
         let* state, in_values_alternatives = 
           res_acc_map inputs state (fun state inp -> eval state cfg inp)

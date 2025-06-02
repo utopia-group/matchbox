@@ -14,6 +14,7 @@ let contains phi phis =
 
 
 let v32 str = Var.make str 32
+(* let v8 str = Var.make str 8 *)
 let v9 str = Var.make str 9
 let v48 str = Var.make str 48
 
@@ -246,13 +247,18 @@ let cfgtst =
 let equal_output cfg cfg' = 
   Alcotest.(check cfgtst) "equal configuration output" cfg cfg'
 
-
+let bv v ~w = Bit.Vector.of_int ~width:w v
+let bv32 = bv ~w:32
+let bv48 = bv ~w:48
+let bv9 =  bv ~w:9
+let bv8 = bv ~w:8
+  
 let identity_mapping () = 
   let open DSLv2 in 
   let cfg = of_aslist [ 
     "S", ["dst"], [
-      [Exact 88], ("fwd", ["p", 8]);
-      [Optional None], ("fwd", ["p", 511])
+      [Exact (bv32 88)], ("fwd", ["p", bv9 8]);
+      [Optional None], ("fwd", ["p", bv9 511])
     ]
   ] in 
   let map = Assign {table = "T"; from = ["S"];
@@ -261,12 +267,12 @@ let identity_mapping () =
   in
   let cfg' = of_aslist [
     "S", ["dst"], [
-      [Exact 88], ("fwd", ["p", 8]);
-      [Optional None], ("fwd", ["p", 511])
+      [Exact (bv 88 ~w:32)], ("fwd", ["p", (bv9 8)]);
+      [Optional None], ("fwd", ["p", bv9 511])
     ];
     "T", ["dst"], [
-      [Exact 88], ("fwd", ["p", 8]);
-      [Optional None], ("fwd", ["p", 511])
+      [Exact (bv 88 ~w:32)], ("fwd", ["p", (bv9 8)]);
+      [Optional None], ("fwd", ["p", (bv9 511)])
     ]
   ] in
   run cfg map
@@ -277,8 +283,8 @@ let identity_mapping () =
     let open DSLv2 in  
     let cfg = of_aslist [ 
       "S", ["dst"], [
-        [Exact 88], ("route", ["p", 8; "dmac", 8888]);
-        [Exact 99], ("route", ["p", 9; "dmac", 9999]);
+        [Exact (bv32 88)], ("route", ["p", (bv 8 ~w:9); "dmac", (bv48 8888)]);
+        [Exact (bv32 99)], ("route", ["p", bv9 9; "dmac", (bv48 9999)]);
         [Optional None], ("drop", [])
       ]
     ] in 
@@ -300,18 +306,18 @@ let identity_mapping () =
     in
     let cfg' = of_aslist [
       "S", ["dst"], [
-        [Exact 88], ("route", ["p", 8; "dmac", 8888]);
-        [Exact 99], ("route", ["p", 9; "dmac", 9999]);
+        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
+        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
         [Optional None], ("drop", [])
       ];
       "T1", ["dst"], [
-        [Exact 88], ("fwd", ["p", 8]);
-        [Exact 99], ("fwd", ["p", 9]);
+        [Exact (bv32 88)], ("fwd", ["p", (bv9 8)]);
+        [Exact (bv32 99)], ("fwd", ["p", (bv9 9)]);
         [Optional None], ("drop", [])
       ];
       "T2", ["dst"], [
-        [Exact 88], ("rewrite", ["dmac", 8888]);
-        [Exact 99], ("rewrite", ["dmac", 9999]);
+        [Exact (bv32 88)], ("rewrite", ["dmac", (bv48 8888)]);
+        [Exact (bv32 99)], ("rewrite", ["dmac", (bv48 9999)]);
         [Optional None], ("nop", [])
       ]
     ] in
@@ -322,13 +328,13 @@ let identity_mapping () =
     let open DSLv2 in  
     let cfg = of_aslist [ 
       "S", ["dst"], [
-        [Exact 88], ("route", ["p", 8; "dmac", 8888]);
-        [Exact 99], ("route", ["p", 9; "dmac", 9999]);
+        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
+        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
         [Optional None], ("drop", [])
       ];
       "V", ["ttl"], [
-        [Exact (-1)], ("drop", []);
-        [Exact 0], ("drop", []);
+        [Ternary Trit.Vector.(zero 7 @ [Trit.U])], ("drop", []);
+        (* [Exact (bv8 0)], ("drop", []); *)
         [Optional None], ("nop", [])
       ]
     ] in 
@@ -336,39 +342,80 @@ let identity_mapping () =
         Seq [
           Assign { table = "T"; from = ["S"]; body = Table "S" };
           Assign { table = "V'"; from = ["V"];
-            body = Map(Table "V", MapKey ("ttl", ["ttl"], Incr (Var "ttl")))
+            body = Map(Table "V", MapKey ("ttl", ["ttl"], Decr (Var "ttl")))
           }
       ]
     in
     let cfg' = of_aslist [
       "S", ["dst"], [
-        [Exact 88], ("route", ["p", 8; "dmac", 8888]);
-        [Exact 99], ("route", ["p", 9; "dmac", 9999]);
+        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
+        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
         [Optional None], ("drop", [])
       ];
       "V", ["ttl"], [
-        [Exact (-1)], ("drop", []);
-        [Exact 0], ("drop", []);
+        (* [Exact (bv8 1)], ("drop", []);
+        [Exact (bv8 0)], ("drop", []); *)
+        [Ternary Trit.Vector.(zero 7 @ [Trit.U])], ("drop", []);
         [Optional None], ("nop", [])
       ];
       "V'", ["ttl"], [
-        [Exact 0], ("drop", []);
-        [Exact 1], ("drop", []);
+        [Exact (bv8 0)], ("drop", []);
+        [Exact Bit.Vector.(ones 8)], ("drop", []);
         [Optional None], ("nop", [])
       ];
       "T", ["dst"], [
-        [Exact 88], ("route", ["p", 8; "dmac", 8888]);
-        [Exact 99], ("route", ["p", 9; "dmac", 9999]);
+        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
+        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
         [Optional None], ("drop", [])
       ];
     ] in
     run cfg map
-    |> equal_output cfg' 
-
-(* let trit = 
-  Alcotest.testable 
-    (Fmt.of_to_string Trit.to_string)
-    (Trit.equal)   *)
+    |> equal_output cfg'
+ 
+let metadata () =
+    let open DSLv2 in 
+    let open Semantics in 
+    let cfg = of_aslist [ 
+      "S", ["dst"], List.init 500 ~f:(fun i -> 
+        [Match.Exact (bv32 i)], ("route", ["p", (bv9 i); "dmac", (bv48 i)])
+      ) @ [
+        [Optional None], ("drop", [])
+      ];
+    ] in 
+    let map = 
+        Seq [
+          Assign { table = "T"; from = ["S"]; 
+            body = Map(Case {
+              table = Map(Table "S", DataSlice []); 
+              callbacks = Some (String.Map.of_alist_exn [
+                "route", MapData("g", ["dst"], Var "dst");
+                "drop", MapData("g", [], Lit Bit.Vector.(zero 32)) 
+              ])}, RenameActionTo "lag")
+          };
+          Assign { table = "LAG"; from = ["S"];
+            body = Table "S"
+          }
+      ]
+    in
+    let cfg' = of_aslist [
+      "S", ["dst"], [
+        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
+        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
+        [Optional None], ("drop", [])
+      ];
+      "Agg", ["dst"], [
+        [Exact (bv32 88)], ("lag", ["g", (bv32 88) ]);
+        [Exact (bv32 99)], ("lag", ["g", (bv32 89)]);
+        [Optional None], ("lag", ["g", (bv32 0)])
+      ];
+      "LAG", ["grp"], [
+        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
+        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 9999)]);
+        [Optional None], ("drop", [])
+      ]
+    ] in
+    run cfg map
+    |> equal_output cfg'  
 
 let vectorset = 
   let open Bit in 
@@ -423,7 +470,6 @@ let raw_additions =
       Alcotest.(check bv) "same bitvector" s Bit.Vector.(a + b)
     end)
   )
-
 
 let bitwise_and () = check_binary ~f:(Bit.Vector.(&&)) ~g:Trit.Vector.(&&)
 let bitwise_or () = check_binary ~f:(Bit.Vector.(||)) ~g:Trit.Vector.(||)
@@ -482,8 +528,8 @@ let tv_math () =
     |> List.map ~f:Trit.Vector.to_string
   in
   [
-    ("011*", Intify.Exp.(incr (var "x")));
-    ("01*0", Intify.Exp.(incr (var "x")));
+    ("011*", Intify.Exp.(xincr "x"));
+    ("01*0", Intify.Exp.(xincr "x"));
   ] |> List.map ~f
     |> Alcotest.(check @@ list @@ list string) "is correct" [
       ["1000"; "0111"];
@@ -593,6 +639,9 @@ let () =
       test_case "identity mapping" `Quick identity_mapping;
       test_case "split_action" `Quick two_to_one_exec;
       test_case "reorder" `Quick reorder;
+      test_case "metadata" `Quick metadata;
+(*       test_case "double" `Quick double;
+      test_case "choice" `Quick choice; *)
     ];
     "BitVectors", [
       test_case "negation" `Quick negation;

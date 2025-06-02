@@ -39,6 +39,32 @@ module Vector = struct
 
   let length : t -> int = List.length
 
+  let of_int ~width i =
+    let rec loop w i =
+      if w <= 0 then 
+        []
+      else 
+        loop (w-1) (i lsr 1) @ [i mod 2 = 1]
+    in 
+    if width < 0 then 
+      failwith "cannot create negative-width bitvector"
+    else 
+      let i' = i mod Float.to_int (2. ** Float.of_int width) in 
+      loop width i'
+
+  let zero w : t =
+    List.init w ~f:(fun _ -> false)
+
+  let ones w : t =
+    List.init w ~f:(fun _ -> true)
+
+  let one w : t =
+    if w < 1 then 
+      failwith "cannot create bitvector of value 1 with fewer than 1 bit"
+    else 
+      zero (w - 1) @ [true]
+
+
   let to_string bs = 
     List.map bs ~f:(fun b -> 
       if b then "1" else "0"  
@@ -57,6 +83,14 @@ module Vector = struct
         let c = (x && y) || (c && (x ^ y)) in
         (c, s::bs)
     ) |> snd
+
+  let incr xs = 
+    let w = List.length xs in 
+    xs + one w
+
+  let decr xs =
+    let w = List.length xs in 
+    xs + ones w
 
   let ( ^ ) = 
     List.map2_exn ~f:(^)

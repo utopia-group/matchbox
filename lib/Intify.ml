@@ -53,6 +53,7 @@ module Exp = struct
 
   let times = mkop Mul
   let add = mkop Add
+  let sub = mkop Sub
   let div = mkop Div
   let rec cexp e i = 
     if i < 0 then 
@@ -68,7 +69,8 @@ module Exp = struct
 
   let xdiv x = div (var x)
       
-  let incr = add (const 1)
+  let xincr x = add (const 1) (var x)
+  let xdecr x = sub (var x) (const 1)
   let rec exp2' i =
     if i < 0 then 
       failwith "[exp2] cannot take a negative exponent of 2"      

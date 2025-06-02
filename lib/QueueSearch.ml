@@ -16,7 +16,7 @@ let rec bvexp_extend names bvexp =
     Incr BVHole :: 
     Decr BVHole :: 
     List.map names ~f:(fun x -> Var x);
-  | Var _ -> []
+  | Var _ | Lit _ -> []
   | Incr e -> 
     List.map (bvexp_extend names e) ~f:(fun e' -> Incr e')
   | Decr e -> 

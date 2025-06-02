@@ -18,6 +18,13 @@ module Trit = struct
     | T, F | F, T -> false
     | _, _ -> true
 
+  let mem b t  =
+    match b, t with 
+    | true, F -> false
+    | true, _ -> true
+    | false, T -> false
+    | false, _ -> true
+
   let equal a b = 
     match a, b with 
     | T, T | F, F | U, U -> true
@@ -96,6 +103,9 @@ module Vector = struct
     List.map bs ~f:(Trit.to_string) 
     |> String.concat ~sep:""
 
+  let drop_last_n n v =
+    List.(drop (rev v) n |> rev)
+
   let bitstring_of_hexchar c = 
     let i = String.of_char c |> (^) "0x" |> Int.of_string in 
     let str b = if b then "1" else "0" in 
@@ -103,11 +113,30 @@ module Vector = struct
     |> List.rev
     |> String.concat
 
+  let of_bv = List.map ~f:(fun b -> 
+      if b then Trit.T else Trit.F
+    )
   
   let hexstring_to_bitstring hexstring =
     String.fold hexstring ~init:"" ~f:(fun acc hex_char -> 
       acc ^ bitstring_of_hexchar hex_char
     )
+
+  let zero w =
+    List.init w ~f:(fun _ -> Trit.F)
+  
+  let one w =
+    if w < 1 then 
+      failwith "cannot create tritvector 1 without at least one bit"
+    else 
+      zero (w + 1) @ [Trit.T]
+
+  let wc w =
+    List.init w ~f:(fun _ -> Trit.U)
+
+  let prefix_mask w l =
+    assert (l <= w);
+    zero (w - l) @ wc l
 
   let of_string bs = 
     let prefix = String.prefix bs 2 in 
@@ -152,6 +181,8 @@ module Vector = struct
     )
 
   let overlap = List.for_all2_exn ~f:Trit.overlap
+
+  let mem = List.for_all2_exn ~f:Trit.mem
 
   let not : t -> t = List.map ~f:Trit.not
 

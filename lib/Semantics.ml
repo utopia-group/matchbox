@@ -4,32 +4,37 @@ let (let+) r f = Result.map r ~f
 
 module Match = struct 
   type t = 
-  | Exact of int
-  | Lpm of int * int
-  | Ternary of int * int
-  | Optional of int option
+  | Exact of Bit.Vector.t
+  | Lpm of Bit.Vector.t * int
+  | Ternary of Trit.Vector.t
+  | Optional of Bit.Vector.t option
 
   let equal m m' = 
     match (m, m') with 
-    | Exact x, Exact y -> x = y
-    | Lpm (x, w), Lpm (y,l) -> x = y && w = l
-    | Ternary (x,m), Ternary (y, m') -> x = y && m = m'
-    | Optional o, Optional o' -> Option.equal Int.equal o o'
+    | Exact x, Exact y | Optional (Some x), Optional (Some y) -> 
+      Bit.Vector.equal x y
+    | Lpm (x, w), Lpm (y,l) -> Bit.Vector.equal x y && w = l
+    | Ternary v, Ternary v' ->
+      Trit.Vector.equal v v' 
+    | Ternary v, Exact v' | Exact v', Ternary v -> 
+      let tv' = Trit.Vector.of_bv v' in 
+      Trit.Vector.equal v tv'
+    | Optional None, Optional None -> true
     | _, _ -> false
 
   let matches x = function
-    | Exact y -> x = y
+    | Exact y -> Bit.Vector.equal x y
     | Lpm _ -> failwith "TODO implement lpm"
     | Optional None -> true
-    | Optional (Some y) -> x = y 
-    | Ternary (y, mask) -> (y land mask) = (x land mask)
+    | Optional (Some y) -> Bit.Vector.equal x y 
+    | Ternary v -> Trit.Vector.mem x v
 
   let to_string = function 
-    | Exact v -> Int.to_string v
-    | Lpm (v, bits) -> Printf.sprintf "%d/%d" v bits
-    | Ternary (v, m) -> Printf.sprintf "%d & %d" v m
+    | Exact v -> Bit.Vector.to_string v
+    | Lpm (v, bits) -> Printf.sprintf "%s/%d" (Bit.Vector.to_string v) bits
+    | Ternary tv -> Printf.sprintf "%s" (Trit.Vector.to_string tv)
     | Optional None -> "*"
-    | Optional (Some v) -> Int.to_string v
+    | Optional (Some v) -> Bit.Vector.to_string v
 
   let get_exact = function 
     | Exact v -> v
@@ -38,35 +43,42 @@ module Match = struct
     | Optional _ -> failwith "Expected Exact; got optional"
 
   let incr = function 
-    | Exact v -> Exact (v + 1)
-    | Lpm _ -> failwith "cannot increment LPM"
-    | Ternary _ -> failwith "cannot increment ternary"
-    | Optional (Some v) -> Optional (Some (v + 1))
-    | Optional None -> Optional None
+    | Exact v -> [Exact Bit.Vector.(incr v)]
+    | Lpm (v, w) -> 
+        let v' = Trit.Vector.(of_bv v |> drop_last_n w) in
+        let tv = Trit.Vector.(v' @ wc w) in 
+        failwithf "TODO: Increment %s" (Trit.Vector.to_string tv) ()
+    | Ternary tv -> 
+      Intify.realize_operation "x" tv (Intify.Exp.xincr "x")
+      |> List.map ~f:(fun tv -> Ternary tv)
+    | Optional (Some v) -> [Optional (Some Bit.Vector.(incr v))]
+    | Optional None -> [Optional None]
 
   let decr = function 
-    | Exact v -> Exact (v - 1)
+    | Exact v -> [Exact Bit.Vector.(decr v)]
     | Lpm _ -> failwith "Cannot decrement LPM"
-    | Ternary _ -> failwith "cannot decrement ternary"
-    | Optional (Some v) -> Optional (Some (v - 1))
-    | Optional (None) -> Optional None
+    | Ternary tv -> 
+      Intify.realize_operation "x" tv (Intify.Exp.xdecr "x")
+      |> List.map ~f:(fun tv -> Ternary tv)
+    | Optional (Some v) -> [Optional (Some Bit.Vector.(decr v))]
+    | Optional (None) -> [Optional None]
 end
 
 
 module Action = struct
   type t = {
     name : string;
-    args : int String.Map.t
+    args : Bit.Vector.t String.Map.t
   }
 
   let equal (a : t) (b : t) =
     String.(a.name = b.name) &&
-    String.Map.equal Int.equal a.args b.args
+    String.Map.equal Bit.Vector.equal a.args b.args
 
   let to_string ({name;args} : t) : string =
     let open Printf in 
     String.Map.fold args ~init:"" ~f:(fun ~key ~data acc -> 
-      let argstr = sprintf "%s = %d" key data in 
+      let argstr = sprintf "%s = %s" key (Bit.Vector.to_string data) in 
       if String.length acc = 0 then 
         argstr
       else 
@@ -85,9 +97,14 @@ module Action = struct
 
   let get_data (action : t) (name : string) = 
     String.Map.find action.args name
+
+  let get_data_exn (action : t) (name : string) =
+    get_data action name
     |> Option.value_exn ~message:(Printf.sprintf "Couldnt find action data param %s" name)
 
   let get_data' = Fun.flip get_data
+
+  let get_data_exn' = Fun.flip get_data_exn
 
   let project_data (params : string list) (action : t) = 
     {action with args =
@@ -104,19 +121,22 @@ module MatchAction = struct
     matches : Match.t String.Map.t;
     action : Action.t;
   }
+  let to_string ({matches; action}: t) = 
+    Printf.sprintf "\t%s -> %s" 
+      (String.Map.to_alist matches |> List.map ~f:(fun (x,m) -> Printf.sprintf "'%s' ~ %s" x (Match.to_string m)) |> String.concat ~sep:", ")
+      (Action.to_string action)
 
   let equal (ma : t) (ma' : t) =
     String.Map.equal Match.equal ma.matches ma'.matches 
-    && Action.equal ma.action ma'.action 
-
-  let to_string ({matches; action}: t) = 
-    Printf.sprintf "\t%s  ->  %s" 
-      (String.Map.to_alist matches |> List.map ~f:(fun (x,m) -> x ^ " ~ " ^ Match.to_string m) |> String.concat ~sep:", ")
-      (Action.to_string action)
-
+    && Action.equal ma.action ma'.action
 
   let get_match (ma : t) name = 
     String.Map.find_exn ma.matches name
+
+  let get_field (ma : t) name =
+    match Action.get_data ma.action name with 
+    | None -> get_match ma name
+    | Some v -> Match.Exact v
 
   let does_match keys ({matches;action=_} : t) =
     String.Map.for_alli matches ~f:(fun ~key:x ~data:mtch -> 
@@ -157,5 +177,8 @@ module MatchActionTable = struct
 
   let map ~f : t -> t= 
     List.map ~f
+
+  let bind ~f : t -> t =
+    List.bind ~f
 
   end

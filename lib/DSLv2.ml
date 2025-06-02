@@ -23,6 +23,9 @@ module Config = struct
   type t = Value.t String.Map.t
   let equal = String.Map.equal Value.equal
 
+  let restrict keys cfg =
+    String.Map.filter_keys cfg ~f:(List.mem ~equal:String.equal keys)
+
   let to_string : t -> string = 
     String.Map.fold ~init:"" ~f:(fun ~key ~data acc -> 
       Printf.sprintf "%s%stable %s->\n%s\n----------------------------"
@@ -37,42 +40,48 @@ end
 type bvexp = 
   | BVHole
   | Var of string
+  | Lit of Bit.Vector.t
   | Incr of bvexp
   | Decr of bvexp
 
 let rec bvexp_to_string = function 
   | BVHole -> "?"
   | Var x -> x
+  | Lit bv -> Bit.Vector.to_string bv
   | Incr b -> Printf.sprintf "(incr %s)" (bvexp_to_string b)
   | Decr b -> Printf.sprintf "(decr %s)" (bvexp_to_string b)
 
 let rec bvexp_vars = function
-  | BVHole -> []
+  | BVHole | Lit _ -> []
   | Var x -> [x]
   | Incr d | Decr d -> bvexp_vars d
 
 let rec bvexp_equal b1 b2 =
   match b1, b2 with 
   | BVHole, BVHole -> true
+  | Lit v1, Lit v2 -> Bit.Vector.equal v1 v2
   | Var x, Var y -> String.(x = y)
   | Incr b1, Incr b2 
   | Decr b1, Decr b2 -> 
     bvexp_equal b1 b2 
   | _, _ -> false
 
-let rec bv_eval (valuation : int String.Map.t) (b : bvexp) =
+let rec bv_eval (valuation : Bit.Vector.t String.Map.t) (b : bvexp) : Bit.Vector.t =
   match b with 
   | BVHole -> failwith "cannot evaluate hole"
   | Var x -> String.Map.find_exn valuation x
-  | Incr b -> bv_eval valuation b + 1
-  | Decr b -> bv_eval valuation b - 1
+  | Lit bv -> bv
+  | Incr b -> bv_eval valuation b |> Bit.Vector.incr
+  | Decr b -> bv_eval valuation b |> Bit.Vector.decr
 
-let rec bv_set_eval (valuation : Match.t String.Map.t) (b : bvexp) = 
+let rec bv_set_eval (valuation : Match.t String.Map.t) (b : bvexp) =
+  let open List in  
   match b with 
   | BVHole -> failwith "cannot evaluate hole"
-  | Var x -> String.Map.find_exn valuation x
-  | Incr b -> bv_set_eval valuation b |> Match.incr
-  | Decr b -> bv_set_eval valuation b |> Match.decr
+  | Var x -> [String.Map.find_exn valuation x]
+  | Lit bv -> [Exact bv]
+  | Incr b -> bv_set_eval valuation b >>= Match.incr
+  | Decr b -> bv_set_eval valuation b >>= Match.decr
 
 type rowexp =
   | RHole
@@ -121,25 +130,31 @@ let rec rexp_hole_free = function
   | Pipe (r1, r2) -> 
     rexp_hole_free r1 && rexp_hole_free r2
 
-let rec r_eval (r : rowexp) (row : MatchAction.t) =
+let rec r_eval (r : rowexp) (row : MatchAction.t) : MatchAction.t list =
+  let open List in
   match r with
   | RHole -> failwith "cannot evaluate row expression holes"
-  | Id -> row
+  | Id -> [row]
   | RenameActionTo name -> 
-    {row with action = Action.set_name name row.action}
+    [{row with action = Action.set_name name row.action}]
   | DataSlice params ->
-    {row with action = Action.project_data params row.action}
+    [{row with action = Action.project_data params row.action}]
   | Pipe (r1, r2) -> 
     r_eval r1 row
-    |> r_eval r2
+    >>= r_eval r2
   | MapData (x, params, bv_exp) -> 
-    let args = List.map params ~f:(fun x -> (x, Action.get_data row.action x)) |> String.Map.of_alist_exn in
+    let args = List.map params ~f:(fun x -> 
+      (x, MatchAction.get_field row x |> Match.get_exact)) 
+    |> String.Map.of_alist_exn in
     let b = bv_eval args bv_exp in
-    {row with action = Action.update_data row.action x b}
+    let action = Action.update_data row.action x b in 
+    [{row with action}]
   | MapKey (x, params, bv_exp) -> 
     let args = List.map params ~f:(fun x -> (x, MatchAction.get_match row x)) |> String.Map.of_alist_exn in
-    let b = bv_set_eval args bv_exp in
-    {row with matches = String.Map.set row.matches ~key:x ~data:b}
+    bv_set_eval args bv_exp
+    |> List.map ~f:(fun b -> 
+      {row with matches = String.Map.set row.matches ~key:x ~data:b}
+    )
     
 
 type exp = 
@@ -208,19 +223,20 @@ let rec e_eval (valuation : Value.t String.Map.t) (e : exp) : Value.t =
     String.Map.find_exn valuation x
   | Map (exp, rexp) ->
     let tbl = e_eval valuation exp in
-    Value.map tbl ~f:(r_eval rexp)
+    Value.bind tbl ~f:(r_eval rexp)
   | Compose (e1, e2) -> 
     let tbl1 = e_eval valuation e1 in 
     let tbl2 = e_eval valuation e2 in 
     Value.compose tbl1 tbl2
   | Case {table; callbacks = Some callbacks} -> 
     let t = e_eval valuation table in 
-    let f (ma : MatchAction.t) : MatchAction.t = 
+    let f (ma : MatchAction.t) : MatchAction.t list = 
       let action_name = Action.get_name ma.action in
+      Printf.printf "Action named : %s\n%!" action_name;
       let callback = String.Map.find_exn callbacks action_name in
       r_eval callback ma
     in
-    Value.map t ~f
+    Value.bind t ~f
 
 type t = 
   | Assign of { table: string; from : string list; body : exp }
