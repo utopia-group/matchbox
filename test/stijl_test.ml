@@ -248,174 +248,238 @@ let equal_output cfg cfg' =
   Alcotest.(check cfgtst) "equal configuration output" cfg cfg'
 
 let bv v ~w = Bit.Vector.of_int ~width:w v
+(* let bv16 = bv ~w:16 *)
 let bv32 = bv ~w:32
 let bv48 = bv ~w:48
 let bv9 =  bv ~w:9
-let bv8 = bv ~w:8
+(* let bv8 = bv ~w:8 *)
+
+let tv16 n = bv ~w:16 n |> Trit.Vector.of_bv
+let tv8 n = bv ~w:8 n |> Trit.Vector.of_bv
+
+let idc w = Semantics.Match.Ternary (Trit.Vector.wc w)
+
+let data_size = 5
+
+let eth_rules = 
+  let open Semantics in 
+  let open Match in 
+  List.init data_size ~f:(fun i -> 
+  [Exact (bv32 i)], ("fwd", ["p", (bv9 (511 - i))]);
+) @ [
+  [catch_all 32], ("drop", []);
+]
+
+let ipv4_rules =
+  let open Semantics in
+  let open Match in  
+  List.init data_size ~f:(fun i -> 
+    [Exact (bv32 i)], ("route", ["p", (bv9 i); "dmac", (bv48 i)])
+  ) @ [
+    [catch_all 32], ("nop", [])
+  ]
+
+let validate_rules =
+  let open Semantics in 
+  let open Trit.Vector in 
+  [  
+    Match.[idc 9; idc 48; idc 48; Ternary(tv16 2048); idc 32; idc 32; Ternary(zero 7 @ wc 1)], ("drop", []);
+          [idc 9; idc 48; idc 48;             idc 16; idc 32; idc 32;                 idc 8], ("nop", [])
+  ]
+
+let experimental_data = 
+  of_aslist [ 
+  "Eth", ["dmac"], eth_rules;
+  "IPv4", ["dst"], ipv4_rules;
+  "Validate", ["inport"; "smac"; "dmac"; "ethertype"; "src"; "dst"; "ttl"], validate_rules
+]
   
-let identity_mapping () = 
+let identity () = 
   let open DSLv2 in 
-  let cfg = of_aslist [ 
+  (* let cfg = of_aslist [ 
     "S", ["dst"], [
       [Exact (bv32 88)], ("fwd", ["p", bv9 8]);
       [Optional None], ("fwd", ["p", bv9 511])
     ]
-  ] in 
-  let map = Assign {table = "T"; from = ["S"];
-                    body = Table "S";
-                  }
-  in
-  let cfg' = of_aslist [
-    "S", ["dst"], [
-      [Exact (bv 88 ~w:32)], ("fwd", ["p", (bv9 8)]);
-      [Optional None], ("fwd", ["p", bv9 511])
-    ];
-    "T", ["dst"], [
-      [Exact (bv 88 ~w:32)], ("fwd", ["p", (bv9 8)]);
-      [Optional None], ("fwd", ["p", (bv9 511)])
-    ]
+  ] in  *)
+  let map = Seq [
+    copy "Eth'" "Eth";
+    copy "IPv4'" "IPv4";
+    copy "Validate'" "Validate";
   ] in
-  run cfg map
+  let cfg' = 
+    String.Map.(fold experimental_data ~init:experimental_data ~f:(fun ~key ~data config -> 
+      add_exn ~key:(key ^ "'") ~data config)
+    )
+  in
+  run experimental_data map
   |> equal_output cfg'
+
+
+let project_asdata keep = List.map ~f:(fun (matches, (act, data)) -> 
+  let data' = List.filter data ~f:(fun (param, _) -> 
+    String.(List.mem keep param ~equal)
+  ) in 
+  (matches, (act, data'))
+)
+
+let rename_action subst = 
+  let rename old =
+    match List.find_map subst ~f:(fun (old', new_) -> if String.(old = old') then Some new_ else None) with 
+    | None -> old
+    | Some new_ -> new_
+  in 
+  List.map ~f:(fun (matches, (act, data)) -> 
+    (matches, (rename act, data))
+  )
 
 
   let two_to_one_exec () = 
     let open DSLv2 in  
-    let cfg = of_aslist [ 
+(*     let cfg = of_aslist [ 
       "S", ["dst"], [
         [Exact (bv32 88)], ("route", ["p", (bv 8 ~w:9); "dmac", (bv48 8888)]);
         [Exact (bv32 99)], ("route", ["p", bv9 9; "dmac", (bv48 9999)]);
         [Optional None], ("drop", [])
       ]
-    ] in 
+    ] in  *)
     let map = 
       Seq [
-        Assign {table = "T1"; from = ["S"];
-          body = case' "S" [
+        copy "Eth'" "Eth";
+        Assign {table = "Forward"; from = ["IPv4"];
+          body = case' "IPv4" [
             "route", Pipe(RenameActionTo "fwd", DataSlice ["p"]);
-            "drop", Id
+            "nop", Id
           ];
         };
-        Assign {table = "T2"; from = ["S"];
-          body = case' "S" [
+        Assign {table = "Rewrite"; from = ["IPv4"];
+          body = case' "IPv4" [
             "route", Pipe(RenameActionTo "rewrite", DataSlice["dmac"]);
-            "drop", Pipe(RenameActionTo "nop", DataSlice[]);
+            "nop", Id;
           ]
         };
+        copy "Validate'" "Validate";
       ]
     in
     let cfg' = of_aslist [
-      "S", ["dst"], [
-        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
-        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
-        [Optional None], ("drop", [])
-      ];
-      "T1", ["dst"], [
-        [Exact (bv32 88)], ("fwd", ["p", (bv9 8)]);
-        [Exact (bv32 99)], ("fwd", ["p", (bv9 9)]);
-        [Optional None], ("drop", [])
-      ];
-      "T2", ["dst"], [
-        [Exact (bv32 88)], ("rewrite", ["dmac", (bv48 8888)]);
-        [Exact (bv32 99)], ("rewrite", ["dmac", (bv48 9999)]);
-        [Optional None], ("nop", [])
-      ]
-    ] in
-    run cfg map
-    |> equal_output cfg' 
+      "Eth'", ["dmac"], eth_rules;
+      "Forward", ["dst"], ipv4_rules |> project_asdata ["p"] |> rename_action ["route", "fwd"];
+      "Rewrite", ["dst"], ipv4_rules |> project_asdata ["dmac"] |> rename_action ["route", "rewrite"];
+      "Validate'", ["inport"; "smac"; "dmac"; "ethertype"; "src"; "dst"; "ttl"], validate_rules
+    ]
+    in
+    let target_tables = Config.restrict ["Eth'"; "Forward"; "Rewrite"; "Validate'"] in
+    target_tables (run experimental_data map)
+    |> equal_output (target_tables cfg')
 
   let reorder () = 
     let open DSLv2 in  
-    let cfg = of_aslist [ 
+    let open Semantics.Match in 
+(*     let cfg = of_aslist [ 
       "S", ["dst"], [
         [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
         [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
-        [Optional None], ("drop", [])
+        [catch_all 32], ("drop", [])
       ];
       "V", ["ttl"], [
         [Ternary Trit.Vector.(zero 7 @ [Trit.U])], ("drop", []);
         (* [Exact (bv8 0)], ("drop", []); *)
-        [Optional None], ("nop", [])
+        [catch_all 8], ("nop", [])
       ]
-    ] in 
+      ] in  *)
     let map = 
         Seq [
-          Assign { table = "T"; from = ["S"]; body = Table "S" };
-          Assign { table = "V'"; from = ["V"];
-            body = Map(Table "V", MapKey ("ttl", ["ttl"], Decr (Var "ttl")))
+          copy "Eth'" "Eth";
+          copy "IPv4'" "IPv4";
+          Assign { table = "Validate'"; from = ["Validate"];
+            body = Map(Table "Validate", MapKey ("ttl", ["ttl"], Incr (Var ("ttl",8))))
           }
       ]
     in
     let cfg' = of_aslist [
-      "S", ["dst"], [
-        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
-        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
-        [Optional None], ("drop", [])
-      ];
-      "V", ["ttl"], [
-        (* [Exact (bv8 1)], ("drop", []);
-        [Exact (bv8 0)], ("drop", []); *)
-        [Ternary Trit.Vector.(zero 7 @ [Trit.U])], ("drop", []);
-        [Optional None], ("nop", [])
-      ];
-      "V'", ["ttl"], [
-        [Exact (bv8 0)], ("drop", []);
-        [Exact Bit.Vector.(ones 8)], ("drop", []);
-        [Optional None], ("nop", [])
-      ];
-      "T", ["dst"], [
-        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
-        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
-        [Optional None], ("drop", [])
-      ];
+      "Validate'", ["inport"; "smac"; "dmac"; "ethertype"; "src"; "dst"; "ttl"],
+      [  
+        [idc 9; idc 48; idc 48; Ternary(tv16 2048); idc 32; idc 32; Ternary(tv8 2)], ("drop", []);
+        [idc 9; idc 48; idc 48; Ternary(tv16 2048); idc 32; idc 32; Ternary(tv8 1)], ("drop", []);
+        [idc 9; idc 48; idc 48;             idc 16; idc 32; idc 32;          idc 8], ("nop", [])
+      ]
     ] in
-    run cfg map
+    run experimental_data map
+    |> Config.restrict ["Validate'"]
     |> equal_output cfg'
  
 let metadata () =
+  let open DSLv2 in 
+  let open Semantics.Match in 
+  let map = 
+      Seq [
+        copy "Eth'" "Eth";
+        copy "Validate'" "Validate";
+        Assign { table = "Agg"; from = ["IPv4"]; 
+          body = Map(Table "IPv4",
+              Pipe(MapData("g", ["dst"], Fun("Grp", ["dst"], 9)), 
+              Pipe(RenameActionTo "lag", DataSlice ["g"])))
+        };
+        Assign { table = "LAG"; from = ["IPv4"];
+          body = Map(Table "IPv4", Pipe(MapKey("grp", ["dst"], Fun("Grp", ["dst"], 9)), KeySlice ["grp"]))
+        }
+    ]
+  in
+  let cfg' = of_aslist [
+    "Agg", ["dst"], (List.init data_size ~f:(fun i -> 
+      [Exact (bv32 i)], ("lag", ["g", (bv9 i)]))
+    ) @ [
+      [catch_all 32], ("lag", ["g", bv9 data_size])
+    ];
+    "LAG", ["grp"], (List.init data_size ~f:(fun i -> 
+      [Exact (bv9 i)], ("route", ["p", (bv9 i); "dmac", (bv48 i)])
+    ) @ [
+      [Exact (bv9 data_size)], ("nop", [])
+    ])
+  ] 
+  in
+  let target_tables = Config.restrict ["Agg"; "LAG"] in
+  target_tables (run experimental_data map)
+  |> equal_output cfg'  
+
+  let double () =
     let open DSLv2 in 
-    let open Semantics in 
-    let cfg = of_aslist [ 
-      "S", ["dst"], List.init 500 ~f:(fun i -> 
-        [Match.Exact (bv32 i)], ("route", ["p", (bv9 i); "dmac", (bv48 i)])
-      ) @ [
-        [Optional None], ("drop", [])
-      ];
-    ] in 
     let map = 
         Seq [
-          Assign { table = "T"; from = ["S"]; 
-            body = Map(Case {
-              table = Map(Table "S", DataSlice []); 
-              callbacks = Some (String.Map.of_alist_exn [
-                "route", MapData("g", ["dst"], Var "dst");
-                "drop", MapData("g", [], Lit Bit.Vector.(zero 32)) 
-              ])}, RenameActionTo "lag")
-          };
-          Assign { table = "LAG"; from = ["S"];
-            body = Table "S"
-          }
+          const "Eth1" ["dmac", 48] "drop" [];
+          const "IPv41" ["dst", 48] "nop" [];
+          const "Validate1"  ["inport", 9; "smac", 48; "dmac", 48; "ethertype", 16; "src", 32; "dst", 32; "ttl", 8] "nop" [];
+          copy "Eth2" "Eth";
+          copy "IPv42" "IPv4";
+          copy "Validate1" "Validate";
+          copy "Validate2" "Validate";
       ]
     in
-    let cfg' = of_aslist [
-      "S", ["dst"], [
-        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
-        [Exact (bv32 99)], ("route", ["p", (bv9 9); "dmac", (bv48 9999)]);
-        [Optional None], ("drop", [])
-      ];
-      "Agg", ["dst"], [
-        [Exact (bv32 88)], ("lag", ["g", (bv32 88) ]);
-        [Exact (bv32 99)], ("lag", ["g", (bv32 89)]);
-        [Optional None], ("lag", ["g", (bv32 0)])
-      ];
-      "LAG", ["grp"], [
-        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 8888)]);
-        [Exact (bv32 88)], ("route", ["p", (bv9 8); "dmac", (bv48 9999)]);
-        [Optional None], ("drop", [])
-      ]
-    ] in
-    run cfg map
+    let cfg' = String.Map.map_keys_exn experimental_data ~f:(fun key -> key ^ "2") in 
+    let target_tables = Config.restrict ["Validate2"; "Eth2"; "IPv42"] in
+    target_tables (run experimental_data map)
     |> equal_output cfg'  
+    
+    
+let choice () =
+    let open DSLv2 in 
+    let map = 
+        Seq [
+          const "Staging" [("inport", 9)] "chose" ["path", bv ~w:1 1];
+          const "Eth1" ["dmac", 48] "drop" [];
+          const "IPv41" ["dst", 48] "nop" [];
+          const "Validate1"  ["inport", 9; "smac", 48; "dmac", 48; "ethertype", 16; "src", 32; "dst", 32; "ttl", 8] "nop" [];
+          copy "Eth2" "Eth";
+          copy "IPv42" "IPv4";
+          copy "Validate1" "Validate";
+          copy "Validate2" "Validate";
+      ]
+    in
+    let cfg' = String.Map.map_keys_exn experimental_data ~f:(fun key -> key ^ "2") in 
+    let target_tables = Config.restrict ["Validate2"; "Eth2"; "IPv42"] in
+    target_tables (run experimental_data map)
+    |> equal_output cfg'  
+    
 
 let vectorset = 
   let open Bit in 
@@ -546,7 +610,7 @@ let incr_is_generated () =
   let get_next = rexp_extend context in 
   let candidates = List.(get_next RHole >>= get_next >>= get_next) in 
   let open DSLv2 in 
-  let desired = MapKey ("ttl", ["ttl"], Incr (Var "ttl")) in
+  let desired = MapKey ("ttl", ["ttl"], Incr (Var ("ttl", 8))) in
   Printf.printf "looking for %s\n%!" (rowexp_to_string desired);
   let f cand = 
     Printf.printf "%s\n%!" (rowexp_to_string cand);
@@ -617,7 +681,6 @@ let two_to_one_gen () =
   assert (List.length candidates > 0);
   assert (List.for_all desired ~f);
   Alcotest.(check pass) "finished" () ()
-  
 
 let () =
   let open Alcotest in 
@@ -635,13 +698,13 @@ let () =
       test_case "Action Decompose (1000)" `Quick (action_decompose (`Synth 1000));
       test_case "Metadata Decompose (1000)" `Quick (metadata_decompose (`Synth 1));
     ];
-    "DSL", [
-      test_case "identity mapping" `Quick identity_mapping;
+    "DSLRun", [
+      test_case "identity mapping" `Quick identity;
       test_case "split_action" `Quick two_to_one_exec;
       test_case "reorder" `Quick reorder;
       test_case "metadata" `Quick metadata;
-(*       test_case "double" `Quick double;
-      test_case "choice" `Quick choice; *)
+      test_case "double" `Quick double;
+      test_case "choice" `Quick choice;
     ];
     "BitVectors", [
       test_case "negation" `Quick negation;
@@ -655,6 +718,7 @@ let () =
     "ADDs", [
       test_case "generate paths" `Quick add_paths
     ];
+
     "Trits", [
       test_case "hex parsing 0" `Quick (hex '0' "0000");
       test_case "hex parsing 1" `Quick (hex '1' "0001");

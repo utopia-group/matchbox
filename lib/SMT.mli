@@ -43,6 +43,10 @@ val repeat' : tactical -> int -> tactical
 val try_for : tactical -> float -> tactical
 val using_params : tactical -> (string * expr) list -> tactical
 
+val symb : string -> expr list -> expr
+
+val true_ : expr
+val false_ : expr
 val and_ : expr list -> expr
 val iff : expr list -> expr
 val or_ : expr list -> expr

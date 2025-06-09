@@ -116,6 +116,18 @@ module Vector = struct
   let of_bv = List.map ~f:(fun b -> 
       if b then Trit.T else Trit.F
     )
+
+  let to_bv_exn = List.map ~f:(function 
+    | Trit.U -> failwith "cannot convert * to bv literal"
+    | T -> true
+    | F -> false
+  )
+
+  let all_wild =
+    List.for_all ~f:(function 
+      | Trit.U -> true
+      | _ -> false
+    )
   
   let hexstring_to_bitstring hexstring =
     String.fold hexstring ~init:"" ~f:(fun acc hex_char -> 

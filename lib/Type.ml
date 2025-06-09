@@ -11,17 +11,40 @@ type t =
 
 type ctx = t String.Map.t
 
+
 let get_table = function 
   | Table t -> Some t
   | _ -> None
+
+let get_table_exn typ = 
+  get_table typ
+  |> Option.value_exn ~message:"Type Error, expected table"
 
 let get_action = function 
   | Action a -> Some a
   | _ -> None
 
+let get_action_exn typ =
+  get_action typ
+  |> Option.value_exn ~message:"Type Error: expected action"
+  
+
 let get_varwidth = function 
   | Var w -> Some w
   | _ -> None
+
+let find_exn ctx x =
+  String.Map.find ctx x
+  |> Option.value_exn ~message:("Could not find " ^ x ^ " in type context")
+
+let find_table_exn ctx t = 
+  find_exn ctx t
+  |> get_table_exn
+
+let find_action_exn ctx t = 
+  find_exn ctx t
+  |> get_action_exn 
+
 
 let is_table typ = 
   get_table typ 
@@ -48,7 +71,13 @@ let get_names ~f (ctx : ctx) =
 
 let get_tables = get_names ~f:is_table
 let get_actions = get_names ~f:is_action
-let get_vars = get_names ~f:is_var
+let get_vars = String.Map.fold ~init:[] ~f:(fun ~key ~data vars -> 
+    match data with 
+    | Var w -> 
+      (key, w)::vars
+    | _ -> vars
+  )
+
 let get_vars_width w = get_names ~f:(is_var_width w)
 
 let get_type_exn (ctx : ctx) name = String.Map.find_exn ctx name

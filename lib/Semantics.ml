@@ -7,11 +7,12 @@ module Match = struct
   | Exact of Bit.Vector.t
   | Lpm of Bit.Vector.t * int
   | Ternary of Trit.Vector.t
-  | Optional of Bit.Vector.t option
+
+  let catch_all width = Ternary (Trit.Vector.wc width)
 
   let equal m m' = 
     match (m, m') with 
-    | Exact x, Exact y | Optional (Some x), Optional (Some y) -> 
+    | Exact x, Exact y -> 
       Bit.Vector.equal x y
     | Lpm (x, w), Lpm (y,l) -> Bit.Vector.equal x y && w = l
     | Ternary v, Ternary v' ->
@@ -19,28 +20,35 @@ module Match = struct
     | Ternary v, Exact v' | Exact v', Ternary v -> 
       let tv' = Trit.Vector.of_bv v' in 
       Trit.Vector.equal v tv'
-    | Optional None, Optional None -> true
     | _, _ -> false
 
   let matches x = function
     | Exact y -> Bit.Vector.equal x y
     | Lpm _ -> failwith "TODO implement lpm"
-    | Optional None -> true
-    | Optional (Some y) -> Bit.Vector.equal x y 
     | Ternary v -> Trit.Vector.mem x v
 
   let to_string = function 
     | Exact v -> Bit.Vector.to_string v
     | Lpm (v, bits) -> Printf.sprintf "%s/%d" (Bit.Vector.to_string v) bits
     | Ternary tv -> Printf.sprintf "%s" (Trit.Vector.to_string tv)
-    | Optional None -> "*"
-    | Optional (Some v) -> Bit.Vector.to_string v
 
   let get_exact = function 
     | Exact v -> v
     | Lpm _ -> failwith "Expected Exact; got LPM"
     | Ternary _ -> failwith "Expected Exact; got Ternary"
-    | Optional _ -> failwith "Expected Exact; got optional"
+
+  let to_exact = function 
+  | Exact v  -> Exact v
+  | Lpm (bv, w) when Bit.Vector.length bv = w -> 
+    Exact bv
+  | Lpm _ -> failwith "cannot get exact from inexact LPM"
+  | Ternary tv -> 
+    Exact (Trit.Vector.to_bv_exn tv)
+
+  let get_tv = function 
+    | Exact v -> Trit.Vector.of_bv v
+    | Lpm _ -> failwith "TODO: LPM -> TV"
+    | Ternary tv -> tv
 
   let incr = function 
     | Exact v -> [Exact Bit.Vector.(incr v)]
@@ -48,11 +56,11 @@ module Match = struct
         let v' = Trit.Vector.(of_bv v |> drop_last_n w) in
         let tv = Trit.Vector.(v' @ wc w) in 
         failwithf "TODO: Increment %s" (Trit.Vector.to_string tv) ()
+    | Ternary tv when Trit.Vector.all_wild tv -> 
+      [Ternary tv]
     | Ternary tv -> 
       Intify.realize_operation "x" tv (Intify.Exp.xincr "x")
       |> List.map ~f:(fun tv -> Ternary tv)
-    | Optional (Some v) -> [Optional (Some Bit.Vector.(incr v))]
-    | Optional None -> [Optional None]
 
   let decr = function 
     | Exact v -> [Exact Bit.Vector.(decr v)]
@@ -60,8 +68,6 @@ module Match = struct
     | Ternary tv -> 
       Intify.realize_operation "x" tv (Intify.Exp.xdecr "x")
       |> List.map ~f:(fun tv -> Ternary tv)
-    | Optional (Some v) -> [Optional (Some Bit.Vector.(decr v))]
-    | Optional (None) -> [Optional None]
 end
 
 
@@ -147,6 +153,11 @@ module MatchAction = struct
     )
 
   let runs_action name (ma : t) = Action.has_name ma.action name
+
+  let restrict_keys ma keys = 
+    {ma with 
+      matches = String.Map.filter_keys ma.matches ~f:(String.(List.mem keys ~equal))
+    }
     
 end
 
@@ -180,5 +191,8 @@ module MatchActionTable = struct
 
   let bind ~f : t -> t =
     List.bind ~f
+
+  let size (mat : t) =
+    List.length mat
 
   end

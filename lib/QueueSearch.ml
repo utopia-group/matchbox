@@ -16,7 +16,7 @@ let rec bvexp_extend names bvexp =
     Incr BVHole :: 
     Decr BVHole :: 
     List.map names ~f:(fun x -> Var x);
-  | Var _ | Lit _ -> []
+  | Var _ | Lit _ | Fun _-> []
   | Incr e -> 
     List.map (bvexp_extend names e) ~f:(fun e' -> Incr e')
   | Decr e -> 
@@ -26,15 +26,15 @@ let rec bvexp_extend names bvexp =
 let rec rexp_extend context = 
   let open DSLv2 in 
   function
-  | Id | RenameActionTo _ | DataSlice _ -> []
+  | Id | RenameActionTo _ | DataSlice _ | KeySlice _-> []
   | RHole -> 
     let open List in 
     Id ::
     Pipe (RHole, RHole) :: 
     concat [
       Type.get_actions context >>| rename_action_to;
-      Type.get_vars context |> sublists >>| data_slice;
-      Type.get_vars context >>= (fun name -> 
+      Type.get_vars context |> sublists >>| data_slice';
+      Type.get_vars context >>= (fun (name,_) -> 
         [MapKey (name, [], BVHole); MapData (name, [], BVHole)])
     ]
   | MapKey (output, _, b) -> 
@@ -86,7 +86,7 @@ let rec extend (context : Type.ctx) exp =
         Case {table = EHole; callbacks = None}
       ]
     ]
-  | Table _ -> []
+  | Table _ | Literal _ -> []
   | Map (e, r) when exp_hole_free e ->
     List.map (rexp_extend context r) ~f:(fun r' ->  
       Map (e, r')

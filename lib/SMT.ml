@@ -81,7 +81,11 @@ let assert_ (sexp : expr) : command = Sexp.List [(Atom "assert"); sexp]
 let apply_sexp a es = Sexp.List (a :: es)
 let apply f = apply_sexp (Sexp.Atom f)
 
+let symb = apply
+
 (* logic *)
+let true_ = Sexp.Atom "true"
+let false_ = Sexp.Atom "false"
 let and_ = apply "and"
 let iff = apply "="
 let or_ = apply "or"
