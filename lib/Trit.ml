@@ -178,6 +178,15 @@ module Vector = struct
       )
     |> List.unzip
 
+  let of_bitmask bv mask =
+    let open Trit in 
+    List.map2_exn bv mask ~f:(fun b m -> 
+      match b, m with 
+      | _, false -> U
+      | true, _ -> T
+      | false, _ -> F
+    )
+
   let equal = List.equal Trit.equal
   let length : t -> int = List.length
 

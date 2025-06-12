@@ -90,6 +90,9 @@ let and_ = apply "and"
 let iff = apply "="
 let or_ = apply "or"
 let implies = apply "=>"
+let not phi = apply "not" [phi]
+
+let ite cond e1 e2 = apply "ite" [cond; e1; e2]
 
 (* quantifiers *)
 let quantifier q (sorted_vars : (string * sort) list) (phi : expr) =

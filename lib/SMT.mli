@@ -53,6 +53,8 @@ val or_ : expr list -> expr
 val implies : expr list -> expr
 val forall : (string * sort) list -> expr -> expr
 val exists : (string * sort) list -> expr -> expr
+val not : expr -> expr
+val ite : expr -> expr -> expr -> expr
 
 val ( + ) : expr list -> expr
 val ( - ) : expr list -> expr

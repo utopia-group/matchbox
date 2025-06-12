@@ -50,6 +50,14 @@ module Match = struct
     | Lpm _ -> failwith "TODO: LPM -> TV"
     | Ternary tv -> tv
 
+  let to_mask_pair m = get_tv m |> Trit.Vector.to_bitmask
+
+  let length = function 
+    | Exact (v) | Lpm (v, _) -> 
+      Bit.Vector.length v
+    | Ternary v -> 
+      Trit.Vector.length v
+
   let incr = function 
     | Exact v -> [Exact Bit.Vector.(incr v)]
     | Lpm (v, w) -> 
@@ -68,6 +76,14 @@ module Match = struct
     | Ternary tv -> 
       Intify.realize_operation "x" tv (Intify.Exp.xdecr "x")
       |> List.map ~f:(fun tv -> Ternary tv)
+
+  let remask mask = function 
+  | Ternary tv -> 
+    let bv, _ = Trit.Vector.to_bitmask tv in 
+    Ternary (Trit.Vector.of_bitmask bv mask)
+  | Exact v | Lpm (v,_) -> 
+    Ternary (Trit.Vector.of_bitmask v mask)
+
 end
 
 
@@ -127,6 +143,12 @@ module MatchAction = struct
     matches : Match.t String.Map.t;
     action : Action.t;
   }
+  let keys_widths row = 
+    String.Map.fold row.matches ~init:[] ~f:(fun ~key ~data kws -> 
+      let width = Match.length data in 
+      kws @ [key, width]
+    )
+
   let to_string ({matches; action}: t) = 
     Printf.sprintf "\t%s -> %s" 
       (String.Map.to_alist matches |> List.map ~f:(fun (x,m) -> Printf.sprintf "'%s' ~ %s" x (Match.to_string m)) |> String.concat ~sep:", ")
@@ -164,15 +186,31 @@ end
 module MatchActionTable = struct 
   type t = MatchAction.t list
 
+
+
+  let keys (tbl : t) = 
+    let sort = List.sort ~compare:(fun (s, _) (s',_) -> String.compare s s') in
+    let (==) = List.equal (Tuple2.equal ~eq1:String.equal ~eq2:Int.equal) in 
+    List.fold tbl ~init:None ~f:(fun keysopt row -> 
+      let keys' = MatchAction.keys_widths row |> sort in 
+      match keysopt with 
+      | None -> Some keys'
+      | Some keys ->
+        if keys == keys' then 
+          Some keys
+        else 
+          failwith "Match Action table rows had different key sets"      
+    ) |> Option.value_exn ~message:"table was empty, couldn't get keys"
+
   let equal = List.equal MatchAction.equal
 
   let to_string mas = 
     mas
-    |> List.map ~f:MatchAction.to_string
+    |> List.map ~f:(fun row -> MatchAction.to_string row)
     |> String.concat ~sep:"\n"
 
   let find_match (entries : t) keys = 
-    List.find entries ~f:(MatchAction.does_match keys)
+    List.find entries ~f:(fun row -> MatchAction.does_match keys row)
     |> Option.value_exn ~message:"Couldnt find any matching rows in table"
 
   let run (entries : t) keys = 
@@ -180,7 +218,7 @@ module MatchActionTable = struct
     entry.action
 
   let get_matches name entries = 
-    List.map entries ~f:(Fun.flip MatchAction.get_match name)
+    List.map entries ~f:(fun row -> MatchAction.get_match row name)
 
   let get_actions (name: string) entries = 
     List.filter entries ~f:(MatchAction.runs_action name)
@@ -194,5 +232,8 @@ module MatchActionTable = struct
 
   let size (mat : t) =
     List.length mat
+
+  let (<+) tbl new_rules =
+    new_rules @ tbl
 
   end
