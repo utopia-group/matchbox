@@ -164,10 +164,11 @@ module Vector = struct
       String.chop_prefix_exn bs ~prefix
       |> hexstring_to_bitstring
       |> cleaned_to_ternary      
-    | "00" | "01" | "10" | "11" -> 
-      (* if the first two characters are bits, assume its a bv*)
-      cleaned_to_ternary bs
-    | _ -> failwithf "unrecognized tv %s" bs ()
+    | _ when (String.to_list bs |> Char.Set.of_list |> Char.Set.(is_subset ~of_:(of_list ['1';'0';'*']))) ->
+        (* if all the characters are bits, assume its a bv*)
+        cleaned_to_ternary bs
+    | _ -> 
+        failwithf "unrecognized tv %s" bs ()
 
   let to_bitmask tv : Bit.Vector.t * Bit.Vector.t =
     let open Trit in 

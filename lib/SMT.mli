@@ -31,6 +31,8 @@ val get_model : command
 val declare_const : string -> sort -> command
 val get_value : string list -> command
 val assert_ : expr -> command
+val minimize : expr -> command
+val maximize : expr -> command
 val exit : command
 
 val tactic : string -> tactical
@@ -95,6 +97,7 @@ module Model : sig
     val parse : string -> string t 
     val map : 'a t -> f:('a -> 'b) -> 'b t
     val find_exn : 'a t -> string -> 'a
+    val find : 'a t -> string -> 'a option
 end 
 
 type response 

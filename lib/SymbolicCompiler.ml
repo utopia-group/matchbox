@@ -83,7 +83,7 @@ end
 let context (m : SymbolicMatch.t) (a : SymbolicAction.t) =
   m @ List.concat_map a ~f:(fun (_, args) -> args)
 
-let rec exp_interp (ctx : (string * SMT.expr) list) (e : bvexp) =
+let rec exp_compile (ctx : (string * SMT.expr) list) (e : bvexp) =
   match e with 
   | BVHole -> failwith "Cannot Translate Hole"
   | Var (x,_) -> 
@@ -92,12 +92,12 @@ let rec exp_interp (ctx : (string * SMT.expr) list) (e : bvexp) =
     SMT.bv' bv
   | Fun _ -> failwith "not sure how to translate functions"
   | Incr e' -> 
-    let smtexp' = exp_interp ctx e' in
+    let smtexp' = exp_compile ctx e' in
     let width = bvexp_width e' in
     let one =  Bit.Vector.one width in 
     SMT.((+) [smtexp'; bv' one])
   | Decr e' -> 
-    let smtexp' = exp_interp ctx e' in 
+    let smtexp' = exp_compile ctx e' in 
     let width =  bvexp_width e' in 
     let one = Bit.Vector.one width in 
     SMT.((-) [smtexp'; bv' one])
@@ -110,12 +110,12 @@ let rec row_interp (r : rowexp) m a =
     (m, SymbolicAction.rename a' a)
   | MapKey(out, args, e) ->
     let ctx = context m a |> restrict args in 
-    let symbe = exp_interp ctx e in 
+    let symbe = exp_compile ctx e in 
     let m = SymbolicMatch.set m out symbe in 
     (m, a)
   | MapData(out, args, e) -> 
     let ctx = context m a |> restrict args in 
-    let symbe = exp_interp ctx e in 
+    let symbe = exp_compile ctx e in 
     let a = SymbolicAction.set_arg a out symbe in 
     (m, a)
   | Pipe(r1, r2) -> 
@@ -206,6 +206,8 @@ let rec lift (ctx : Fresh.t) =
     ) in
     ctx, cs'
 
+let tbl_actions_name name =
+  Printf.sprintf "%sAction" (String.capitalize name)
 
 let compile types matchstix =
   let _, normalized = lift (Fresh.empty) matchstix in

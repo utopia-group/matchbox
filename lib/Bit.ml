@@ -30,6 +30,8 @@ module Vector = struct
         match b with 
         | '0' -> false :: loop bs'
         | '1' -> true :: loop bs'
+        | '#' -> loop bs'
+        | 'b' -> loop bs'
         | _ -> failwithf "unrecognized character %c in bitstring %s" b bs ()
     in
     match String.slice bs 0 1 with 
@@ -69,6 +71,9 @@ module Vector = struct
     List.map bs ~f:(fun b -> 
       if b then "1" else "0"  
     ) |> String.concat ~sep:""
+
+  let to_int bs = String.concat["0b"; to_string bs] |> Int.of_string
+
 
   let compare = List.compare Bool.compare
   let equal = List.equal Bool.equal

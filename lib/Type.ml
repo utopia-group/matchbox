@@ -1,8 +1,9 @@
 open Core
 
+
+type varwidth = int
 type table = {keys : string list; actions : string list}
 type action = string list
-type varwidth = int
 
 type t = 
   | Table of table

@@ -108,6 +108,8 @@ module Action = struct
     )
     |> sprintf "%s(%s)" name
 
+  let nullary name = {name; args = String.Map.empty}
+
 
   let get_name action = action.name
   let has_name (action : t) name = 
@@ -186,7 +188,14 @@ end
 module MatchActionTable = struct 
   type t = MatchAction.t list
 
+  let length = List.length
 
+  let of_alist keys = List.map ~f:(fun (data, action) ->
+    let matches = 
+      List.zip_exn keys data
+      |> String.Map.of_alist_exn
+    in
+    MatchAction.{matches;action})
 
   let keys (tbl : t) = 
     let sort = List.sort ~compare:(fun (s, _) (s',_) -> String.compare s s') in

@@ -78,6 +78,9 @@ let get_value variables =
   Sexp.(List [Atom "get-value"; List xs])
 
 let assert_ (sexp : expr) : command = Sexp.List [(Atom "assert"); sexp]
+let minimize (sexp : expr) : command = Sexp.List [(Atom "minimize"); sexp]
+let maximize (sexp : expr) : command = Sexp.List [(Atom "maximize"); sexp]
+
 let apply_sexp a es = Sexp.List (a :: es)
 let apply f = apply_sexp (Sexp.Atom f)
 
@@ -177,6 +180,8 @@ let run (r : Runner.t) (p : program) : response =
 module Model = struct
   type 'a t = 'a String.Map.t
 
+  let empty : 'a t = String.Map.empty
+
   let extract sexp_model = 
     match sexp_model with 
     | Sexp.List rst ->
@@ -201,15 +206,21 @@ module Model = struct
     String.Map.map model ~f
 
   let find_exn (model : 'a t) (key : string) = 
-    String.Map.find_exn model key
+    String.Map.find model key
+    |> Option.value_exn ~message:("couldn't find " ^ key ^ " in SMT model")
+
+  let find (model : 'a t) (key : string) = 
+    String.Map.find model key
 end
 
 let check (resp : response) : string Model.t option =
   match resp with 
   | [] -> failwith "Received empty response from solver"
   | (Atom "sat") :: rst -> 
-    let model_sexp = List.hd_exn rst in 
-    Some (Model.extract model_sexp)
+    begin match List.hd rst with 
+    | Some model_sexp -> Some (Model.extract model_sexp)
+    | None -> Some (Model.empty) 
+    end
   | (Atom "unsat"):: _ -> None
   | _ -> failwithf "Did not recognize response from solver %s" (Sexp.to_string (Sexp.List resp)) ()
 

@@ -682,6 +682,23 @@ let two_to_one_gen () =
   assert (List.for_all desired ~f);
   Alcotest.(check pass) "finished" () ()
 
+let minimization () =
+  let open Semantics in 
+  let table = MatchActionTable.of_alist ["x"] Trit.Vector.[
+    [Match.Ternary (of_string "100")], Action.nullary "drop";
+    [Match.Ternary (of_string "110")], Action.nullary "drop";
+    [Match.Ternary (of_string "011")], Action.nullary "ctrl";
+    [Match.Ternary (of_string "010")], Action.nullary "ctrl";
+    [Match.Ternary (of_string "001")], Action.nullary "drop";
+    [Match.Ternary (of_string "***")], Action.nullary "drop";
+  ] in
+  let tbl' = MinimalTCAM.widen table in
+  Printf.printf "---------------------\n%s\n-----------------------\n%!" (MatchActionTable.to_string tbl');
+  assert (MatchActionTable.(length tbl' < length table));
+  Alcotest.fail "failing"
+
+
+
 let () =
   let open Alcotest in 
   run "Stijl" [
@@ -746,5 +763,8 @@ let () =
     ];
     "DSLv2SynthGen", [
       test_case "two-to-one is generated" `Quick two_to_one_gen;
+    ];
+    "Minimization", [
+      test_case "2-actions" `Quick minimization;
     ]
   ]
