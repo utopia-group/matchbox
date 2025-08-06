@@ -29,6 +29,7 @@ val check_sat : command
 val check_sat_using : tactical -> command
 val get_model : command
 val declare_const : string -> sort -> command
+val declare_fun : string -> sort list -> sort -> command
 val get_value : string list -> command
 val assert_ : expr -> command
 val minimize : expr -> command
@@ -44,6 +45,8 @@ val repeat : tactical -> tactical
 val repeat' : tactical -> int -> tactical
 val try_for : tactical -> float -> tactical
 val using_params : tactical -> (string * expr) list -> tactical
+
+val subst : expr -> string -> expr -> expr
 
 val symb : string -> expr list -> expr
 
@@ -100,8 +103,8 @@ module Model : sig
     val find : 'a t -> string -> 'a option
 end 
 
+
 type response 
 
 val run : Runner.t -> program -> response
 val check : response -> string Model.t option
-

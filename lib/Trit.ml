@@ -244,6 +244,20 @@ module Vector = struct
     let exp' = g exp1 exp2 in
     denote exp'
     |> Bit.VectorSet.equal values
+
+  let rec intersect cube1 cube2 =
+    let open Trit in 
+    match cube1,cube2 with 
+    | [], [] -> Some []
+    | T::_, F::_ | F::_, T::_ -> None 
+    | t1::cube1', t2::cube2' -> 
+      begin match intersect cube1' cube2' with 
+      | None -> None 
+      | Some rst -> Some (Trit.(t1 && t2)::rst)
+    end 
+    | _, _ -> failwithf "uneven intersection widths %d <> %d " (List.length cube1) (List.length cube2) ()
+
+
 end
 
 include Trit

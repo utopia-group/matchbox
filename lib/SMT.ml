@@ -53,6 +53,15 @@ let declare_const x sort =
     sort
   ])
 
+let declare_fun f arg_sorts return_sort =
+  let open Sexp in 
+  List [
+    Atom "declare-fun";
+    Atom f;
+    List arg_sorts;
+    return_sort
+  ]
+
 let tactical name tacticals = Sexp.(List (Atom name :: tacticals))
 let then_ = tactical "then"
 let par_then = tactical "par-then"
@@ -72,6 +81,11 @@ let using_params (t : tactical) params =
 
 let tactic tact : tactical = Sexp.Atom tact
 
+let rec subst (sexp : expr) (x : string) (e : expr) : expr = 
+  match sexp with 
+  | Atom a when String.(a = x) -> e
+  | Atom _ -> sexp
+  | List es -> List (List.map es ~f:(fun sexp -> subst sexp x e))
 
 let get_value variables = 
   let xs = List.map variables ~f:(fun x -> Sexp.Atom x) in 
@@ -89,7 +103,7 @@ let symb = apply
 (* logic *)
 let true_ = Sexp.Atom "true"
 let false_ = Sexp.Atom "false"
-let and_ = apply "and"
+let and_ phis = if List.is_empty phis then true_ else apply "and" phis
 let iff = apply "="
 let or_ = apply "or"
 let implies = apply "=>"
@@ -201,7 +215,6 @@ module Model = struct
     Parsexp.Single.parse_string_exn str
     |> extract
 
-
   let map (model : 'a t) ~f : 'b t = 
     String.Map.map model ~f
 
@@ -214,6 +227,7 @@ module Model = struct
 end
 
 let check (resp : response) : string Model.t option =
+  Printf.printf "%s\n%!" (List.map resp ~f:(Sexp.to_string) |> String.concat ~sep:"\n");
   match resp with 
   | [] -> failwith "Received empty response from solver"
   | (Atom "sat") :: rst -> 

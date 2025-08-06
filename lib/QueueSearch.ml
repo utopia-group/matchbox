@@ -32,7 +32,7 @@ let rec rexp_extend context =
     Id ::
     Pipe (RHole, RHole) :: 
     concat [
-      Type.get_actions context >>| rename_action_to;
+      Type.get_all_actions context >>| rename_action_to;
       Type.get_vars context |> sublists >>| data_slice';
       Type.get_vars context >>= (fun (name,_) -> 
         [MapKey (name, [], BVHole); MapData (name, [], BVHole)])
@@ -78,14 +78,10 @@ let rec extend (context : Type.ctx) exp =
   let open DSLv2 in 
   match exp with 
   | EHole -> 
-    List.concat [
-      Type.get_tables context |>
-      List.map ~f:(fun tbl -> Table tbl);
-      [ Map (EHole, RHole);
-        Compose (EHole, EHole);
-        Case {table = EHole; callbacks = None}
-      ]
-    ]
+    Map (EHole, RHole) ::
+    (Type.get_tables context |>
+     List.bind ~f:(fun tbl -> [Table tbl; Case {table = tbl; callbacks = None}]))
+
   | Table _ | Literal _ -> []
   | Map (e, r) when exp_hole_free e ->
     List.map (rexp_extend context r) ~f:(fun r' ->  
@@ -96,24 +92,21 @@ let rec extend (context : Type.ctx) exp =
     |> List.map ~f:(fun e' -> 
       Map (e', r)
     )
-  | Compose (e1, e2) -> 
+(*   | Compose (e1, e2) -> 
     List.bind (extend context e1) ~f:(fun e1' -> 
       List.map (extend context e2) ~f:(fun e2' -> 
         Compose (e1', e2')
-    ))
-  | Case {table; callbacks = Some callbacks} when exp_hole_free table ->
+    )) *)
+  | Case {table; callbacks = Some callbacks} ->
     List.map (extend_callbacks context callbacks) ~f:(fun callbacks -> 
       Case {table; callbacks = Some callbacks}
     ) 
-  | Case {table; callbacks = None} when exp_hole_free table -> 
-    failwith "Need type information to do this sensibly"
-  | Case {table; callbacks} -> 
-    (* if the table has a hole, callbacks should be a hole *)
-    assert (Option.is_none callbacks);
-    List.map (extend context table) ~f:(fun table -> 
-      Case {table; callbacks = None}
-    )
-
+  | Case {table; callbacks = None} -> 
+    [Case {table; callbacks = Some (
+      List.fold (Type.get_table_actions context table) ~init:String.Map.empty ~f:(fun acc action -> 
+        String.Map.set acc ~key:action ~data:RHole
+      )
+    )}]
 
 let find_exp names ~f = 
   let open Queuer (struct

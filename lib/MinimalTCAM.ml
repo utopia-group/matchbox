@@ -30,6 +30,27 @@ let does_match k v m =
     bvand [v; m]
   ]
 
+let rec abstract_actions : MatchActionTable.t -> Action.t list = function 
+  | [] -> []
+  | row::rows ->  
+    let rst = abstract_actions rows in 
+    if Action.(List.mem rst row.action ~equal) then 
+      rst
+    else 
+      row.action :: rst
+
+let length act_mapping =
+  List.length act_mapping
+
+let act_id (actions : Action.t list) a =
+  List.findi_exn actions ~f:(fun _ -> Action.equal a)
+  |> fst
+
+let get_act (actions : Action.t list) i =
+  List.nth actions i 
+  |> Option.value_exn ~message:(Printf.sprintf "Couldn't find action with index %d" i)
+
+
 let match_to_smt =
   String.Map.fold ~init:([], SMT.true_) ~f:(fun ~key ~data (vars, phi) ->
     let open SMT in
@@ -37,6 +58,12 @@ let match_to_smt =
     let v,m = Match.to_mask_pair data in 
     vars @ [key, w], and_ [phi; does_match (var key) (bv' v) (bv' m)]
   )
+
+let action_to_smt act_mapping (action : Action.t) =
+  let avar = SMT.var "$action" in 
+  let anum = length act_mapping in 
+  let aid = act_id act_mapping action in 
+  SMT.((=) [avar; bv aid anum])
 
 let matches_to_smt matches =
   List.fold matches ~init:([],SMT.false_) ~f:(fun (xs, phi) m -> 
@@ -48,6 +75,10 @@ let matches_to_smt matches =
 let mask_hole = Printf.sprintf "?%s_mask_%d"
 
 let val_hole = Printf.sprintf "?%s_%d"
+
+let act_hole = Printf.sprintf "?action_%d"
+
+let action_var = "$action"
 
 let count = Printf.sprintf "$count$"
 
@@ -75,36 +106,16 @@ let shadowed matches new_match =
     ]
   ] |> solver |> Option.is_none
 
-let rec abstract_actions : MatchActionTable.t -> Action.t list = function 
-  | [] -> []
-  | row::rows ->  
-    let rst = abstract_actions rows in 
-    if Action.(List.mem rst row.action ~equal) then 
-      rst
-    else 
-      row.action :: rst
-
-let length act_mapping =
-  List.length act_mapping
-
-let act_id (actions : Action.t list) a =
-  List.findi_exn actions ~f:(fun _ -> Action.equal a)
-  |> fst
-
-let get_act (actions : Action.t list) i =
-  List.nth actions i 
-  |> Option.value_exn ~message:(Printf.sprintf "Couldn't find action with index %d" i)
 
 
 let table_to_smt (tbl : MatchActionTable.t) : (string * int) list * ((string * int) list * SMT.expr * SMT.expr) =
   let act_mapping = abstract_actions tbl in
-  let avar = "$action" in 
   let anum = length act_mapping in 
-  let choose_action aid = SMT.((=) [var avar; bv aid anum]) in 
+  let choose_action aid = SMT.((=) [var action_var; bv aid anum]) in 
   let keys = MatchActionTable.keys tbl in
   let n = List.length tbl in  
   let open SMT in 
-  (avar, anum) :: keys, (*tables have fixed keys, so we can return the key variables*)
+  (action_var, anum) :: keys, (*tables have fixed keys, so we can return the key variables*)
   List.rev tbl (* reverse iterate through the table for tail recursion *)
   |> List.foldi ~init:([], false_, false_) ~f:(fun idx (holes, phi1, phi2) (row : MatchAction.t)-> 
     let a = act_id act_mapping row.action in 
@@ -119,8 +130,7 @@ let table_to_optmt tbl n concrete =
   let keys = MatchActionTable.keys tbl in 
   let action_mapping = abstract_actions tbl in 
   let num_acts = length action_mapping in 
-  let action = SMT.var "$action" in 
-  let action_hole i = Printf.sprintf "?action_%d" i in
+  let action = SMT.var action_var in
   let cases = 
     List.init n ~f:(fun i -> 
     let open SMT in 
@@ -130,10 +140,10 @@ let table_to_optmt tbl n concrete =
       let m = var (mask_hole key i) in 
       does_match k v m
     ) in 
-    (and_ match_exprs, (=) [action; var (action_hole i) ]))
+    (and_ match_exprs, (=) [action; var (act_hole i) ]))
   in 
   let phi = 
-    List.fold cases ~init:SMT.((=) [action; var (action_hole n)])
+    List.fold cases ~init:SMT.((=) [action; var (act_hole n)])
       ~f:(fun fls (cond, tru) ->
         SMT.ite cond tru fls
       )
@@ -142,29 +152,35 @@ let table_to_optmt tbl n concrete =
   let get_holes f = List.bind keys ~f:(fun (key, w) -> List.init (n + 1) ~f:(fun i -> f key i, w)) in 
   let val_holes = get_holes val_hole in 
   let mask_holes = get_holes mask_hole in 
-  let action_holes = List.init (n + 1) ~f:(fun i -> (action_hole i, num_acts)) in 
+  let action_holes = List.init (n + 1) ~f:(fun i -> (act_hole i, num_acts)) in 
   let declare = List.map ~f:(fun (x, w) -> SMT.(declare_const x (bv_sort w))) in 
   List.concat SMT.[
     declare val_holes;
     declare mask_holes;
     declare action_holes;
     [
-      assert_ (forall (("$action", bv_sort num_acts)::key_vars) ((=) [concrete; phi]));
+      assert_ (forall ((action_var, bv_sort num_acts)::key_vars) ((=) [concrete; phi]));
       check_sat;
       get_value (List.map ~f:fst (val_holes @ mask_holes @ action_holes));
     ]
   ]
 
 
-let remove_shadows (rows : MatchActionTable.t) = 
+let remove_shadows_aux (rows : MatchActionTable.t) = 
   List.fold rows ~init:([], []) ~f:(fun (covered, rows') row -> 
     if shadowed covered row.matches then 
       (covered, rows')
     else 
       (covered @ [row.matches], rows' @ [row])
-  ) |> snd
+  )
+let remove_shadows rows = remove_shadows_aux rows |> snd
 
-let reconstruct tbl tbl_model =
+
+let covered rows = 
+  List.map rows ~f:(fun (row : MatchAction.t) -> row.matches)
+  |> matches_to_smt
+
+let reconstruct_mask tbl tbl_model =
   List.mapi tbl ~f:(fun i row -> 
     MatchAction.{row with 
       matches = String.Map.mapi row.matches ~f:(fun ~key ~data -> 
@@ -187,34 +203,42 @@ let widen tbl =
   match solve consts phi with 
   | None -> failwith "ERROR:: couldn't widen table, this should never happen" 
   | Some tbl_model ->
-    reconstruct tbl tbl_model
+    reconstruct_mask tbl tbl_model
     |> remove_shadows
+
+let reconstruct_row keys act_mapping tbl_model i =
+  let matches = List.map keys ~f:(fun (k,_) -> 
+    let vi = val_hole k i in 
+    let mi = mask_hole k i in 
+    let match_value = SMT.Model.find_exn tbl_model vi |> Bit.Vector.of_string in 
+    let mask_value = SMT.Model.find_exn tbl_model mi |> Bit.Vector.of_string in 
+    (k, Match.Ternary (Trit.Vector.of_bitmask match_value mask_value))
+  ) |> String.Map.of_alist_exn in 
+  let action =
+    let aid = SMT.Model.find_exn tbl_model (Printf.sprintf "?action_%d" i) |> Bit.Vector.of_string |> Bit.Vector.to_int in 
+    get_act act_mapping aid
+  in 
+  MatchAction.{matches; action}
+
+
+let extract_rows keys act_mapping n tbl_model =
+  List.init (n + 1) ~f:(reconstruct_row keys act_mapping tbl_model)
 
 let minimum_reconstruct n tbl tbl_model =
   let keys = MatchActionTable.keys tbl in 
   let act_mapping =  abstract_actions tbl in 
-  List.init (n + 1) ~f:(fun i -> 
-    let matches = List.map keys ~f:(fun (k,_) -> 
-      let vi = val_hole k i in 
-      let mi = mask_hole k i in 
-      let match_value = SMT.Model.find_exn tbl_model vi |> Bit.Vector.of_string in 
-      let mask_value = SMT.Model.find_exn tbl_model mi |> Bit.Vector.of_string in 
-      (k, Match.Ternary (Trit.Vector.of_bitmask match_value mask_value))
-    ) |> String.Map.of_alist_exn in 
-    let action =
-      let aid = SMT.Model.find_exn tbl_model (Printf.sprintf "?action_%d" i) |> Bit.Vector.of_string |> Bit.Vector.to_int in 
-      get_act act_mapping aid
-    in 
-    MatchAction.{matches; action}
-  )
+  List.init (n + 1) ~f:(reconstruct_row keys act_mapping tbl_model)
 
 
-let minimum_sketch tbl =
+let minimize tbl =
   let _, (_, spec, _) = table_to_smt tbl in 
   let n = MatchActionTable.length tbl in 
+  let num_smt_calls = ref 0 in
   let rec loop i = 
     assert (i <= n);
-    match solver (table_to_optmt tbl i spec) with 
+    let result = solver (table_to_optmt tbl i spec) in 
+    Int.incr num_smt_calls;
+    match result with 
     | None -> 
       Printf.printf "couldn't solve with %d rules, trying one more" i;
       loop (i + 1)
@@ -222,12 +246,194 @@ let minimum_sketch tbl =
       Printf.printf "found a solution iwth %d rows \n%!" i;
       minimum_reconstruct i tbl tbl_model
   in 
-  loop 0
+  let tbl' = loop 0 in 
+  tbl', !num_smt_calls
 
 
 
-let minimize tbl delta =
+
+let widen_delta tbl delta =
   (* [tbl] is the minimal element in its equivalence class *)
   (* [delta] is the minimal local update to tbl*)
   let open MatchActionTable in 
   (tbl <+ delta) |> widen
+
+let uncurry f (a, b) = f a b
+
+
+let misses (candidate : MatchAction.t list) =
+  SMT.and_ @@ 
+  List.map candidate ~f:(fun row -> 
+    SMT.not (snd (match_to_smt row.matches))
+  )
+
+let not_shadowed keys candidate new_symbolic_row =
+  SMT.(exists keys (
+    and_ [misses candidate; new_symbolic_row]
+  ))
+
+let refines act_map keys new_symbolic_row spec =
+  let open SMT in 
+  let act = action_var, bv_sort (length act_map) in 
+  let xs = act::keys in 
+  forall xs @@
+  implies [spec; new_symbolic_row]
+
+let get_new_row act_map keys candidate spec : MatchAction.t =
+  let mask_holes = List.map keys ~f:(fun (k, s) -> (mask_hole k 0, s)) in 
+  let key_holes = List.map keys ~f:(fun (k, s) -> (val_hole k 0, s)) in
+  let mask_hole_exprs = List.map mask_holes ~f:(fun (k, _) -> SMT.var k) in 
+  let triples = List.(zip_exn keys (zip_exn mask_holes key_holes)) in
+  let new_symbolic_match = SMT.(and_ (List.map triples ~f:(fun ((k,_), ((m,_), (v,_))) -> does_match (var k) (var v) (var m)))) in 
+  let new_symbolic_row = SMT.(implies [new_symbolic_match; (=) [var (act_hole 0); var action_var]]) in
+  let response = 
+    List.(concat SMT.[
+      [declare_const (act_hole 0) (bv_sort (length act_map))];
+      mask_holes >>| uncurry declare_const;
+      key_holes >>| uncurry declare_const;
+      [ assert_ (not_shadowed keys candidate new_symbolic_match) ;
+        assert_ (refines act_map keys new_symbolic_row spec)];
+      mask_hole_exprs >>| minimize;
+      [check_sat;
+       get_value @@ (act_hole 0 :: (mask_holes >>| fst) @ (key_holes >>| fst))
+      ]
+    ])
+    |> SMT.run (Runner.init "/usr/bin/z3 -smt2 -in")
+  in 
+  let table_model = SMT.check response |> Option.value_exn ~message:("[get_new_row] failed to extract model") in  
+  reconstruct_row keys act_map table_model 0
+
+let has_counterexample keys act_map (candidate : MatchAction.t list) spec =
+  (* precondition: the free variables of [spec] are [keys], outputing actions in [act_map], and [candidate] is a table from [keys] to [act_map] *) 
+  let open SMT in 
+  let phi = 
+    SMT.and_ @@
+    fst @@
+    List.fold candidate ~init:([], SMT.true_) ~f:(fun (encoded_rows, reaching) row -> 
+      let open SMT in 
+      let _,match_condition = match_to_smt row.matches in
+      let action_condition = action_to_smt act_map row.action in 
+      let encoded_row = implies [and_ [reaching; match_condition]; action_condition] in
+      (encoded_rows @ [encoded_row], and_ [reaching; not match_condition] 
+    )
+    )
+  in
+  List.(concat [
+    map keys ~f:(fun (x, s) -> declare_const x s);
+    [ declare_const action_var (bv_sort (length act_map));
+      assert_ (not spec);
+      assert_ phi;
+      check_sat;
+      keys >>| fst |> get_value;
+    ];
+  ]) 
+  |> SMT.run (Runner.init "/usr/bin/z3 -smt2 -in")
+  |> SMT.check
+
+
+let greedy keys actions spec =
+  let num_smt_calls = ref 0 in 
+  let rec loop candidate =
+    let result = has_counterexample keys actions candidate spec in
+    Int.incr num_smt_calls;
+    match result with 
+    | None -> 
+      candidate
+    | Some _ -> 
+      let delta = get_new_row actions keys candidate spec in 
+      Int.incr num_smt_calls;
+      candidate @ [delta]
+      |> loop
+  in 
+  let tbl' = loop [] in 
+  tbl', !num_smt_calls
+
+let greedy_minimize table =
+  let keys = MatchActionTable.keys table |> bv_sortify in 
+  let actions = MatchActionTable.actions table |> List.dedup_and_sort ~compare:Action.compare in 
+  let spec = 
+    let _, (_, phi, _) = table_to_smt table in 
+    phi
+  in
+  greedy keys actions spec
+
+let get_new_rows actions keys n specmkr =
+    let num_acts = length actions in 
+    let action = SMT.var action_var in
+    let cases = 
+      List.init (n + 1) ~f:(fun i -> 
+      let open SMT in 
+      let match_exprs = List.map keys ~f:(fun (key,_) -> 
+        let k = var key in 
+        let v = var (val_hole key i) in 
+        let m = var (mask_hole key i) in 
+        does_match k v m
+      ) in 
+      (and_ match_exprs, (=) [action; var (act_hole i) ]))
+    in 
+    let phi = 
+      let open SMT in 
+      fst @@
+      List.fold cases ~init:(true_, [])
+        ~f:(fun (phi, cover) (cond, action) ->
+          (and_ [phi; implies [and_ cover; cond; action]],
+            cover @ [not cond]
+          )
+        )
+    in 
+    let key_vars = List.map keys ~f:(fun (k, w) -> k, SMT.bv_sort w) in 
+    let get_holes f = List.bind keys ~f:(fun (key, w) -> List.init (n + 1) ~f:(fun i -> f key i, w)) in 
+    let val_holes = get_holes val_hole in 
+    let mask_holes = get_holes mask_hole in 
+    let action_holes = List.init (n + 1) ~f:(fun i -> (act_hole i, num_acts)) in 
+    let declare = List.map ~f:(fun (x, w) -> SMT.(declare_const x (bv_sort w))) in 
+    List.concat SMT.[
+      declare val_holes;
+      declare mask_holes;
+      declare action_holes;
+      [
+        assert_ (forall ((action_var, bv_sort num_acts)::key_vars) (specmkr phi));
+        check_sat;
+        get_value (List.map ~f:fst (val_holes @ mask_holes @ action_holes));
+      ]
+    ] |> solver
+    |> Option.map ~f:(extract_rows keys actions n)
+
+let incremental keys actions 
+    above_rules (* the rules above *)
+    change_spec (* specification of the incremental change*)
+  =
+  (* Compute a list of rules, satisfying *)
+  (* (1) delta /\ ~match(above) <=> change_spec, and *)
+  let _, covered = covered above_rules in 
+  let specmkr delta =
+    let open SMT in 
+    iff [ 
+      and_ [not (covered); change_spec];
+      and_ [not (covered); delta];
+    ]
+  in 
+  let rec loop i =
+    Printf.printf "incremental loop %d\n%!" i;
+    match get_new_rows actions keys i specmkr with 
+    | None -> loop (i + 1)
+    | Some delta -> 
+      delta
+  in 
+  loop 0
+
+(* module Provenance = struct 
+
+  type t = (string * int) list 
+
+end
+
+
+let prov_incr keys actions sabove sdelta sbelow target delta_spec =
+  let start = MatchActionTable.length sabove in 
+  let end_ = start + MatchActionTable.length sdelta in 
+  let tabove, tbelow = provenance_partition target start in 
+  let tdelta = incremental keys actions sabove delta_spec in 
+
+  
+ *)

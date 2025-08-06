@@ -34,11 +34,16 @@ let get_varwidth = function
   | Var w -> Some w
   | _ -> None
 
-let find_exn ctx x =
+let get_varwidth_exn t =
+  get_varwidth t
+  |> Option.value_exn ~message:"Expected varwidth got something else"
+
+
+let find_exn (ctx : ctx) x =
   String.Map.find ctx x
   |> Option.value_exn ~message:("Could not find " ^ x ^ " in type context")
 
-let find_table_exn ctx t = 
+let find_table_exn (ctx : ctx) t = 
   find_exn ctx t
   |> get_table_exn
 
@@ -46,6 +51,17 @@ let find_action_exn ctx t =
   find_exn ctx t
   |> get_action_exn 
 
+let find_varwidth_exn ctx t =
+  find_exn ctx t 
+  |> get_varwidth_exn
+
+let get_keys (ctx : ctx) t =
+  (find_table_exn ctx t).keys
+  |> List.map ~f:(fun k -> 
+    k, find_varwidth_exn ctx k
+  )
+
+let get_table_actions (ctx : ctx) t = (find_table_exn ctx t).keys
 
 let is_table typ = 
   get_table typ 
@@ -71,7 +87,7 @@ let get_names ~f (ctx : ctx) =
     )
 
 let get_tables = get_names ~f:is_table
-let get_actions = get_names ~f:is_action
+let get_all_actions = get_names ~f:is_action
 let get_vars = String.Map.fold ~init:[] ~f:(fun ~key ~data vars -> 
     match data with 
     | Var w -> 

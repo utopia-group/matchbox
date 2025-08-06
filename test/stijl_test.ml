@@ -692,11 +692,84 @@ let minimization () =
     [Match.Ternary (of_string "001")], Action.nullary "drop";
     [Match.Ternary (of_string "***")], Action.nullary "drop";
   ] in
-  let tbl' = MinimalTCAM.widen table in
+  let tbl',_ = MinimalTCAM.minimize table in
   Printf.printf "---------------------\n%s\n-----------------------\n%!" (MatchActionTable.to_string tbl');
-  assert (MatchActionTable.(length tbl' < length table));
-  Alcotest.fail "failing"
+  assert (MatchActionTable.(length tbl' < 3));
+  Alcotest.(check pass) "passing" () ()
 
+let greedy_minimization () =
+  let open Semantics in 
+  let table = MatchActionTable.of_alist ["x"] Trit.Vector.[
+    [Match.Ternary (of_string "100")], Action.nullary "drop";
+    [Match.Ternary (of_string "110")], Action.nullary "drop";
+    [Match.Ternary (of_string "011")], Action.nullary "ctrl";
+    [Match.Ternary (of_string "010")], Action.nullary "ctrl";
+    [Match.Ternary (of_string "001")], Action.nullary "drop";
+    [Match.Ternary (of_string "***")], Action.nullary "drop";
+  ] in 
+  let tbl',_ = MinimalTCAM.greedy_minimize table in 
+  Printf.printf "---------------------\n%s\n-----------------------\n%!" (MatchActionTable.to_string tbl');
+  assert (MatchActionTable.(length tbl' <= 3));
+  Alcotest.fail "debugging"
+
+let all_binary_decisions ~nbits () =
+  let open Semantics in 
+  let num_keys = 
+    let open Float in 
+    (2. ** (of_int nbits)) - 1.
+    |> to_int
+  in
+  let matches = List.init num_keys ~f:(Bit.Vector.of_int ~width:nbits) in
+  let mk_match bits = [Match.Ternary (Trit.Vector.of_bv bits)] in
+  let drop = Action.nullary "drop" in 
+  let ctrl = Action.nullary "ctrl" in 
+  let all_assignments = 
+    List.fold matches ~init:([[]]) ~f:(fun all_alignments bits -> 
+      List.bind all_alignments ~f:(fun alignment -> 
+        [
+          alignment @ [mk_match bits, drop];
+          alignment @ [mk_match bits, ctrl];
+        ] 
+      )
+    )
+  in
+  let all_tables =
+    List.map all_assignments ~f:(MatchActionTable.of_alist ["x"])
+  in 
+  let data = 
+    List.map all_tables ~f:(fun tbl -> 
+      let c = Clock.start () in
+      let true_min_table, true_min_num_smt_calls = MinimalTCAM.minimize tbl in 
+      let minimize_time = Clock.stop c in 
+      let true_min_table_size = MatchActionTable.length true_min_table in 
+      let c = Clock.start () in 
+      let greedy_min_table, greedy_min_num_smt_calls = MinimalTCAM.greedy_minimize tbl in
+      let greedy_min_table_size = MatchActionTable.length greedy_min_table in 
+      let greedy_time = Clock.stop c in 
+      true_min_table_size, minimize_time, true_min_num_smt_calls,
+      greedy_min_table_size, greedy_time, greedy_min_num_smt_calls)
+  in
+  List.iter data ~f:(fun (m, mt, mc, g, gt, gc) -> 
+    Printf.printf "%d,%f,%d,%d,%f,%d\n" m mt mc g gt gc;
+  );
+  Alcotest.fail "debugging"
+
+let incremental () =
+    let open Semantics in 
+    let above_rules = MatchActionTable.of_alist ["x"] Trit.Vector.[
+      [Match.Ternary (of_string "000")], Action.nullary "drop";
+      [Match.Ternary (of_string "011")], Action.nullary "drop"
+    ] in 
+    let keys = ["x", 3] in 
+    let actions = [Action.nullary "drop"; Action.nullary "nop"] in 
+    let spec = let open SMT in 
+      implies [ 
+        or_ [(=) [var "x"; bv 1 3 ]; (=) [var "x"; bv 2 3] ];
+        (=) [var "$action"; bv 1 2]]
+    in 
+    let new_rules = MinimalTCAM.incremental keys actions above_rules spec in 
+    Printf.printf "---------------------\n%s\n-----------------------\n%!" (MatchActionTable.to_string new_rules);
+    Alcotest.fail "debugging"
 
 
 let () =
@@ -766,5 +839,8 @@ let () =
     ];
     "Minimization", [
       test_case "2-actions" `Quick minimization;
+      test_case "greedy 2-actions" `Quick greedy_minimization;
+      test_case "all 6-bit binary decisions" `Quick (all_binary_decisions ~nbits:6);
+      test_case "incremental example" `Quick incremental;
     ]
   ]

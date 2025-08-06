@@ -1,214 +1,157 @@
 open Core
 open DSLv2
 
-let restrict strings = List.filter ~f:(fun (key, _) -> String.(List.mem strings key ~equal))
+let bv_one w = SMT.bv 1 w
 
-let alist_find_exn x map = 
-  match List.filter map ~f:(fun (y,_) -> String.(x = y)) with 
-  | [(_,exp)] -> exp
-  | [] -> failwithf "couldn't find %s in association list, but I expected it" x ()
-  | _ -> failwithf "found multiple entries for %s in association list, which violates the invariant" x ()
+let rec bv_compile = function
+  | BVHole -> failwith "cannot compile holes"
+  | Var (x,_) -> SMT.var x
+  | Lit bv -> SMT.bv' bv
+  | Fun (f, xs, _) -> SMT.symb f (List.map ~f:SMT.var xs)
+  | Incr e -> SMT.( + ) [bv_compile e; bv_one (bvexp_width e)]
+  | Decr e -> SMT.( - ) [bv_compile e; bv_one (bvexp_width e)]
 
-let alist_set m key data =
-  List.map m ~f:(fun (x, e) -> 
-    if String.(x = key) then 
-      (x, data)
-    else 
-      (x, e)
+
+module ActAbs = struct
+  (* Every action is associated with a different bitvector identifier
+    we must translate the schemas to assertions about which actions each table is allowed to produce 
+  *) 
+  type t = string list
+
+  let find_exn acts name =
+    List.findi acts ~f:(fun _ -> String.(=) name)
+    |> Option.value_exn ~message:("Couldn't find action " ^ name)
+    |> Tuple2.get1
+
+  let num_bits acts = 
+    (* Certainly enough bits... can minimize using log2 *)
+    List.length acts
+
+  let findbv_exn acts name =
+    let i = find_exn acts name in 
+    let w = num_bits acts in 
+    SMT.bv i w
+
+  let of_type_context types =
+    Type.get_all_actions types
+    |> String.(List.dedup_and_sort ~compare)
+end
+
+let action_name tbl_name = Printf.sprintf "%s$action" tbl_name
+
+let symbolic_table types (name : string) =
+  let keys = Type.get_keys types name |> List.map ~f:(fun (k, _) -> SMT.var k) in 
+  let actvar = SMT.var (action_name name) in 
+  SMT.((=) [symb name keys; actvar])
+
+let rec rowexp_compile act_map tbl r phi = 
+  match r with 
+  | RHole -> failwith "cannot compile hole"
+  | Id -> phi
+  | RenameActionTo name -> 
+    let i = ActAbs.find_exn act_map name in
+    let w = ActAbs.num_bits act_map in 
+    (* Equivalent to action := idx *)
+    SMT.(subst phi (action_name tbl) (bv i w))
+  | DataSlice _ | KeySlice _ -> phi
+  | MapKey (x, _, e) | MapData (x, _, e) -> 
+    SMT.(subst phi x (bv_compile e))
+  | Pipe (r1, r2) -> 
+    phi
+    |> rowexp_compile act_map tbl r2
+    |> rowexp_compile act_map tbl r1
+
+let lifted_exp_compile types act_map t e =
+  match e with
+  | EHole | Case {table=_;callbacks=None}-> failwith "cannot compile expression with hole"
+  | Literal _ -> failwith "TODO compile literal MAT"
+  | Table s ->
+    let s_keys = Type.get_keys types s in
+    let t_keys = Type.get_keys types t in 
+    assert (List.equal (Tuple2.equal ~eq1:String.equal ~eq2:Int.equal) s_keys t_keys);
+    let keys_sorts = List.map s_keys ~f:(fun (x,w) -> (x, SMT.bv_sort w)) in  
+    let keys = List.map s_keys ~f:(fun (k,_) -> SMT.var k) in 
+    SMT.(forall keys_sorts ((=) [
+      symb s keys;
+      symb t keys 
+    ]
+    ))
+  | Map (Table s, rowexp) ->
+    let pre = symbolic_table types t in 
+    let post = symbolic_table types s in 
+    SMT.implies [pre; rowexp_compile act_map t rowexp post]
+  | Case {table = s; callbacks=Some callbacks} ->
+    let pre = symbolic_table types s in 
+    let post = symbolic_table types t in
+    let s_keys = Type.get_keys types s |> List.map ~f:(fun (k,_) -> SMT.var k) in 
+    let is_action idx =
+      SMT.((=) [symb s s_keys; idx])
+    in
+  let cases = String.Map.fold callbacks ~init:[] ~f:(fun ~key:action ~data:rowexp acc -> 
+      let idx = ActAbs.findbv_exn act_map action in 
+      let phi = rowexp_compile act_map t rowexp post in
+      acc @ [SMT.implies [is_action idx; phi]]
+    ) in
+    SMT.(implies [ pre; and_  cases ])
+  | _ -> failwith "Program must be lifted"
+
+let rec lifted_compile types act_map c =
+  match c with 
+  | Assign {table; from=_; body} ->
+    lifted_exp_compile types act_map table body
+  | Seq cs -> SMT.and_ (List.map cs ~f:(lifted_compile types act_map))
+
+let function_declarations (types : Type.ctx) act_width =
+  String.Map.fold types ~init:[] ~f:(fun ~key:name ~data:typ acc -> 
+    match typ with 
+    | Table _ -> 
+      acc @ [
+        let key_sorts = Type.get_keys types name |> List.map ~f:(fun (_,w) -> SMT.bv_sort w) in 
+        SMT.(declare_fun name key_sorts (bv_sort act_width))
+      ]
+    | _ -> 
+      acc
   )
 
+let function_specifications (types : Type.ctx) act_map =
+  let w = ActAbs.num_bits act_map in 
+  String.Map.fold types ~init:[] ~f:(fun ~key:tbl ~data:typ acc -> 
+    match typ with 
+    | Table tbltype -> 
+      let qkeys = Type.get_keys types tbl |> List.map ~f:(fun (x, w) -> x, SMT.bv_sort w)in 
+      let key_vars = List.map qkeys ~f:(fun (x,_) -> SMT.var x) in
+      let act_ids = List.map tbltype.actions ~f:(ActAbs.find_exn act_map) in 
+      let act_is i = SMT.((=) [bv i w; symb tbl key_vars]) in
+      acc @ [
+        List.map act_ids ~f:act_is
+        |> SMT.or_
+        |> SMT.forall qkeys
+        |> SMT.assert_
+      ]
+    | _ -> 
+      (*tbl is not actually a table*) 
+      acc
+  )
 
-module SymbolicMatch = struct 
-  type t = (string * SMT.expr) list
+let constant_declarations (types : Type.ctx) =
+  Type.get_vars types 
+  |> List.map ~f:(fun (x, w) -> 
+    SMT.(declare_const x (bv_sort w))
+  )
 
-  let restrict = restrict
+let preamble_compile types act_map = 
+  let act_width = ActAbs.num_bits act_map in 
+  let funcs = function_declarations types act_width in 
+  let asserts = function_specifications types act_map in 
+  let consts = constant_declarations types in 
+  funcs @ asserts @ consts
 
-  let get_map (m : t) : SMT.expr String.Map.t = 
-    String.Map.of_alist_exn m
+let lifted_check types program spec =
+  let act_map = ActAbs.of_type_context types in 
+  let preamble = preamble_compile types act_map in
+  let compiled = lifted_compile types act_map program in 
+  preamble @ SMT.[
+    assert_ compiled;
+    assert_ (not spec);
+  ]
 
-  let set = alist_set
-
-  let of_table (gamma : Type.ctx) (tbl : string) : t =
-    (Type.find_table_exn gamma tbl).keys
-    |> List.map ~f:(fun key -> 
-      (key, SMT.var key)
-    )
-  
-  let to_smt : t -> SMT.expr list = List.map ~f:snd
-end
-
-module SymbolicAction = struct
-  type args = (string * SMT.expr) list
-  type t = (string * args) list
-
-  let rename aname (symb : t) =
-    List.map symb ~f:(fun (_, args) -> (aname, args))
-    
-
-  let slice vars symb =
-    List.map symb ~f:(fun (aname, args) -> 
-      (aname, restrict vars args)
-    )
-
-  let get_map _ = failwith "IDK HOW TO DO THIS"
-
-  let set_arg act key data =
-    List.map act ~f:(fun (name, args) ->
-      (name, alist_set args key data)
-    )
-
-  let of_table (gamma : Type.ctx) (tbl : string) : t =
-    let Type.{actions;_} = Type.find_table_exn gamma tbl in 
-    List.map actions ~f:(fun name -> 
-      let params = Type.find_action_exn gamma name in 
-      let args = List.map params ~f:(fun x -> 
-        (x, SMT.var x)
-      )
-      in
-      (name,args)
-    )
-
-  let to_smt (act : SMT.expr) (symb:t) : SMT.expr =
-    List.map symb ~f:(fun (aname, args) -> 
-      let action = 
-        List.map args ~f:snd
-        |> SMT.symb (String.capitalize aname) 
-      in 
-      SMT.((=) [act; action])
-    )
-    |> SMT.or_
-
-end
-
-let context (m : SymbolicMatch.t) (a : SymbolicAction.t) =
-  m @ List.concat_map a ~f:(fun (_, args) -> args)
-
-let rec exp_compile (ctx : (string * SMT.expr) list) (e : bvexp) =
-  match e with 
-  | BVHole -> failwith "Cannot Translate Hole"
-  | Var (x,_) -> 
-    alist_find_exn x ctx
-  | Lit bv -> 
-    SMT.bv' bv
-  | Fun _ -> failwith "not sure how to translate functions"
-  | Incr e' -> 
-    let smtexp' = exp_compile ctx e' in
-    let width = bvexp_width e' in
-    let one =  Bit.Vector.one width in 
-    SMT.((+) [smtexp'; bv' one])
-  | Decr e' -> 
-    let smtexp' = exp_compile ctx e' in 
-    let width =  bvexp_width e' in 
-    let one = Bit.Vector.one width in 
-    SMT.((-) [smtexp'; bv' one])
-
-let rec row_interp (r : rowexp) m a =
-  match r with 
-  | Id -> (m, a)
-  | RHole -> failwith "Cannot compile a hole"
-  | RenameActionTo a' -> 
-    (m, SymbolicAction.rename a' a)
-  | MapKey(out, args, e) ->
-    let ctx = context m a |> restrict args in 
-    let symbe = exp_compile ctx e in 
-    let m = SymbolicMatch.set m out symbe in 
-    (m, a)
-  | MapData(out, args, e) -> 
-    let ctx = context m a |> restrict args in 
-    let symbe = exp_compile ctx e in 
-    let a = SymbolicAction.set_arg a out symbe in 
-    (m, a)
-  | Pipe(r1, r2) -> 
-    let m1, a1 = row_interp r1 m a in 
-    row_interp r2 m1 a1
-  | DataSlice data -> 
-    (m, SymbolicAction.slice data a)
-  | KeySlice keys -> 
-    (SymbolicMatch.restrict keys m, a)
-
-let table t m =
-  SymbolicMatch.to_smt m
-  |> SMT.symb t
-
-let table_exp_interp ctx (t : string) (body : exp) =
-  match body with 
-  | EHole -> failwith "Cannot Interpret Hole"
-  | Literal _ -> failwith "literal"
-  | Compose _ -> failwith "compositions not allowed, must be normalized first"
-  | Table s -> 
-    let ms = SymbolicMatch.of_table ctx t in
-    SMT.((=) [
-      (table t ms);
-      (table s ms);
-    ])
-  | Map (Table s, r) ->
-    let m = SymbolicMatch.of_table ctx s in
-    let a = SymbolicAction.of_table ctx s in
-    let sact = SMT.var (s ^ "$action") in
-    let tact = SMT.var (t ^ "$action") in
-    let m', a' = row_interp r m a in 
-    SMT.(implies [
-      SymbolicAction.to_smt sact a;
-      SymbolicAction.to_smt tact a';
-      iff [(=) [table s m; sact];
-           (=) [table t m'; tact]]
-    ])
-  | Map (_ , _) -> failwith "can only map over literal tables, please normalize"
-  | Case _ -> failwith "TODO"
-
-let rec compile types (prog : DSLv2.t) =
-  match prog with 
-  | Assign asgn -> 
-    table_exp_interp types asgn.table asgn.body
-  | Seq cs -> 
-    SMT.(and_ (List.map cs ~f:(compile types)))
-
-module Fresh = struct 
-  type t = int String.Map.t
-
-  let empty : t = String.Map.empty
-
-  let en ctx x =
-    let i = String.Map.find ctx x |> Option.value ~default:0 in
-      String.Map.set ctx ~key:x ~data:(i+1),
-      Printf.sprintf "x$%d" i
-
-end
-
-let rec lift_body (ctx : Fresh.t) (table : string) (body : exp) =
-  match body with 
-  | EHole | Literal _ | Table _ | Map(Table _, _) | Case{table=Table _; _}-> 
-    let ctx, table = Fresh.en ctx table in 
-    ctx, table, [table, body]
-  | Compose (e1, e2) -> 
-    let ctx, _,  pairs1 = lift_body ctx table e1 in 
-    let ctx, table', pairs2 = lift_body ctx table e2 in 
-    ctx, table', pairs1 @ pairs2
-  | Map (exp, rexp) -> 
-    let ctx, table', pairs = lift_body ctx table exp in 
-    let ctx, table'' = Fresh.en ctx table in 
-    ctx, table'', pairs @ [table'', Map (Table table', rexp)]
-  | Case {table=table_exp; callbacks} -> 
-    let ctx, table', pairs = lift_body ctx table table_exp in 
-    let ctx, table'' = Fresh.en ctx table in 
-    ctx, table'', pairs @ [table', Case {table = Table table'; callbacks}]
-
-let rec lift (ctx : Fresh.t) = 
-  function
-  | Assign {table;from;body} ->
-    let ctx, _, assigns = lift_body ctx table body in 
-    let cs' = List.map assigns ~f:(fun (table, body) -> Assign {table; from; body} ) in 
-    ctx, Seq cs'
-  | Seq cs -> 
-    let ctx, cs' = List.fold cs ~init:(ctx, Seq []) ~f:(fun (ctx, cs') c -> 
-      let ctx, cs = lift ctx c in 
-      (ctx, Seq[cs'; cs])
-    ) in
-    ctx, cs'
-
-let tbl_actions_name name =
-  Printf.sprintf "%sAction" (String.capitalize name)
-
-let compile types matchstix =
-  let _, normalized = lift (Fresh.empty) matchstix in
-  compile types normalized

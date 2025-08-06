@@ -84,6 +84,22 @@ module Match = struct
   | Exact v | Lpm (v,_) -> 
     Ternary (Trit.Vector.of_bitmask v mask)
 
+  let exact bv = Exact bv
+
+  let unsafe_explicit_set = function 
+    | Exact bv -> [bv]
+    | Lpm _ -> failwith "TODO enumerate LPM "
+    | Ternary _ -> failwith "TODO enumerate TV"
+
+  let intersect m1 m2 =
+    let tv1 = get_tv m1 in 
+    let tv2 = get_tv m2 in 
+    match Trit.Vector.intersect tv1 tv2 with 
+    | None -> None 
+    | Some tv -> Some (Ternary tv)
+
+  let empty_intersection m1 m2 = intersect m1 m2 |> Option.is_none
+
 end
 
 
@@ -92,6 +108,14 @@ module Action = struct
     name : string;
     args : Bit.Vector.t String.Map.t
   }
+
+  let make name args : t = {name; args}
+
+  let compare a1 a2 = 
+    Tuple2.compare (a1.name, a1.args) (a2.name, a2.args) 
+      ~cmp1:String.compare
+      ~cmp2:(String.Map.compare Bit.Vector.compare)
+
 
   let equal (a : t) (b : t) =
     String.(a.name = b.name) &&
@@ -119,16 +143,18 @@ module Action = struct
 
   let has_data (action : t) = String.Map.mem action.args
 
-  let get_data (action : t) (name : string) = 
+  let get_datum (action : t) (name : string) = 
     String.Map.find action.args name
 
-  let get_data_exn (action : t) (name : string) =
-    get_data action name
+  let get_data (action : t) = action.args
+
+  let get_datum_exn (action : t) (name : string) =
+    get_datum action name
     |> Option.value_exn ~message:(Printf.sprintf "Couldnt find action data param %s" name)
 
-  let get_data' = Fun.flip get_data
+  let get_datum' = Fun.flip get_datum
 
-  let get_data_exn' = Fun.flip get_data_exn
+  let get_datum_exn' = Fun.flip get_datum_exn
 
   let project_data (params : string list) (action : t) = 
     {action with args =
@@ -138,6 +164,20 @@ module Action = struct
     { action with args = 
       String.Map.set action.args ~key:b ~data:v
     }
+
+  let pair a1 a2 =
+    let args = String.Map.merge a1.args a2.args ~f:(fun ~key -> function 
+      | `Both (bv1, bv2) when Bit.Vector.equal bv1 bv2 ->  Some bv1
+      | `Both (bv1, bv2) -> failwithf "error merging action data---collision on %s (%s <> %s)" (key)  (Bit.Vector.to_string bv1) (Bit.Vector.to_string bv2) ()
+      | `Left bv -> Some bv
+      | `Right bv -> Some bv
+    ) in 
+    if String.(a1.name = a2.name) then
+      {a1 with args}
+    else 
+      {name = a1.name ^ "$$" ^ a2.name; args}
+    
+
 end
 
 module MatchAction = struct 
@@ -145,6 +185,9 @@ module MatchAction = struct
     matches : Match.t String.Map.t;
     action : Action.t;
   }
+
+  let make matches action = {matches;action}
+
   let keys_widths row = 
     String.Map.fold row.matches ~init:[] ~f:(fun ~key ~data kws -> 
       let width = Match.length data in 
@@ -164,7 +207,7 @@ module MatchAction = struct
     String.Map.find_exn ma.matches name
 
   let get_field (ma : t) name =
-    match Action.get_data ma.action name with 
+    match Action.get_datum ma.action name with 
     | None -> get_match ma name
     | Some v -> Match.Exact v
 
@@ -183,6 +226,43 @@ module MatchAction = struct
       matches = String.Map.filter_keys ma.matches ~f:(String.(List.mem keys ~equal))
     }
     
+  let get_action (ma : t) : Action.t = ma.action
+  let get_matches (ma : t) : Match.t String.Map.t = ma.matches
+
+  let pair (row1 : t) (row2 : t) = 
+    let (let+) o f = Option.map o ~f in 
+    let (let*) o f = Option.bind o ~f in 
+    let match_keys = String.Map.(
+      keys row1.matches @ keys row2.matches 
+      |> List.dedup_and_sort ~compare:String.compare)
+      (* remove duplicates lets us use 'add' below, triggering exceptions if we've screwed up *)
+    in 
+    let+ matches = 
+      List.fold match_keys ~init:(Some String.Map.empty) ~f:(fun opt_isect key -> 
+        let* intersection = opt_isect in 
+        match String.Map.(find row1.matches key, find row2.matches key) with 
+        | None, None -> failwith "error: impossible" 
+        | Some data, None | None, Some data ->
+          Some (String.Map.add_exn intersection ~key ~data)
+        | Some d1, Some d2 -> 
+          let+ data = Match.intersect d1 d2 in 
+          String.Map.set intersection ~key ~data
+      )
+    in
+    let action = Action.pair row1.action row2.action in 
+    { matches; action }
+
+    let empty_intersection row1 row2 =
+      String.Map.merge row1.matches row2.matches ~f:(fun ~key:_ -> function 
+        | `Both (m1, m2) -> Some (m1,m2)
+        | _ -> None
+      ) |> 
+      String.Map.exists ~f:(fun (m1,m2) -> 
+        Match.empty_intersection m1 m2
+      )
+
+    let nonempty_intersection row1 row2 = not (empty_intersection row1 row2)
+
 end
 
 module MatchActionTable = struct 
@@ -210,6 +290,9 @@ module MatchActionTable = struct
         else 
           failwith "Match Action table rows had different key sets"      
     ) |> Option.value_exn ~message:"table was empty, couldn't get keys"
+
+  let actions : t -> Action.t list =
+    List.map ~f:(fun (row : MatchAction.t) -> row.action)
 
   let equal = List.equal MatchAction.equal
 

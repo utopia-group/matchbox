@@ -220,9 +220,9 @@ type exp =
   | Literal of MatchActionTable.t
   | Table of string
   | Map of (exp * rowexp)
-  | Compose of exp * exp
+(*   | Compose of exp * exp *)
   | Case of { 
-    table : exp; 
+    table : string; 
     callbacks : rowexp String.Map.t option
     (* None corresponds to a hole*)
   }
@@ -233,10 +233,10 @@ let rec exp_equiv e1 e2 =
   | Table t1, Table t2 -> String.(t1 = t2)
   | Map (e1, r1), Map (e2, r2) -> 
     exp_equiv e1 e2 && rowexp_equal r1 r2
-  | Compose (e1, e2), Compose (e1', e2') -> 
-    exp_equiv e1 e1' && exp_equiv e2 e2'
+(*   | Compose (e1, e2), Compose (e1', e2') -> 
+    exp_equiv e1 e1' && exp_equiv e2 e2' *)
   | Case case1, Case case2 -> 
-    exp_equiv case1.table case2.table
+    String.equal case1.table case2.table
     && Option.equal (String.Map.equal rowexp_equal) case1.callbacks case2.callbacks
   | _, _ -> false
 
@@ -245,24 +245,24 @@ let rec exp_to_string = function
   | Table t -> t
   | Literal table -> MatchActionTable.to_string table
   | Map (e, r) -> Printf.sprintf "Map(%s,%s)" (exp_to_string e) (rowexp_to_string r)
-  | Compose (e1, e2) -> Printf.sprintf "Compose(%s, %s)" (exp_to_string e1) (exp_to_string e2)
+(*   | Compose (e1, e2) -> Printf.sprintf "Compose(%s, %s)" (exp_to_string e1) (exp_to_string e2) *)
   | Case {table;callbacks = None} -> 
-    Printf.sprintf "Case(%s, ?)" (exp_to_string table)
+    Printf.sprintf "Case(%s, ?)" table
   | Case {table;callbacks = Some callbacks} ->
     (String.Map.fold callbacks ~init:"" ~f:(fun ~key ~data acc -> Printf.sprintf "%s, %s->%s" acc key (rowexp_to_string data)))
-    |> Printf.sprintf "Case(%s%s)" (exp_to_string table) 
+    |> Printf.sprintf "Case(%s%s)" table
 
 let rec exp_size = function 
   | EHole -> 0 
   | Table _ -> 1
   | Literal table -> MatchActionTable.size table
   | Map (e, r) -> exp_size e + 1 + rexp_size r
-  | Compose (e1, e2) -> exp_size e1 + exp_size e2
-  | Case {table; callbacks} -> 
+(*   | Compose (e1, e2) -> exp_size e1 + exp_size e2 *)
+  | Case {table=_; callbacks} -> 
     match callbacks with 
-    | None -> exp_size table + 1
+    | None -> 1
     | Some callbacks -> 
-      exp_size table + 
+      1 + 
       String.Map.fold callbacks ~init:1 
         ~f:(fun ~key:_ ~data acc -> 
           rexp_size data + acc
@@ -272,9 +272,8 @@ let rec exp_hole_free = function
   | EHole | Case {callbacks=None; _} -> false
   | Table _ | Literal _ -> true
   | Map (e, r) -> exp_hole_free e && rexp_hole_free r
-  | Compose (e1, e2) -> exp_hole_free e1 && exp_hole_free e2
-  | Case {table; callbacks = Some callbacks} ->
-    exp_hole_free table && 
+(*   | Compose (e1, e2) -> exp_hole_free e1 && exp_hole_free e2 *)
+  | Case {table=_; callbacks = Some callbacks} -> 
     String.Map.for_all callbacks ~f:(rexp_hole_free)
 
 let rec e_eval (funcs : skolems) (valuation : Value.t String.Map.t) (e : exp) : Value.t * skolems =
@@ -291,12 +290,12 @@ let rec e_eval (funcs : skolems) (valuation : Value.t String.Map.t) (e : exp) : 
       let new_rows, funcs = r_eval funcs rexp row in 
       acc_tbl @ new_rows, funcs
     )
-  | Compose (e1, e2) -> 
+  (* | Compose (e1, e2) -> 
     let tbl1, funcs = e_eval funcs valuation e1 in 
     let tbl2, funcs = e_eval funcs valuation e2 in 
-    Value.compose tbl1 tbl2, funcs
+    Value.compose tbl1 tbl2, funcs *)
   | Case {table; callbacks = Some callbacks} -> 
-    let t, funcs = e_eval funcs valuation table in 
+    let t, funcs = e_eval funcs valuation (Table table) in 
     let f funcs (ma : MatchAction.t) = 
       let action_name = Action.get_name ma.action in
       Printf.printf "Checking : %s in {%s}....." action_name
@@ -346,7 +345,7 @@ let const tbl key_types action args =
 
 let case' tablename actions = 
   Case {
-    table = Table tablename;
+    table = tablename;
     callbacks = Some (String.Map.of_alist_exn actions)
   }
 
