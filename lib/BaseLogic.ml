@@ -240,14 +240,56 @@ module Config = struct
 
 end
 
+
+module MatchTfx = struct
+  type expr = 
+    | Var of string 
+    | Match of Semantics.Match.t
+    | AddK of expr * Bit.Vector.t
+    | SubK of expr * Bit.Vector.t
+
+  type t = 
+    | Project of string list
+    | SetTo of string * expr
+
+end
+
+module JoinExp = struct
+  type t = ((string * string) * string) list
+
+  let in_match (a1, a2) (b1, b2) = 
+    String.(a1 = a2 && b1 = b2)
+
+  let eval (e : t) a = 
+    List.find_map e ~f:(fun (b, out) -> 
+      if in_match a b then 
+        Some out
+      else None)
+
+  let eval_exn e (a1, a2) = 
+    eval e (a1, a2) 
+    |> Option.value_exn ~message:("couldn't evaluate (" ^ a1 ^ ", " ^ a2 ^ ")")
+  
+  let wf xs ys zs e = 
+    List.for_all2_exn xs ys ~f:(fun x y -> 
+      match eval e (x, y)  with 
+      | None -> false
+      | Some z -> List.exists zs ~f:(String.(=) z) 
+    )
+
+  let out_actions (e : t) : string list = 
+    List.map e ~f:snd
+
+end
+
 module Clause = struct
   type f = Symbol.t
   type t =
     | Id of f
-    | Join of f * f
+    | Join of f * f * (((string * string) * string) list)
     | Compose of f * f
     | MapOut of f * unit
-    | MapIn of f * unit
+    | MapIn of f * MatchTfx.t
     | Op of Symbol.t
 
   let insert_eval config table provrow idx =
@@ -261,12 +303,12 @@ module Clause = struct
     | Op f when Symbol.(f = table) -> 
       let rows = ProvRow.op provrow in 
       List.map rows ~f:(fun row -> ProvRow.add row table idx)
-    | Join (f, g) when Symbol.(f = table || g = table) -> 
+    | Join (f, g, merge) when Symbol.(f = table || g = table) -> 
       let open Semantics in 
       let other = if Symbol.(f = table) then g else f in 
       let other_table : ProvTable.t = Config.find_exn config other in 
       List.fold other_table.rows ~init:[] ~f:(fun delta other -> 
-        match MatchAction.pair provrow.row other.row with
+        match MatchAction.pair provrow.row other.row ~f:(JoinExp.eval_exn merge) with
         | None -> delta
         | Some row ->
           delta @ [{provrow with 
@@ -357,5 +399,7 @@ let insert {defined; definition} config table provrow idx =
   |> add_many_to_table config defined
 
 
+
 let delete config loc = Config.remove config [loc]
+
 

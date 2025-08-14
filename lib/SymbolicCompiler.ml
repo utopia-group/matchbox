@@ -40,7 +40,7 @@ end
 let action_name tbl_name = Printf.sprintf "%s$action" tbl_name
 
 let symbolic_table types (name : string) =
-  let keys = Type.get_keys types name |> List.map ~f:(fun (k, _) -> SMT.var k) in 
+  let keys = Type.find_keys_exn types name |> List.map ~f:(fun (k, _) -> SMT.var k) in 
   let actvar = SMT.var (action_name name) in 
   SMT.((=) [symb name keys; actvar])
 
@@ -66,8 +66,8 @@ let lifted_exp_compile types act_map t e =
   | EHole | Case {table=_;callbacks=None}-> failwith "cannot compile expression with hole"
   | Literal _ -> failwith "TODO compile literal MAT"
   | Table s ->
-    let s_keys = Type.get_keys types s in
-    let t_keys = Type.get_keys types t in 
+    let s_keys = Type.find_keys_exn types s in
+    let t_keys = Type.find_keys_exn types t in 
     assert (List.equal (Tuple2.equal ~eq1:String.equal ~eq2:Int.equal) s_keys t_keys);
     let keys_sorts = List.map s_keys ~f:(fun (x,w) -> (x, SMT.bv_sort w)) in  
     let keys = List.map s_keys ~f:(fun (k,_) -> SMT.var k) in 
@@ -83,7 +83,7 @@ let lifted_exp_compile types act_map t e =
   | Case {table = s; callbacks=Some callbacks} ->
     let pre = symbolic_table types s in 
     let post = symbolic_table types t in
-    let s_keys = Type.get_keys types s |> List.map ~f:(fun (k,_) -> SMT.var k) in 
+    let s_keys = Type.find_keys_exn types s |> List.map ~f:(fun (k,_) -> SMT.var k) in 
     let is_action idx =
       SMT.((=) [symb s s_keys; idx])
     in
@@ -106,7 +106,7 @@ let function_declarations (types : Type.ctx) act_width =
     match typ with 
     | Table _ -> 
       acc @ [
-        let key_sorts = Type.get_keys types name |> List.map ~f:(fun (_,w) -> SMT.bv_sort w) in 
+        let key_sorts = Type.find_keys_exn types name |> List.map ~f:(fun (_,w) -> SMT.bv_sort w) in 
         SMT.(declare_fun name key_sorts (bv_sort act_width))
       ]
     | _ -> 
@@ -118,7 +118,7 @@ let function_specifications (types : Type.ctx) act_map =
   String.Map.fold types ~init:[] ~f:(fun ~key:tbl ~data:typ acc -> 
     match typ with 
     | Table tbltype -> 
-      let qkeys = Type.get_keys types tbl |> List.map ~f:(fun (x, w) -> x, SMT.bv_sort w)in 
+      let qkeys = Type.find_keys_exn types tbl |> List.map ~f:(fun (x, w) -> x, SMT.bv_sort w)in 
       let key_vars = List.map qkeys ~f:(fun (x,_) -> SMT.var x) in
       let act_ids = List.map tbltype.actions ~f:(ActAbs.find_exn act_map) in 
       let act_is i = SMT.((=) [bv i w; symb tbl key_vars]) in

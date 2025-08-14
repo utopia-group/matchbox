@@ -103,8 +103,8 @@ let rec extend (context : Type.ctx) exp =
     ) 
   | Case {table; callbacks = None} -> 
     [Case {table; callbacks = Some (
-      List.fold (Type.get_table_actions context table) ~init:String.Map.empty ~f:(fun acc action -> 
-        String.Map.set acc ~key:action ~data:RHole
+      List.fold (Type.get_table_actions context table) ~init:String.Map.empty ~f:(fun acc _ -> 
+        String.Map.set acc ~key:(failwith "key?") ~data:RHole
       )
     )}]
 

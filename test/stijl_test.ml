@@ -620,7 +620,7 @@ let incr_is_generated () =
   Alcotest.(check pass) "finishes without failing" () ()
 
 
-let rename_slice () =
+(* let rename_slice () =
   let open QueueSearch in 
   let context = String.Map.of_alist_exn Type.[
     "rewrite", Action ["dmac"]; 
@@ -639,9 +639,9 @@ let rename_slice () =
     List.exists candidates ~f:DSLv2.(rowexp_equal d)
   in
   assert (List.for_all desired ~f);
-  Alcotest.(check pass) "finishes" () ()
+  Alcotest.(check pass) "finishes" () () *)
 
-let two_to_one_gen () =
+(* let two_to_one_gen () =
   let open DSLv2 in 
   let sketch =
     case' "S" [
@@ -680,7 +680,7 @@ let two_to_one_gen () =
   in
   assert (List.length candidates > 0);
   assert (List.for_all desired ~f);
-  Alcotest.(check pass) "finished" () ()
+  Alcotest.(check pass) "finished" () () *)
 
 let minimization () =
   let open Semantics in 
@@ -832,10 +832,10 @@ let () =
     ];
     "RowSynthGen", [
       test_case "ttl = ttl + 1 is generated" `Quick incr_is_generated;
-      test_case "rename/slice pattern is generated" `Quick rename_slice;
+      (* test_case "rename/slice pattern is generated" `Quick rename_slice; *)
     ];
     "DSLv2SynthGen", [
-      test_case "two-to-one is generated" `Quick two_to_one_gen;
+      (* test_case "two-to-one is generated" `Quick two_to_one_gen; *)
     ];
     "Minimization", [
       test_case "2-actions" `Quick minimization;

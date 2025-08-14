@@ -100,6 +100,11 @@ module Match = struct
 
   let empty_intersection m1 m2 = intersect m1 m2 |> Option.is_none
 
+  let get_type = function
+    | Exact bv -> (Bit.Vector.length bv, Type.Exact)
+    | Lpm (bv, _) -> (Bit.Vector.length bv, Type.LPM)
+    | Ternary tv -> (Trit.Vector.length tv, Type.Ternary)
+
 end
 
 
@@ -165,17 +170,14 @@ module Action = struct
       String.Map.set action.args ~key:b ~data:v
     }
 
-  let pair a1 a2 =
+  let pair a1 a2 ~f  =
     let args = String.Map.merge a1.args a2.args ~f:(fun ~key -> function 
       | `Both (bv1, bv2) when Bit.Vector.equal bv1 bv2 ->  Some bv1
       | `Both (bv1, bv2) -> failwithf "error merging action data---collision on %s (%s <> %s)" (key)  (Bit.Vector.to_string bv1) (Bit.Vector.to_string bv2) ()
       | `Left bv -> Some bv
       | `Right bv -> Some bv
     ) in 
-    if String.(a1.name = a2.name) then
-      {a1 with args}
-    else 
-      {name = a1.name ^ "$$" ^ a2.name; args}
+    {name = f (a1.name, a2.name); args}
     
 
 end
@@ -229,7 +231,7 @@ module MatchAction = struct
   let get_action (ma : t) : Action.t = ma.action
   let get_matches (ma : t) : Match.t String.Map.t = ma.matches
 
-  let pair (row1 : t) (row2 : t) = 
+  let pair (row1 : t) (row2 : t) ~f = 
     let (let+) o f = Option.map o ~f in 
     let (let*) o f = Option.bind o ~f in 
     let match_keys = String.Map.(
@@ -249,7 +251,7 @@ module MatchAction = struct
           String.Map.set intersection ~key ~data
       )
     in
-    let action = Action.pair row1.action row2.action in 
+    let action = Action.pair row1.action row2.action ~f in 
     { matches; action }
 
     let empty_intersection row1 row2 =
