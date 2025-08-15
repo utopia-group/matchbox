@@ -308,7 +308,7 @@ let identity () =
     copy "Validate'" "Validate";
   ] in
   let cfg' = 
-    String.Map.(fold experimental_data ~init:experimental_data ~f:(fun ~key ~data config -> 
+    Map.(fold experimental_data ~init:experimental_data ~f:(fun ~key ~data config -> 
       add_exn ~key:(key ^ "'") ~data config)
     )
   in

@@ -24,10 +24,10 @@ module Config = struct
   let equal = String.Map.equal Value.equal
 
   let restrict keys cfg =
-    String.Map.filter_keys cfg ~f:(List.mem ~equal:String.equal keys)
+    Map.filter_keys cfg ~f:(List.mem ~equal:String.equal keys)
 
   let to_string : t -> string = 
-    String.Map.fold ~init:"" ~f:(fun ~key ~data acc -> 
+    Map.fold ~init:"" ~f:(fun ~key ~data acc -> 
       Printf.sprintf "%s%stable %s->\n%s\n----------------------------"
         acc
         (if String.equal acc "" then "" else "\n")
@@ -79,11 +79,11 @@ let rec bvexp_equal b1 b2 =
   | _, _ -> false 
 
 let skolem_run (funcs : skolems) (f : string) (width : int) (args : Trit.Vector.t list) : Bit.Vector.t * skolems =
-  match String.Map.find funcs f with 
+  match Map.find funcs f with 
   | None -> 
     let value = Bit.Vector.zero width in 
     let data = [args, value], 0 in 
-    let funcs = String.Map.add_exn funcs ~key:f ~data in 
+    let funcs = Map.add_exn funcs ~key:f ~data in 
     (value, funcs)
   | Some (mapping, max) -> 
     match List.find mapping ~f:(fun (tvs, _) -> List.equal Trit.Vector.equal tvs args) with 
@@ -94,7 +94,7 @@ let skolem_run (funcs : skolems) (f : string) (width : int) (args : Trit.Vector.
       let max_bv' = Bit.Vector.of_int ~width max' in 
       let mapping' = mapping @ [args, max_bv'] in 
       let data = mapping', max' in 
-      let funcs' = String.Map.set funcs ~key:f ~data in 
+      let funcs' = Map.set funcs ~key:f ~data in 
       (max_bv', funcs')
     | Some (_, bv) -> 
       (bv, funcs)
@@ -102,10 +102,10 @@ let skolem_run (funcs : skolems) (f : string) (width : int) (args : Trit.Vector.
 (* let rec  (funcs : skolems) (valuation : Bit.Vector.t String.Map.t) (b : bvexp) : Bit.Vector.t * skolems =
   match b with 
   | BVHole -> failwith "cannot evaluate hole"
-  | Var x -> (String.Map.find valuation x |> Option.value_exn ~message:("Couldn't find " ^ x), funcs)
+  | Var x -> (Map.find valuation x |> Option.value_exn ~message:("Couldn't find " ^ x), funcs)
   | Lit bv -> (bv, funcs)
   | Fun (f,xs,w) -> 
-    skolem_run funcs f w (List.map xs ~f:(String.Map.find_exn valuation))
+    skolem_run funcs f w (List.map xs ~f:(Map.find_exn valuation))
   | Incr b -> Tuple2.map_fst (bv_eval funcs valuation b) ~f:Bit.Vector.incr
   | Decr b -> Tuple2.map_fst (bv_eval funcs valuation b) ~f:Bit.Vector.decr
  *)
@@ -114,11 +114,11 @@ let rec bv_set_eval (funcs : skolems) (valuation : Match.t String.Map.t) (b : bv
   match b with 
   | BVHole -> failwith "cannot evaluate hole"
   | Var (x, _) -> 
-    let mtch = String.Map.find valuation x |> Option.value_exn ~message:("Couldn't find " ^ x) in 
+    let mtch = Map.find valuation x |> Option.value_exn ~message:("Couldn't find " ^ x) in 
     [mtch], funcs
   | Lit bv -> [Exact bv], funcs
   | Fun (f, xs, w) -> 
-    let bv,funcs = (xs >>| String.Map.find_exn valuation) >>| Match.get_tv |> skolem_run funcs f w in 
+    let bv,funcs = (xs >>| Map.find_exn valuation) >>| Match.get_tv |> skolem_run funcs f w in 
     [Exact bv], funcs
   | Incr b -> 
     let matches, funcs = bv_set_eval funcs valuation b in 
@@ -211,7 +211,7 @@ let rec r_eval (funcs : skolems) (r : rowexp) (row : MatchAction.t) : MatchActio
     let args = List.map params ~f:(fun x -> (x, MatchAction.get_match row x)) |> String.Map.of_alist_exn in
     let matches, funcs = bv_set_eval funcs args bv_exp in 
     List.map matches ~f:(fun b -> 
-      {row with matches = String.Map.set row.matches ~key:x ~data:b}
+      {row with matches = Map.set row.matches ~key:x ~data:b}
     ), funcs
     
 
@@ -249,7 +249,7 @@ let rec exp_to_string = function
   | Case {table;callbacks = None} -> 
     Printf.sprintf "Case(%s, ?)" table
   | Case {table;callbacks = Some callbacks} ->
-    (String.Map.fold callbacks ~init:"" ~f:(fun ~key ~data acc -> Printf.sprintf "%s, %s->%s" acc key (rowexp_to_string data)))
+    (Map.fold callbacks ~init:"" ~f:(fun ~key ~data acc -> Printf.sprintf "%s, %s->%s" acc key (rowexp_to_string data)))
     |> Printf.sprintf "Case(%s%s)" table
 
 let rec exp_size = function 
@@ -263,7 +263,7 @@ let rec exp_size = function
     | None -> 1
     | Some callbacks -> 
       1 + 
-      String.Map.fold callbacks ~init:1 
+      Map.fold callbacks ~init:1 
         ~f:(fun ~key:_ ~data acc -> 
           rexp_size data + acc
         )
@@ -274,14 +274,14 @@ let rec exp_hole_free = function
   | Map (e, r) -> exp_hole_free e && rexp_hole_free r
 (*   | Compose (e1, e2) -> exp_hole_free e1 && exp_hole_free e2 *)
   | Case {table=_; callbacks = Some callbacks} -> 
-    String.Map.for_all callbacks ~f:(rexp_hole_free)
+    Map.for_all callbacks ~f:(rexp_hole_free)
 
 let rec e_eval (funcs : skolems) (valuation : Value.t String.Map.t) (e : exp) : Value.t * skolems =
   match e with 
   | EHole | Case {callbacks = None;_} -> failwith "cannot evaluate holes"
   | Literal tbl -> tbl, funcs
   | Table x -> 
-    let t_opt = String.Map.find valuation x  in 
+    let t_opt = Map.find valuation x  in 
     let t = t_opt |> Option.value_exn ~message:("Couldn't find table" ^ x) in 
     t, funcs
   | Map (exp, rexp) ->
@@ -299,10 +299,10 @@ let rec e_eval (funcs : skolems) (valuation : Value.t String.Map.t) (e : exp) : 
     let f funcs (ma : MatchAction.t) = 
       let action_name = Action.get_name ma.action in
       Printf.printf "Checking : %s in {%s}....." action_name
-        (String.concat ~sep:" " @@ String.Map.keys callbacks)
+        (String.concat ~sep:" " @@ Map.keys callbacks)
       ;
       let callback = 
-        String.Map.find callbacks action_name 
+        Map.find callbacks action_name 
         |> Option.value_exn ~message:("Couldn't find " ^ action_name)
       in
       Printf.printf "yes!\n%!";
@@ -323,9 +323,9 @@ let rec hole_free = function
 
 let rec run' (funcs : skolems) (cfg : Config.t) : t -> Config.t * skolems = function 
   | Assign {table; from; body} -> 
-    let cfg' = String.Map.filter_keys cfg ~f:(List.mem from ~equal:String.equal) in 
+    let cfg' = Map.filter_keys cfg ~f:(List.mem from ~equal:String.equal) in 
     let data, funcs = e_eval funcs cfg' body in 
-    String.Map.set cfg ~key:table ~data, funcs
+    Map.set cfg ~key:table ~data, funcs
   | Seq cs ->
     List.fold cs ~init:(cfg, funcs) ~f:(fun (cfg, funcs) -> run' funcs cfg)
 

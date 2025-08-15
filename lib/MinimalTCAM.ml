@@ -52,7 +52,7 @@ let get_act (actions : Action.t list) i =
 
 
 let match_to_smt =
-  String.Map.fold ~init:([], SMT.true_) ~f:(fun ~key ~data (vars, phi) ->
+  Map.fold ~init:([], SMT.true_) ~f:(fun ~key ~data (vars, phi) ->
     let open SMT in
     let w = Match.length data in 
     let v,m = Match.to_mask_pair data in 
@@ -83,7 +83,7 @@ let action_var = "$action"
 let count = Printf.sprintf "$count$"
 
 let match_to_sketch i matches =
-  String.Map.fold matches ~init:([], SMT.true_) ~f:(fun ~key ~data (holes, phi) ->
+  Map.fold matches ~init:([], SMT.true_) ~f:(fun ~key ~data (holes, phi) ->
     let open SMT in
     let w = Match.length data in 
     let v,_ = Match.to_mask_pair data in 
@@ -183,7 +183,7 @@ let covered rows =
 let reconstruct_mask tbl tbl_model =
   List.mapi tbl ~f:(fun i row -> 
     MatchAction.{row with 
-      matches = String.Map.mapi row.matches ~f:(fun ~key ~data -> 
+      matches = Map.mapi row.matches ~f:(fun ~key ~data -> 
         let h = mask_hole key (i + 1) in 
         let mask_str = 
           SMT.Model.find tbl_model h 

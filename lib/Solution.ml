@@ -106,7 +106,7 @@ let fun_to_outvar f = Var.make (Var.str f |> String.lowercase) (Var.width f)
 
 let dead_code_elim invocations solution = 
   let vars = Expr.vars solution.body in 
-  let not_dead (f, args) = List.exists args ~f:(Var.Set.mem vars) || Var.Set.mem vars (fun_to_outvar f) in 
+  let not_dead (f, args) = List.exists args ~f:(Set.mem vars) || Set.mem vars (fun_to_outvar f) in 
   List.filter invocations ~f:not_dead
 
 

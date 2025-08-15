@@ -4,7 +4,7 @@ open SyGuS
 
 let terminal_state p = 
   GPL.free_vars p 
-  |> Var.Set.fold ~init:BExpr.true_ ~f:(fun phi x -> 
+  |> Set.fold ~init:BExpr.true_ ~f:(fun phi x -> 
     let x' = Var.make ("$$" ^ Var.str x) (Var.width x) in
     BExpr.and_ phi @@
     BExpr.(Expr.var x == Expr.var x')
@@ -233,7 +233,7 @@ let migrate (source : GPL.t) (target : GPL.t) (pre : BExpr.t) (post : BExpr.t) :
   let invocations = invocations phi in 
   let sygus = { 
     funs = gen_funs invocations;
-    variables = Var.Set.(to_list (BExpr.free_vars phi));
+    variables = Set.to_list (BExpr.free_vars phi);
     constraints = [pre ==> phi];
   } in 
   let solutions = SyGuS.run "/usr/bin/cvc5 --lang=sygus" sygus |> Solution.extract in

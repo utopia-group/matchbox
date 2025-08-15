@@ -87,7 +87,7 @@ let lifted_exp_compile types act_map t e =
     let is_action idx =
       SMT.((=) [symb s s_keys; idx])
     in
-  let cases = String.Map.fold callbacks ~init:[] ~f:(fun ~key:action ~data:rowexp acc -> 
+  let cases = Map.fold callbacks ~init:[] ~f:(fun ~key:action ~data:rowexp acc -> 
       let idx = ActAbs.findbv_exn act_map action in 
       let phi = rowexp_compile act_map t rowexp post in
       acc @ [SMT.implies [is_action idx; phi]]
@@ -102,7 +102,7 @@ let rec lifted_compile types act_map c =
   | Seq cs -> SMT.and_ (List.map cs ~f:(lifted_compile types act_map))
 
 let function_declarations (types : Type.ctx) act_width =
-  String.Map.fold types ~init:[] ~f:(fun ~key:name ~data:typ acc -> 
+  Map.fold types ~init:[] ~f:(fun ~key:name ~data:typ acc -> 
     match typ with 
     | Table _ -> 
       acc @ [
@@ -115,7 +115,7 @@ let function_declarations (types : Type.ctx) act_width =
 
 let function_specifications (types : Type.ctx) act_map =
   let w = ActAbs.num_bits act_map in 
-  String.Map.fold types ~init:[] ~f:(fun ~key:tbl ~data:typ acc -> 
+  Map.fold types ~init:[] ~f:(fun ~key:tbl ~data:typ acc -> 
     match typ with 
     | Table tbltype -> 
       let qkeys = Type.find_keys_exn types tbl |> List.map ~f:(fun (x, w) -> x, SMT.bv_sort w)in 

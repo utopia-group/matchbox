@@ -55,8 +55,8 @@ let get_action_exn typ =
 
 let get_keys (t : table) : (string * int) list = 
   t.keys
-  |> String.Map.map ~f:fst
-  |> String.Map.to_alist
+  |> Map.map ~f:fst
+  |> Map.to_alist
 
 let get_data (t : table) : varwidth String.Map.t =
   t.data
@@ -69,7 +69,7 @@ let invert_table ( t : table ) : table =
   }
 
 let merge_keys_exn (skeys : (int * match_kind) String.Map.t) (tkeys : (int * match_kind) String.Map.t) : (varwidth * match_kind) String.Map.t = 
-  String.Map.merge skeys tkeys ~f:(fun ~key -> function 
+  Map.merge skeys tkeys ~f:(fun ~key -> function 
     | `Both ((w, mk), (w',mk')) -> 
       if w = w' && mkeq mk mk' then 
         Some (w, mk)
@@ -79,7 +79,7 @@ let merge_keys_exn (skeys : (int * match_kind) String.Map.t) (tkeys : (int * mat
   )
 
 let union_data_exn sdata tdata : varwidth String.Map.t =
-  String.Map.merge sdata tdata ~f:(fun ~key -> function 
+  Map.merge sdata tdata ~f:(fun ~key -> function 
   | `Both (w, w') when w = w' -> 
     Some w
   | `Both _ -> failwithf "Type error on data %s: different widths when merging" key ()
@@ -104,7 +104,7 @@ let get_match_type_exn t =
   |> Option.value_exn ~message:"Expected match type got something else"
 
 let find_exn (ctx : ctx) x =
-  String.Map.find ctx x
+  Map.find ctx x
   |> Option.value_exn ~message:("Could not find " ^ x ^ " in type context")
 
 let find_table_exn (ctx : ctx) t = 
@@ -145,7 +145,7 @@ let is_var_width w typ =
     |> Option.value_map ~f:((=) w) ~default:false
 
 let get_names ~f (ctx : ctx) = 
-    String.Map.fold ctx ~init:[] ~f:(fun ~key ~data ctx -> 
+    Map.fold ctx ~init:[] ~f:(fun ~key ~data ctx -> 
         if f data then
             key :: ctx
         else 
@@ -154,7 +154,7 @@ let get_names ~f (ctx : ctx) =
 
 let get_tables = get_names ~f:is_table
 let get_all_actions = get_names ~f:is_action
-let get_vars = String.Map.fold ~init:[] ~f:(fun ~key ~data vars -> 
+let get_vars = Map.fold ~init:[] ~f:(fun ~key ~data vars -> 
     match data with 
     | Var w -> 
       (key, w)::vars
@@ -163,4 +163,4 @@ let get_vars = String.Map.fold ~init:[] ~f:(fun ~key ~data vars ->
 
 let get_vars_width w = get_names ~f:(is_var_width w)
 
-let get_type_exn (ctx : ctx) name = String.Map.find_exn ctx name
+let get_type_exn (ctx : ctx) name = Map.find_exn ctx name

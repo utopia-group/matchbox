@@ -202,7 +202,7 @@ module Model = struct
       List.fold rst ~init:(String.Map.empty) ~f:(fun model sexp -> 
         begin match sexp with 
         | Sexp.List [Atom var; Atom value] -> 
-          String.Map.set model ~key:var ~data:value
+          Map.set model ~key:var ~data:value
         | _ -> 
           failwithf "unrecognized sexp %s" (Sexp.to_string sexp) ()
         end
@@ -219,11 +219,11 @@ module Model = struct
     String.Map.map model ~f
 
   let find_exn (model : 'a t) (key : string) = 
-    String.Map.find model key
+    Map.find model key
     |> Option.value_exn ~message:("couldn't find " ^ key ^ " in SMT model")
 
   let find (model : 'a t) (key : string) = 
-    String.Map.find model key
+    Map.find model key
 end
 
 let check (resp : response) : string Model.t option =

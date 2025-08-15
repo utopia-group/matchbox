@@ -1,5 +1,4 @@
 (library
  (name stijl)
  (public_name stijl)
- (libraries core core_unix gpl)
- )
+ (libraries core core_unix gpl))

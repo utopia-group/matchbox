@@ -38,7 +38,7 @@ let to_string ({consts; funcs; assts; cmnds} : t) =
   
 
 let smt_gen (phi : BExpr.t) : t = 
-  let consts = BExpr.free_vars phi |> Var.Set.to_list in 
+  let consts = BExpr.free_vars phi |> Set.to_list in 
   let funcs = BExpr.get_funs phi |> List.dedup_and_sort ~compare:(fun (x,_) (y, _) -> Var.compare x y) in 
   let assts = [phi] in 
   let cmnds = [CheckSat None] in 

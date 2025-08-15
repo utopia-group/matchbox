@@ -62,14 +62,14 @@ let rec rexp_extend context =
 
 
 let extend_callbacks (context : Type.ctx) callbacks = 
-  String.Map.fold callbacks ~init:[String.Map.empty] 
+  Map.fold callbacks ~init:[String.Map.empty] 
     ~f:(fun ~key ~data acc -> 
       List.bind acc ~f:(fun callbacks -> 
         if DSLv2.rexp_hole_free data then 
-          [String.Map.set callbacks ~key ~data]
+          [Map.set callbacks ~key ~data]
         else 
           List.map (rexp_extend context data) ~f:(fun r -> 
-            String.Map.set callbacks ~key ~data:r
+            Map.set callbacks ~key ~data:r
           )
       )
     )
@@ -104,7 +104,7 @@ let rec extend (context : Type.ctx) exp =
   | Case {table; callbacks = None} -> 
     [Case {table; callbacks = Some (
       List.fold (Type.get_table_actions context table) ~init:String.Map.empty ~f:(fun acc _ -> 
-        String.Map.set acc ~key:(failwith "key?") ~data:RHole
+        Map.set acc ~key:(failwith "key?") ~data:RHole
       )
     )}]
 

@@ -25,9 +25,9 @@ let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : (int * Type.match_kind) Stri
 let open MatchTfx in
   match tfx with 
   | Project vars -> 
-    String.Map.filter_keys rowtype ~f:(List.mem vars ~equal:String.equal)
+    Map.filter_keys rowtype ~f:(List.mem vars ~equal:String.equal)
   | SetTo (x, e) -> 
-    String.Map.set rowtype ~key:x ~data:(match_expr_type ctx e)
+    Map.set rowtype ~key:x ~data:(match_expr_type ctx e)
 
 let clause_type (ctx : Type.ctx) (clause : Clause.t) = 
   match clause with 

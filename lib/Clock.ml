@@ -1,11 +1,11 @@
 open Core
 
-type t = Time.t
+type t = Time_float.t
 
 let start () = 
-  Time.now ()
+  Time_float.now ()
 
-let stop (c : Time.t) : float =
-  Time.(diff (now()) c)
-  |> Time.Span.to_ms
+let stop (c : Time_float.t) : float =
+  Time_float.(diff (now()) c)
+  |> Time_float.Span.to_ms
 

@@ -164,7 +164,7 @@ module Vector = struct
       String.chop_prefix_exn bs ~prefix
       |> hexstring_to_bitstring
       |> cleaned_to_ternary      
-    | _ when (String.to_list bs |> Char.Set.of_list |> Char.Set.(is_subset ~of_:(of_list ['1';'0';'*']))) ->
+    | _ when (String.to_list bs |> Char.Set.of_list |> Set.(is_subset ~of_:(of_list (module Char) ['1';'0';'*']))) ->
         (* if all the characters are bits, assume its a bv*)
         cleaned_to_ternary bs
     | _ -> 
@@ -193,7 +193,7 @@ module Vector = struct
 
   let denote bv : Bit.VectorSet.t = 
     List.fold bv ~init:(Bit.VectorSet.singleton []) ~f:(fun vset bexp -> 
-      let bs = Trit.denote bexp |> Bool.Set.elements in
+      let bs = Trit.denote bexp |> Set.elements in
       Bit.VectorSet.elements vset
       |> List.bind ~f:(fun vector -> 
         List.map bs ~f:(fun b ->

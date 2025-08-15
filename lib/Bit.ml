@@ -9,7 +9,7 @@ module Set = struct
   let true_ = singleton true
   let false_ = singleton false
 
-  let union = Bool.Set.union
+  let union a b = Bool.Set.union_list [a; b]
 
   let either_ = union true_ false_
 
@@ -108,11 +108,11 @@ module Vector = struct
 
 end
 
-module VectorSet = struct 
+(* module VectorSet = struct 
   include Core.Set.Make (Vector)
   let cartesian_map ~f a b =
-    let xs = elements a in
-    let ys = elements b in 
+    let xs = Core.Set.elements a in
+    let ys = Core.Set.elements b in 
     List.bind xs ~f:(fun x -> 
       List.map ys ~f:(fun y -> 
         f x y
@@ -121,18 +121,53 @@ module VectorSet = struct
     |> of_list
 
   let to_string bs= 
-    fold bs ~init:"" ~f:(fun acc bv -> 
+    Core.Set.fold bs ~init:"" ~f:(fun acc bv -> 
       String.(acc ^ (if acc = "" then "" else ",") ^ Vector.to_string bv)) 
     |> Printf.sprintf "{%s}"
 
   let union_map xs ~f =
     List.fold xs ~init:empty ~f:(fun set x -> 
-      union set (f x)
+      Core.Set.union set (f x)
     )
 
   let prepend bs a = 
-    fold a ~init:empty ~f:(fun acc vector -> 
+    Core.Set.fold a ~init:empty ~f:(fun acc vector -> 
       union_map bs ~f:(fun a -> singleton (a :: vector))
-      |> union acc
+      |> Core.Set.union acc
+    )
+end *)
+
+
+module VectorSet = struct 
+  include Core.Set.Make (Vector)
+
+  let elements = Core.Set.elements
+  let union = Core.Set.union
+  let diff = Core.Set.diff
+
+  let cartesian_map ~f a b =
+    let xs = Core.Set.elements a in
+    let ys = Core.Set.elements b in 
+    List.bind xs ~f:(fun x -> 
+      List.map ys ~f:(fun y -> 
+        f x y
+      )  
+    )
+    |> of_list
+
+  let to_string bs= 
+    Core.Set.fold bs ~init:"" ~f:(fun acc bv -> 
+      String.(acc ^ (if acc = "" then "" else ",") ^ Vector.to_string bv)) 
+    |> Printf.sprintf "{%s}"
+
+  let union_map xs ~f =
+    List.fold xs ~init:empty ~f:(fun set x -> 
+      Core.Set.union set (f x)
+    )
+
+  let prepend bs a = 
+    Core.Set.fold a ~init:empty ~f:(fun acc vector -> 
+      union_map bs ~f:(fun a -> singleton (a :: vector))
+      |> Core.Set.union acc
     )
 end

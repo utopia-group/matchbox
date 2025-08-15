@@ -1,3 +1,3 @@
-type t = Core.Time.t
-val start : unit -> Core.Time.t
-val stop : Core.Time.t -> float
+type t = Core.Time_float.t
+val start : unit -> Core.Time_float.t
+val stop : Core.Time_float.t -> float

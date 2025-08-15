@@ -128,7 +128,7 @@ module Action = struct
 
   let to_string ({name;args} : t) : string =
     let open Printf in 
-    String.Map.fold args ~init:"" ~f:(fun ~key ~data acc -> 
+    Map.fold args ~init:"" ~f:(fun ~key ~data acc -> 
       let argstr = sprintf "%s = %s" key (Bit.Vector.to_string data) in 
       if String.length acc = 0 then 
         argstr
@@ -146,10 +146,10 @@ module Action = struct
   let set_name name action =
     {action with name}
 
-  let has_data (action : t) = String.Map.mem action.args
+  let has_data (action : t) = Map.mem action.args
 
   let get_datum (action : t) (name : string) = 
-    String.Map.find action.args name
+    Map.find action.args name
 
   let get_data (action : t) = action.args
 
@@ -163,15 +163,15 @@ module Action = struct
 
   let project_data (params : string list) (action : t) = 
     {action with args =
-      String.Map.filter_keys action.args ~f:String.(List.mem params ~equal)}
+      Map.filter_keys action.args ~f:String.(List.mem params ~equal)}
 
   let update_data action b v =
     { action with args = 
-      String.Map.set action.args ~key:b ~data:v
+      Map.set action.args ~key:b ~data:v
     }
 
   let pair a1 a2 ~f  =
-    let args = String.Map.merge a1.args a2.args ~f:(fun ~key -> function 
+    let args = Map.merge a1.args a2.args ~f:(fun ~key -> function 
       | `Both (bv1, bv2) when Bit.Vector.equal bv1 bv2 ->  Some bv1
       | `Both (bv1, bv2) -> failwithf "error merging action data---collision on %s (%s <> %s)" (key)  (Bit.Vector.to_string bv1) (Bit.Vector.to_string bv2) ()
       | `Left bv -> Some bv
@@ -191,14 +191,14 @@ module MatchAction = struct
   let make matches action = {matches;action}
 
   let keys_widths row = 
-    String.Map.fold row.matches ~init:[] ~f:(fun ~key ~data kws -> 
+    Map.fold row.matches ~init:[] ~f:(fun ~key ~data kws -> 
       let width = Match.length data in 
       kws @ [key, width]
     )
 
   let to_string ({matches; action}: t) = 
     Printf.sprintf "\t%s -> %s" 
-      (String.Map.to_alist matches |> List.map ~f:(fun (x,m) -> Printf.sprintf "'%s' ~ %s" x (Match.to_string m)) |> String.concat ~sep:", ")
+      (Map.to_alist matches |> List.map ~f:(fun (x,m) -> Printf.sprintf "'%s' ~ %s" x (Match.to_string m)) |> String.concat ~sep:", ")
       (Action.to_string action)
 
   let equal (ma : t) (ma' : t) =
@@ -206,7 +206,7 @@ module MatchAction = struct
     && Action.equal ma.action ma'.action
 
   let get_match (ma : t) name = 
-    String.Map.find_exn ma.matches name
+    Map.find_exn ma.matches name
 
   let get_field (ma : t) name =
     match Action.get_datum ma.action name with 
@@ -214,8 +214,8 @@ module MatchAction = struct
     | Some v -> Match.Exact v
 
   let does_match keys ({matches;action=_} : t) =
-    String.Map.for_alli matches ~f:(fun ~key:x ~data:mtch -> 
-      match String.Map.find keys x with 
+    Map.for_alli matches ~f:(fun ~key:x ~data:mtch -> 
+      match Map.find keys x with 
       | None -> false
       | Some value -> 
         Match.matches value mtch
@@ -225,7 +225,7 @@ module MatchAction = struct
 
   let restrict_keys ma keys = 
     {ma with 
-      matches = String.Map.filter_keys ma.matches ~f:(String.(List.mem keys ~equal))
+      matches = Map.filter_keys ma.matches ~f:(String.(List.mem keys ~equal))
     }
     
   let get_action (ma : t) : Action.t = ma.action
@@ -234,7 +234,7 @@ module MatchAction = struct
   let pair (row1 : t) (row2 : t) ~f = 
     let (let+) o f = Option.map o ~f in 
     let (let*) o f = Option.bind o ~f in 
-    let match_keys = String.Map.(
+    let match_keys = Map.(
       keys row1.matches @ keys row2.matches 
       |> List.dedup_and_sort ~compare:String.compare)
       (* remove duplicates lets us use 'add' below, triggering exceptions if we've screwed up *)
@@ -242,24 +242,24 @@ module MatchAction = struct
     let+ matches = 
       List.fold match_keys ~init:(Some String.Map.empty) ~f:(fun opt_isect key -> 
         let* intersection = opt_isect in 
-        match String.Map.(find row1.matches key, find row2.matches key) with 
+        match Map.(find row1.matches key, find row2.matches key) with 
         | None, None -> failwith "error: impossible" 
         | Some data, None | None, Some data ->
-          Some (String.Map.add_exn intersection ~key ~data)
+          Some (Map.add_exn intersection ~key ~data)
         | Some d1, Some d2 -> 
           let+ data = Match.intersect d1 d2 in 
-          String.Map.set intersection ~key ~data
+          Map.set intersection ~key ~data
       )
     in
     let action = Action.pair row1.action row2.action ~f in 
     { matches; action }
 
     let empty_intersection row1 row2 =
-      String.Map.merge row1.matches row2.matches ~f:(fun ~key:_ -> function 
+      Map.merge row1.matches row2.matches ~f:(fun ~key:_ -> function 
         | `Both (m1, m2) -> Some (m1,m2)
         | _ -> None
       ) |> 
-      String.Map.exists ~f:(fun (m1,m2) -> 
+      Map.exists ~f:(fun (m1,m2) -> 
         Match.empty_intersection m1 m2
       )
 

@@ -1,4 +1,4 @@
-(lang dune 3.4)
+(lang dune 3.19)
 
 (name stijl)
 
@@ -19,7 +19,15 @@
  (name stijl)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune)
+ (depends
+  ocaml
+  dune
+  (core
+   (>= v0.16.2))
+  (core_unix
+   (>= v0.16.0))
+  gpl
+  alcotest)
  (tags
   (topics "to describe" your project)))
 

@@ -92,10 +92,10 @@ module ProvRow = struct
     Semantics.MatchAction.does_match data provrow.row
 
   let pivot listmap : 'a String.Map.t list =
-    String.Map.fold listmap ~init:[String.Map.empty] ~f:(fun ~key ~data maps -> 
+    Map.fold listmap ~init:[String.Map.empty] ~f:(fun ~key ~data maps -> 
       List.bind data ~f:(fun datum -> 
         List.map maps ~f:(fun map -> 
-          String.Map.add_exn map ~key ~data:datum)
+          Map.add_exn map ~key ~data:datum)
       )
     )
 
@@ -184,7 +184,7 @@ module Config = struct
     cfg : ProvTable.t String.Map.t;
   }
 
-  let _find_raw_exn cfg x = String.Map.find_exn cfg.cfg x
+  let _find_raw_exn cfg x = Map.find_exn cfg.cfg x
 
   let find_exn cfg (symbol : Symbol.t) : ProvTable.t =
     _find_raw_exn cfg symbol.name
@@ -198,7 +198,7 @@ module Config = struct
     in
     {
       symbols = add_if_not_exists symbol config.symbols;
-      cfg = String.Map.set config.cfg ~key:symbol.name ~data:table;
+      cfg = Map.set config.cfg ~key:symbol.name ~data:table;
     }
   let get_tables config = config.symbols
 
@@ -223,7 +223,7 @@ module Config = struct
       {provtable with rows}
     ) in
     let empty_locs = 
-      String.Map.fold cfg ~init:[] ~f:(fun ~key:_ ~data:provtable acc -> 
+      Map.fold cfg ~init:[] ~f:(fun ~key:_ ~data:provtable acc -> 
         acc @ 
         List.filter_map provtable.rows ~f:(fun provrow -> 
           if Provenance.is_empty provrow.prov then 
