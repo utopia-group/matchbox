@@ -69,7 +69,7 @@ let check phi =
   phi
   |> smt_gen
   |> to_string
-  |> Runner.(run (init "/usr/bin/z3 -smt2 -in"))
+  |> Runner.(run (init "z3 -smt2 -in"))
 
 
 let satisfiable (phi : BExpr.t) : bool = 

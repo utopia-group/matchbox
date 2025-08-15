@@ -2,7 +2,7 @@ open Core
 open Semantics
 
 let solver smt = 
-  let path = "/usr/bin/z3 -smt2 -in" in
+  let path = "z3 -smt2 -in" in
   (* let path = "/usr/local/bin/optimathsat" in  *)
   SMT.(run (Runner.init path) smt |> check)
 
@@ -298,7 +298,7 @@ let get_new_row act_map keys candidate spec : MatchAction.t =
        get_value @@ (act_hole 0 :: (mask_holes >>| fst) @ (key_holes >>| fst))
       ]
     ])
-    |> SMT.run (Runner.init "/usr/bin/z3 -smt2 -in")
+    |> SMT.run (Runner.init "z3 -smt2 -in")
   in 
   let table_model = SMT.check response |> Option.value_exn ~message:("[get_new_row] failed to extract model") in  
   reconstruct_row keys act_map table_model 0
@@ -327,7 +327,7 @@ let has_counterexample keys act_map (candidate : MatchAction.t list) spec =
       keys >>| fst |> get_value;
     ];
   ]) 
-  |> SMT.run (Runner.init "/usr/bin/z3 -smt2 -in")
+  |> SMT.run (Runner.init "z3 -smt2 -in")
   |> SMT.check
 
 

@@ -236,7 +236,7 @@ let migrate (source : GPL.t) (target : GPL.t) (pre : BExpr.t) (post : BExpr.t) :
     variables = Set.to_list (BExpr.free_vars phi);
     constraints = [pre ==> phi];
   } in 
-  let solutions = SyGuS.run "/usr/bin/cvc5 --lang=sygus" sygus |> Solution.extract in
+  let solutions = SyGuS.run "cvc5 --lang=sygus" sygus |> Solution.extract in
   List.map ~f:(Solution.pretty_print obs_vars (reconstruct_invocations obs_vars)) solutions
   |> String.concat ~sep:"\n"
   

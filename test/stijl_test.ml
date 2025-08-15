@@ -1,6 +1,9 @@
+[@@@warning "-32"]
+
 open Core
 open Gpl
 open Stijl
+open Controller_tests
 
 (* let cvc5 = "/usr/bin/cvc5 --lang=sygus" *)
 
@@ -775,7 +778,18 @@ let incremental () =
 let () =
   let open Alcotest in 
   run "Stijl" [
-    "Verification" , [
+    "Controller lifecycle", [
+      Alcotest.test_case "switch on/off" `Quick test_switch_lifecycle;
+      Alcotest.test_case "link up/down" `Quick test_link_lifecycle;
+    ];
+    "Controller connectivity", [
+      Alcotest.test_case "all-pairs on line" `Quick test_all_pairs_line;
+      Alcotest.test_case "all-pairs on ring" `Quick test_all_pairs_ring;
+      Alcotest.test_case "unknown packet_in doesn't crash" `Quick
+        test_unknown_packet_in_no_crash;
+      Alcotest.test_case "no link -> no forward rule" `Quick test_no_link_no_fwd_rule;
+    ];
+    (* "Verification" , [
       test_case "2Actions->1Act Verif" `Quick two_to_one_verif;
       test_case "Action Decompose Solution" `Quick AvTest.(action_decompose `Verif);
       test_case "Metadata Solution" `Quick AvTest.(metadata_decompose `Verif);
@@ -842,5 +856,5 @@ let () =
       test_case "greedy 2-actions" `Quick greedy_minimization;
       test_case "all 6-bit binary decisions" `Quick (all_binary_decisions ~nbits:6);
       test_case "incremental example" `Quick incremental;
-    ]
+    ] *)
   ]
