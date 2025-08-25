@@ -7,6 +7,7 @@ module Match = struct
   | Exact of Bit.Vector.t
   | Lpm of Bit.Vector.t * int
   | Ternary of Trit.Vector.t
+  [@@deriving sexp, compare]
 
   let catch_all width = Ternary (Trit.Vector.wc width)
 

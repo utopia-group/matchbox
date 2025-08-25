@@ -3,7 +3,7 @@ open Core
 module Var = Gpl.Var
 
 module Symbol = struct
-  type t = {name : string; ins : int list; out : int}
+  type t = {name : string; ins : int list; out : int} [@@deriving sexp, compare]
   let make name ins out = {name; ins; out}
   let (=) f g = String.(f.name = g.name)
 
@@ -247,18 +247,33 @@ module MatchTfx = struct
     | Match of Semantics.Match.t
     | AddK of expr * Bit.Vector.t
     | SubK of expr * Bit.Vector.t
+  [@@deriving sexp, compare]
 
   type t = 
     | Project of string list
     | SetTo of string * expr
+  [@@deriving sexp, compare]
+end
 
+module ActionTfx = struct
+  type expr = 
+    | Var of string 
+    | Data of Bit.Vector.t
+    | AddK of expr * Bit.Vector.t
+    | SubK of expr * Bit.Vector.t
+  [@@deriving sexp, compare]
+
+  type t = 
+    | Project of string list
+    | SetTo of string * expr
+  [@@deriving sexp, compare]
 end
 
 module JoinExp = struct
   type t = ((string * string) * string) list
 
   let in_match (a1, a2) (b1, b2) = 
-    String.(a1 = a2 && b1 = b2)
+    String.(a1 = b1 && a2 = b2)
 
   let eval (e : t) a = 
     List.find_map e ~f:(fun (b, out) -> 
@@ -283,14 +298,15 @@ module JoinExp = struct
 end
 
 module Clause = struct
-  type f = Symbol.t
+  type f = Symbol.t [@@deriving sexp, compare]
   type t =
     | Id of f
     | Join of f * f * (((string * string) * string) list)
     | Compose of f * f
-    | MapOut of f * unit
+    | MapOut of f * ActionTfx.t
     | MapIn of f * MatchTfx.t
-    | Op of Symbol.t
+    | Inverse of f
+  [@@deriving sexp, compare]
 
   let insert_eval config table provrow idx =
     function 
@@ -300,7 +316,7 @@ module Clause = struct
       failwith "todo"
     | MapIn (f,_) when Symbol.(f = table) ->
       failwith "todo"
-    | Op f when Symbol.(f = table) -> 
+    | Inverse f when Symbol.(f = table) -> 
       let rows = ProvRow.op provrow in 
       List.map rows ~f:(fun row -> ProvRow.add row table idx)
     | Join (f, g, merge) when Symbol.(f = table || g = table) -> 
@@ -338,11 +354,10 @@ module Clause = struct
     | _ -> 
       (*No changes, insertion doesnt affect the current row *)
       []
-
 end
 
-type t = {defined : Symbol.t; definition : Clause.t }
-  
+type t = {defined : Symbol.t; definition : Clause.t } [@@deriving sexp, compare]
+
 let table_indices table = List.filter_map  ~f:(fun (tbl,idx) -> 
   if Symbol.(table = tbl) then 
     Some idx

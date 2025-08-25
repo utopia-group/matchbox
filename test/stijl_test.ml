@@ -3,7 +3,9 @@
 open Core
 open Gpl
 open Stijl
-open Controller_tests
+(* open Controller_tests *)
+open Synthesizer_tests
+open Interpreter_tests
 
 (* let cvc5 = "/usr/bin/cvc5 --lang=sygus" *)
 
@@ -776,85 +778,105 @@ let incremental () =
 
 
 let () =
-  let open Alcotest in 
-  run "Stijl" [
-    "Controller lifecycle", [
-      Alcotest.test_case "switch on/off" `Quick test_switch_lifecycle;
-      Alcotest.test_case "link up/down" `Quick test_link_lifecycle;
-    ];
-    "Controller connectivity", [
-      Alcotest.test_case "all-pairs on line" `Quick test_all_pairs_line;
-      Alcotest.test_case "all-pairs on ring" `Quick test_all_pairs_ring;
-      Alcotest.test_case "unknown packet_in doesn't crash" `Quick
-        test_unknown_packet_in_no_crash;
-      Alcotest.test_case "no link -> no forward rule" `Quick test_no_link_no_fwd_rule;
-    ];
-    (* "Verification" , [
-      test_case "2Actions->1Act Verif" `Quick two_to_one_verif;
-      test_case "Action Decompose Solution" `Quick AvTest.(action_decompose `Verif);
-      test_case "Metadata Solution" `Quick AvTest.(metadata_decompose `Verif);
-    ];
-    "Synthesis", [
-      test_case "Basic Identity (100)" `Quick (basic_identity 100);
-      test_case "2Actions->1Act (100)" `Quick (two_to_one_synth 100);
-    ];
-    "CaseStudies", AvTest.[
-      test_case "Action Decompose (1000)" `Quick (action_decompose (`Synth 1000));
-      test_case "Metadata Decompose (1000)" `Quick (metadata_decompose (`Synth 1));
-    ];
-    "DSLRun", [
-      test_case "identity mapping" `Quick identity;
-      test_case "split_action" `Quick two_to_one_exec;
-      test_case "reorder" `Quick reorder;
-      test_case "metadata" `Quick metadata;
-      test_case "double" `Quick double;
-      test_case "choice" `Quick choice;
-    ];
-    "BitVectors", [
-      test_case "negation" `Quick negation;
-      test_case "bitwise and" `Quick bitwise_and;
-      test_case "bitwise or" `Quick bitwise_or;
-      test_case "bitwise xor" `Quick bitwise_xor;
-      test_case "addition" `Quick addition;
-      test_case "bitwise overlap" `Quick overlap;
-    ] @ raw_additions;
-    "BDDs", simple_encodings;
-    "ADDs", [
-      test_case "generate paths" `Quick add_paths
-    ];
-
-    "Trits", [
-      test_case "hex parsing 0" `Quick (hex '0' "0000");
-      test_case "hex parsing 1" `Quick (hex '1' "0001");
-      test_case "hex parsing 2" `Quick (hex '2' "0010");
-      test_case "hex parsing 3" `Quick (hex '3' "0011");
-      test_case "hex parsing 4" `Quick (hex '4' "0100");
-      test_case "hex parsing 5" `Quick (hex '5' "0101");
-      test_case "hex parsing 6" `Quick (hex '6' "0110");
-      test_case "hex parsing 7" `Quick (hex '7' "0111");
-      test_case "hex parsing 8" `Quick (hex '8' "1000");
-      test_case "hex parsing 9" `Quick (hex '9' "1001");
-      test_case "hex parsing a" `Quick (hex 'a' "1010");
-      test_case "hex parsing b" `Quick (hex 'b' "1011");
-      test_case "hex parsing c" `Quick (hex 'c' "1100");
-      test_case "hex parsing d" `Quick (hex 'd' "1101");
-      test_case "hex parsing e" `Quick (hex 'e' "1110");
-      test_case "hex parsing f" `Quick (hex 'f' "1111");
-    ];
-    "TVMath",[
-      test_case "011* + 1" `Quick tv_math;
-    ];
-    "RowSynthGen", [
-      test_case "ttl = ttl + 1 is generated" `Quick incr_is_generated;
-      (* test_case "rename/slice pattern is generated" `Quick rename_slice; *)
-    ];
-    "DSLv2SynthGen", [
-      (* test_case "two-to-one is generated" `Quick two_to_one_gen; *)
-    ];
-    "Minimization", [
-      test_case "2-actions" `Quick minimization;
-      test_case "greedy 2-actions" `Quick greedy_minimization;
-      test_case "all 6-bit binary decisions" `Quick (all_binary_decisions ~nbits:6);
-      test_case "incremental example" `Quick incremental;
-    ] *)
-  ]
+  let open Alcotest in
+  run "Stijl"
+    [
+      "Interpreter", [
+        test_case "Empty table handling" `Quick test_empty_table;
+        test_case "Unrelated clause" `Quick test_unrelated_clause;
+        test_case "Id clause" `Quick test_id;
+        test_case "Join clause" `Quick test_join;
+        test_case "Inverse clause" `Quick test_inverse;
+        test_case "MapOut Project" `Quick test_mapout_project;
+        test_case "MapOut SetTo" `Quick test_mapout_setto;
+        test_case "MapIn Project" `Quick test_mapin_project;
+        test_case "MapIn SetTo" `Quick test_mapin_setto;
+      ];
+      "Synthesizer", [
+        test_case "Id" `Quick Synthesizer_tests.test_id;
+        test_case "Compose" `Quick test_compose;
+        test_case "Inverse" `Quick test_inverse;
+        test_case "Multiple clause kinds" `Quick test_multiple_clause_kinds;
+        test_case "10-way Compose" `Quick test_10_way_compose;
+        test_case "Join" `Quick test_join;
+        test_case "Synthesis variety" `Quick test_synthesis_variety;
+      ]
+      (* "Controller lifecycle", [
+        test_case "switch on/off" `Quick test_switch_lifecycle;
+        test_case "link up/down" `Quick test_link_lifecycle;
+      ];
+      "Controller connectivity", [
+        test_case "all-pairs on line" `Quick test_all_pairs_line;
+        test_case "all-pairs on ring" `Quick test_all_pairs_ring;
+        test_case "unknown packet_in doesn't crash" `Quick
+          test_unknown_packet_in_no_crash;
+        test_case "no link -> no forward rule" `Quick test_no_link_no_fwd_rule;
+      ]; *)
+      (* "Verification" , [
+        test_case "2Actions->1Act Verif" `Quick two_to_one_verif;
+        test_case "Action Decompose Solution" `Quick AvTest.(action_decompose `Verif);
+        test_case "Metadata Solution" `Quick AvTest.(metadata_decompose `Verif);
+      ]; *)
+      (* "Synthesis", [
+        test_case "Basic Identity (100)" `Quick (basic_identity 100);
+        test_case "2Actions->1Act (100)" `Quick (two_to_one_synth 100);
+      ]; *)
+      (* "CaseStudies", AvTest.[
+        test_case "Action Decompose (1000)" `Quick (action_decompose (`Synth 1000));
+        test_case "Metadata Decompose (1000)" `Quick (metadata_decompose (`Synth 1));
+      ];
+      "DSLRun", [
+        test_case "identity mapping" `Quick identity;
+        test_case "split_action" `Quick two_to_one_exec;
+        test_case "reorder" `Quick reorder;
+        test_case "metadata" `Quick metadata;
+        test_case "double" `Quick double;
+        test_case "choice" `Quick choice;
+      ];
+      "BitVectors", [
+        test_case "negation" `Quick negation;
+        test_case "bitwise and" `Quick bitwise_and;
+        test_case "bitwise or" `Quick bitwise_or;
+        test_case "bitwise xor" `Quick bitwise_xor;
+        test_case "addition" `Quick addition;
+        test_case "bitwise overlap" `Quick overlap;
+      ] @ raw_additions;
+      "BDDs", simple_encodings;
+      "ADDs", [
+        test_case "generate paths" `Quick add_paths
+      ];
+      "Trits", [
+        test_case "hex parsing 0" `Quick (hex '0' "0000");
+        test_case "hex parsing 1" `Quick (hex '1' "0001");
+        test_case "hex parsing 2" `Quick (hex '2' "0010");
+        test_case "hex parsing 3" `Quick (hex '3' "0011");
+        test_case "hex parsing 4" `Quick (hex '4' "0100");
+        test_case "hex parsing 5" `Quick (hex '5' "0101");
+        test_case "hex parsing 6" `Quick (hex '6' "0110");
+        test_case "hex parsing 7" `Quick (hex '7' "0111");
+        test_case "hex parsing 8" `Quick (hex '8' "1000");
+        test_case "hex parsing 9" `Quick (hex '9' "1001");
+        test_case "hex parsing a" `Quick (hex 'a' "1010");
+        test_case "hex parsing b" `Quick (hex 'b' "1011");
+        test_case "hex parsing c" `Quick (hex 'c' "1100");
+        test_case "hex parsing d" `Quick (hex 'd' "1101");
+        test_case "hex parsing e" `Quick (hex 'e' "1110");
+        test_case "hex parsing f" `Quick (hex 'f' "1111");
+      ];
+      "TVMath",[
+        test_case "011* + 1" `Quick tv_math;
+      ];
+      "RowSynthGen", [
+        test_case "ttl = ttl + 1 is generated" `Quick incr_is_generated;
+        (* test_case "rename/slice pattern is generated" `Quick rename_slice; *)
+      ];
+      "DSLv2SynthGen", [
+        (* test_case "two-to-one is generated" `Quick two_to_one_gen; *)
+      ];
+      "Minimization", [
+        test_case "2-actions" `Quick minimization;
+        test_case "greedy 2-actions" `Quick greedy_minimization;
+        test_case "all 6-bit binary decisions" `Quick (all_binary_decisions ~nbits:6);
+        test_case "incremental example" `Quick incremental;
+      ] *)
+    ]

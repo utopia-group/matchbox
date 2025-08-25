@@ -51,7 +51,7 @@ let clause_type (ctx : Type.ctx) (clause : Clause.t) =
     let gtype = Type.find_table_exn ctx g.name in 
     assert (actions_compat_keys ftype gtype);
     Type.(Table {gtype with keys = ftype.keys})
-  | Op f -> 
+  | Inverse f -> 
     let ftype = Type.find_table_exn ctx f.name in
     (* Add cispec that f is invertible *)
     Type.(Table (invert_table ftype))

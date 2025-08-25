@@ -17,7 +17,7 @@ end
 
 
 module Vector = struct
-  type t = bool list
+  type t = bool list [@@deriving sexp, compare]
 
   let of_string (bs : string) =
     let rec loop bs =

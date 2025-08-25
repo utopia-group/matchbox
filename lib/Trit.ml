@@ -5,6 +5,7 @@ module Trit = struct
     | T
     | F
     | U
+  [@@deriving sexp, compare]
 
   let random () =
     match Random.int 3 with
@@ -98,7 +99,7 @@ module Trit = struct
 end
 
 module Vector = struct 
-  type t = Trit.t List.t
+  type t = Trit.t List.t [@@deriving sexp, compare]
   let to_string bs = 
     List.map bs ~f:(Trit.to_string) 
     |> String.concat ~sep:""
