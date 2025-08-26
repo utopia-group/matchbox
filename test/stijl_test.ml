@@ -782,15 +782,15 @@ let () =
   run "Stijl"
     [
       "Interpreter", [
-        test_case "Empty table handling" `Quick test_empty_table;
-        test_case "Unrelated clause" `Quick test_unrelated_clause;
-        test_case "Id clause" `Quick test_id;
-        test_case "Join clause" `Quick test_join;
-        test_case "Inverse clause" `Quick test_inverse;
-        test_case "MapOut Project" `Quick test_mapout_project;
-        test_case "MapOut SetTo" `Quick test_mapout_setto;
-        test_case "MapIn Project" `Quick test_mapin_project;
-        test_case "MapIn SetTo" `Quick test_mapin_setto;
+        test_case "Transform table symbol" `Quick test_transform_table_symbol;
+        test_case "Transform compose" `Quick test_transform_compose;
+        test_case "Transform join" `Quick test_transform_join;
+        test_case "Transform project" `Quick test_transform_project;
+        test_case "Transform invert" `Quick test_transform_invert;
+        test_case "Transform filter" `Quick test_filter;
+        test_case "Bitvector expressions" `Quick test_bitvec_expressions;
+        test_case "TransformExpr to Clause encoding" `Quick test_transform_to_clause_encoding;
+        test_case "Filter action constraint" `Quick test_filter_action_constraint;
       ];
       "Synthesizer", [
         test_case "Id" `Quick Synthesizer_tests.test_id;

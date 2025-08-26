@@ -28,6 +28,7 @@ let open MatchTfx in
     Map.filter_keys rowtype ~f:(List.mem vars ~equal:String.equal)
   | SetTo (x, e) -> 
     Map.set rowtype ~key:x ~data:(match_expr_type ctx e)
+  | Filter _matches -> rowtype
 
 let clause_type (ctx : Type.ctx) (clause : Clause.t) = 
   match clause with 
@@ -51,7 +52,7 @@ let clause_type (ctx : Type.ctx) (clause : Clause.t) =
     let gtype = Type.find_table_exn ctx g.name in 
     assert (actions_compat_keys ftype gtype);
     Type.(Table {gtype with keys = ftype.keys})
-  | Inverse f -> 
+  | Invert f -> 
     let ftype = Type.find_table_exn ctx f.name in
     (* Add cispec that f is invertible *)
     Type.(Table (invert_table ftype))

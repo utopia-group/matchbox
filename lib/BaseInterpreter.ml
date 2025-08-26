@@ -8,95 +8,118 @@ let get_mat (config : Config.t) (symbol : Symbol.t) : MatchActionTable.t =
     List.map provtable.rows ~f:(fun provrow -> provrow.row)
   with _ -> []
 
-let rec apply_match_tfx matches tfx =
-  match tfx with
-  | MatchTfx.Project vars ->
-    (* Keep only the specified variables *)
-    Map.filter_keys matches ~f:(List.mem vars ~equal:String.equal)
-  | SetTo (var, expr) ->
-    (* Set a variable to the result of evaluating an expression *)
-    let new_match = eval_match_expr matches expr in
-    Map.set matches ~key:var ~data:new_match
-
-and eval_match_expr matches expr =
+let rec eval (expr : TransformExpr.t) (config : Config.t) : MatchActionTable.t =
   match expr with
-  | Var var_name -> (
-    match Map.find matches var_name with
-    | Some match_val -> match_val
-    | None -> failwith (sprintf "Variable not found in matches: %s" var_name))
-  | Match match_val -> match_val
-  | AddK (inner_expr, bv) -> (
-    let base_match = eval_match_expr matches inner_expr in
-    match base_match with
-    | Match.Exact base_bv ->
-      let result_bv = Bit.Vector.(base_bv + bv) in
-      Match.Exact result_bv
-    | _ -> failwith "AddK operation requires exact match")
-  | SubK (inner_expr, bv) -> (
-    let base_match = eval_match_expr matches inner_expr in
-    match base_match with
-    | Match.Exact base_bv ->
-      (* Subtraction via two's complement: a - b = a + (~b + 1) *)
-      let neg_bv = Bit.Vector.(incr (not bv)) in
-      let result_bv = Bit.Vector.(base_bv + neg_bv) in
-      Match.Exact result_bv
-    | _ -> failwith "SubK operation requires exact match")
-
-let rec apply_action_tfx action tfx =
-  match tfx with
-  | ActionTfx.Project vars ->
-    (* Keep only the specified action parameters *)
-    Action.project_data vars action
-  | SetTo (var, expr) ->
-    (* Set a parameter to the result of evaluating an expression *)
-    let new_data = eval_action_expr action expr in
-    Action.update_data action var new_data
-
-and eval_action_expr action expr =
-  match expr with
-  | Var var_name -> (
-    match Action.get_datum action var_name with
-    | Some data_val -> data_val
-    | None -> failwith (sprintf "Variable not found in action: %s" var_name))
-  | Data data_val -> data_val
-  | AddK (inner_expr, bv) ->
-    let base_data = eval_action_expr action inner_expr in
-    Bit.Vector.(base_data + bv)
-  | SubK (inner_expr, bv) ->
-    let base_data = eval_action_expr action inner_expr in
-    let neg_bv = Bit.Vector.(incr (not bv)) in
-    Bit.Vector.(base_data + neg_bv)
-
-let eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
-  match clause with
-  | Id f -> get_mat config f
-  | Join (f, g, merge) ->
-    let f_mat = get_mat config f in
-    let g_mat = get_mat config g in
-    List.fold f_mat ~init:[] ~f:(fun acc f_row ->
-        List.fold g_mat ~init:acc ~f:(fun acc g_row ->
-            match MatchAction.pair f_row g_row ~f:(JoinExp.eval_exn merge) with
-            | None -> acc
-            | Some joined_row -> joined_row :: acc))
-    |> List.rev
-  | Compose (f, g) ->
-    let f_mat = get_mat config f in
-    let g_mat = get_mat config g in
-    List.fold f_mat ~init:[] ~f:(fun acc f_row ->
-        let f_action = MatchAction.get_action f_row in
-        let output_keys = Action.get_data f_action in
-        List.fold g_mat ~init:acc ~f:(fun acc g_row ->
-            if MatchAction.does_match output_keys g_row then
-              let f_matches = MatchAction.get_matches f_row in
-              let g_action = MatchAction.get_action g_row in
-              let composed_row = MatchAction.make f_matches g_action in
+  | TableLiteral mat -> mat
+  | TableSymbol symbol -> (
+    match List.find config.symbols ~f:(Symbol.( = ) symbol) with
+    | Some symbol -> get_mat config symbol
+    | None -> [])
+  | Compose (c1, c2) ->
+    let mat1 = eval c1 config in
+    let mat2 = eval c2 config in
+    List.fold mat1 ~init:[] ~f:(fun acc row1 ->
+        let action1 = MatchAction.get_action row1 in
+        let output_keys = Action.get_data action1 in
+        List.fold mat2 ~init:acc ~f:(fun acc row2 ->
+            if MatchAction.does_match output_keys row2 then
+              let matches1 = MatchAction.get_matches row1 in
+              let action2 = MatchAction.get_action row2 in
+              let composed_row = MatchAction.make matches1 action2 in
               composed_row :: acc
             else acc))
     |> List.rev
-  | Inverse f ->
-    (* Swap matches and actions *)
-    let f_mat = get_mat config f in
-    List.bind f_mat ~f:(fun row ->
+  | Join (c1, c2, alignment) ->
+    let mat1 = eval c1 config in
+    let mat2 = eval c2 config in
+    List.fold mat1 ~init:[] ~f:(fun acc row1 ->
+        List.fold mat2 ~init:acc ~f:(fun acc row2 ->
+            match
+              MatchAction.pair row1 row2 ~f:(JoinExp.eval_exn alignment)
+            with
+            | None -> acc
+            | Some joined_row -> joined_row :: acc))
+    |> List.rev
+  | Project (c, fields) ->
+    let mat = eval c config in
+    List.map mat ~f:(fun row ->
+        let matches = MatchAction.get_matches row in
+        let action = MatchAction.get_action row in
+        let filtered_matches =
+          Map.filter_keys matches ~f:(List.mem fields ~equal:String.equal)
+        in
+        let action_data = Action.get_data action in
+        let filtered_action_data =
+          Map.filter_keys action_data ~f:(List.mem fields ~equal:String.equal)
+        in
+        let filtered_action =
+          Action.make (Action.get_name action) filtered_action_data
+        in
+        MatchAction.make filtered_matches filtered_action)
+  | Filter (c, filter_matches) ->
+    let mat = eval c config in
+    List.filter_map mat ~f:(fun row ->
+        let row_matches = MatchAction.get_matches row in
+        let action = MatchAction.get_action row in
+        let action_data = Action.get_data action in
+        let all_filter_fields_present =
+          Map.for_alli filter_matches ~f:(fun ~key ~data:_ ->
+              Map.mem row_matches key)
+        in
+        if not all_filter_fields_present then None
+        else
+          (* Compute ρ.μ /\ μ *)
+          let intersection_matches =
+            Map.fold row_matches ~init:(Some row_matches)
+              ~f:(fun ~key ~data:row_match acc ->
+                match acc with
+                | None -> None
+                | Some result_map -> (
+                  match Map.find filter_matches key with
+                  | None -> Some result_map
+                  | Some filter_match -> (
+                    match Match.intersect row_match filter_match with
+                    | None -> None
+                    | Some intersected_match ->
+                      Some (Map.set result_map ~key ~data:intersected_match))))
+          in
+          match intersection_matches with
+          | None ->
+            (* ρ.μ /\ μ = empty, so filter out this row *)
+            None
+          | Some intersected_matches ->
+            (* Check if ρ.ν ∈ μ *)
+            let action_contained_in_filter =
+              Map.for_alli action_data
+                ~f:(fun ~key:field_name ~data:field_value ->
+                  match Map.find filter_matches field_name with
+                  | None ->
+                    (* Field not constrained by filter *)
+                    true
+                  | Some filter_match -> Match.matches field_value filter_match)
+            in
+            if action_contained_in_filter then
+              Some (MatchAction.make intersected_matches action)
+            else None)
+  | RenameKeys (c, renaming) ->
+    let mat = eval c config in
+    List.map mat ~f:(fun row ->
+        let matches = MatchAction.get_matches row in
+        let action = MatchAction.get_action row in
+        let renamed_matches = apply_field_renaming matches renaming in
+        MatchAction.make renamed_matches action)
+  | RenameActions (c, renaming) ->
+    let mat = eval c config in
+    List.map mat ~f:(fun row ->
+        let matches = MatchAction.get_matches row in
+        let action = MatchAction.get_action row in
+        let action_name = Action.get_name action in
+        let renamed_action_name = apply_action_renaming action_name renaming in
+        let renamed_action = Action.set_name renamed_action_name action in
+        MatchAction.make matches renamed_action)
+  | Invert c ->
+    let mat = eval c config in
+    List.bind mat ~f:(fun row ->
         let matches = MatchAction.get_matches row in
         let action = MatchAction.get_action row in
         let action_name = Action.get_name action in
@@ -110,17 +133,40 @@ let eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
         List.map args_combinations ~f:(fun args ->
             let new_action = Action.make action_name args in
             MatchAction.make new_matches new_action))
-  | MapOut (f, tfx) ->
-    let f_mat = get_mat config f in
-    List.map f_mat ~f:(fun row ->
+  | WriteData (c, assignments) ->
+    let mat = eval c config in
+    List.map mat ~f:(fun row ->
         let matches = MatchAction.get_matches row in
         let action = MatchAction.get_action row in
-        let transformed_action = apply_action_tfx action tfx in
-        MatchAction.make matches transformed_action)
-  | MapIn (f, tfx) ->
-    let f_mat = get_mat config f in
-    List.map f_mat ~f:(fun row ->
+        let updated_action =
+          apply_assignments_to_action action assignments config
+        in
+        MatchAction.make matches updated_action)
+  | WriteKey (c, assignments) ->
+    let mat = eval c config in
+    List.map mat ~f:(fun row ->
         let matches = MatchAction.get_matches row in
         let action = MatchAction.get_action row in
-        let transformed_matches = apply_match_tfx matches tfx in
-        MatchAction.make transformed_matches action)
+        let extended_matches =
+          apply_assignments_to_matches matches assignments config
+        in
+        MatchAction.make extended_matches action)
+
+and apply_field_renaming matches renaming =
+  List.fold renaming ~init:matches ~f:(fun acc (old_name, new_name) ->
+      match Map.find acc old_name with
+      | Some value ->
+        Map.remove acc old_name |> Map.set ~key:new_name ~data:value
+      | None -> acc)
+
+and apply_action_renaming action_name renaming =
+  List.fold renaming ~init:action_name ~f:(fun acc (old_name, new_name) ->
+      if String.(acc = old_name) then new_name else acc)
+
+and apply_assignments_to_action action assignments _config =
+  List.fold assignments ~init:action ~f:(fun acc (field, value) ->
+      Action.update_data acc field value)
+
+and apply_assignments_to_matches matches assignments _config =
+  List.fold assignments ~init:matches ~f:(fun acc (field, value) ->
+      Map.set acc ~key:field ~data:(Match.exact value))
