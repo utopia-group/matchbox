@@ -4,8 +4,6 @@ open Core
 open Gpl
 open Stijl
 (* open Controller_tests *)
-open Synthesizer_tests
-open Interpreter_tests
 
 (* let cvc5 = "/usr/bin/cvc5 --lang=sygus" *)
 
@@ -782,24 +780,44 @@ let () =
   run "Stijl"
     [
       "Interpreter", [
-        test_case "Transform table symbol" `Quick test_transform_table_symbol;
-        test_case "Transform compose" `Quick test_transform_compose;
-        test_case "Transform join" `Quick test_transform_join;
-        test_case "Transform project" `Quick test_transform_project;
-        test_case "Transform invert" `Quick test_transform_invert;
-        test_case "Transform filter" `Quick test_filter;
-        test_case "Bitvector expressions" `Quick test_bitvec_expressions;
-        test_case "TransformExpr to Clause encoding" `Quick test_transform_to_clause_encoding;
-        test_case "Filter action constraint" `Quick test_filter_action_constraint;
+        test_case "Empty table handling" `Quick Interpreter_tests.test_empty_table;
+        test_case "Unrelated clause" `Quick Interpreter_tests.test_unrelated_clause;
+        test_case "Id clause" `Quick Interpreter_tests.test_id;
+        test_case "Join clause" `Quick Interpreter_tests.test_join;
+        test_case "Inverse clause" `Quick Interpreter_tests.test_invert;
+        test_case "MapOut Project" `Quick Interpreter_tests.test_mapout_project;
+        test_case "MapOut SetTo" `Quick Interpreter_tests.test_mapout_setto;
+        test_case "MapIn Project" `Quick Interpreter_tests.test_mapin_project;
+        test_case "MapIn SetTo" `Quick Interpreter_tests.test_mapin_setto;
       ];
       "Synthesizer", [
         test_case "Id" `Quick Synthesizer_tests.test_id;
-        test_case "Compose" `Quick test_compose;
-        test_case "Inverse" `Quick test_inverse;
-        test_case "Multiple clause kinds" `Quick test_multiple_clause_kinds;
-        test_case "10-way Compose" `Quick test_10_way_compose;
-        test_case "Join" `Quick test_join;
-        test_case "Synthesis variety" `Quick test_synthesis_variety;
+        test_case "Compose" `Quick Synthesizer_tests.test_compose;
+        test_case "Inverse" `Quick Synthesizer_tests.test_invert;
+        test_case "Multiple clause kinds" `Quick Synthesizer_tests.test_multiple_clause_kinds;
+        test_case "10-way Compose" `Quick Synthesizer_tests.test_10_way_compose;
+        test_case "Join" `Quick Synthesizer_tests.test_join;
+        test_case "Synthesis variety" `Quick Synthesizer_tests.test_synthesis_variety;
+      ];
+      "SurfaceInterpreter", [
+        test_case "Transform table symbol" `Quick Surface_interpreter_tests.test_transform_table_symbol;
+        test_case "Transform compose" `Quick Surface_interpreter_tests.test_transform_compose;
+        test_case "Transform join" `Quick Surface_interpreter_tests.test_transform_join;
+        test_case "Transform project" `Quick Surface_interpreter_tests.test_transform_project;
+        test_case "Transform invert" `Quick Surface_interpreter_tests.test_transform_invert;
+        test_case "Transform filter" `Quick Surface_interpreter_tests.test_filter;
+        test_case "Bitvector expressions" `Quick Surface_interpreter_tests.test_bitvec_expressions;
+        test_case "TransformExpr to Clause encoding" `Quick Surface_interpreter_tests.test_transform_to_clause_encoding;
+        test_case "Filter action constraint" `Quick Surface_interpreter_tests.test_filter_action_constraint;
+      ];
+      "SurfaceSynthesizer", [
+        test_case "Id" `Quick Surface_synthesizer_tests.test_id;
+        test_case "Compose" `Quick Surface_synthesizer_tests.test_compose;
+        test_case "Inverse" `Quick Surface_synthesizer_tests.test_inverse;
+        test_case "Multiple clause kinds" `Quick Surface_synthesizer_tests.test_multiple_clause_kinds;
+        test_case "10-way Compose" `Quick Surface_synthesizer_tests.test_10_way_compose;
+        test_case "Join" `Quick Surface_synthesizer_tests.test_join;
+        test_case "Synthesis variety" `Quick Surface_synthesizer_tests.test_synthesis_variety;
       ]
       (* "Controller lifecycle", [
         test_case "switch on/off" `Quick test_switch_lifecycle;

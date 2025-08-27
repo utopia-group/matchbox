@@ -1,6 +1,12 @@
 (test
  (name stijl_test)
  (libraries stijl gpl alcotest core)
- (modules stijl_test controller_tests synthesizer_tests interpreter_tests)
+ (modules
+  stijl_test
+  controller_tests
+  synthesizer_tests
+  interpreter_tests
+  surface_synthesizer_tests
+  surface_interpreter_tests)
  (action
   (run %{exe:stijl_test.exe} --verbose)))
