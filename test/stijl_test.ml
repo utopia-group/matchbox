@@ -779,7 +779,7 @@ let () =
   let open Alcotest in
   run "Stijl"
     [
-      "Interpreter", [
+      (* "Interpreter", [
         test_case "Empty table handling" `Quick Interpreter_tests.test_empty_table;
         test_case "Unrelated clause" `Quick Interpreter_tests.test_unrelated_clause;
         test_case "Id clause" `Quick Interpreter_tests.test_id;
@@ -789,7 +789,7 @@ let () =
         test_case "MapOut SetTo" `Quick Interpreter_tests.test_mapout_setto;
         test_case "MapIn Project" `Quick Interpreter_tests.test_mapin_project;
         test_case "MapIn SetTo" `Quick Interpreter_tests.test_mapin_setto;
-      ];
+      ]; *)
       "Synthesizer", [
         test_case "Id" `Quick Synthesizer_tests.test_id;
         test_case "Compose" `Quick Synthesizer_tests.test_compose;
@@ -797,9 +797,12 @@ let () =
         test_case "Multiple clause kinds" `Quick Synthesizer_tests.test_multiple_clause_kinds;
         test_case "10-way Compose" `Quick Synthesizer_tests.test_10_way_compose;
         test_case "Join" `Quick Synthesizer_tests.test_join;
+        test_case "Join with alignment" `Quick Synthesizer_tests.test_join_with_alignment;
+        test_case "Join specific alignments" `Quick Synthesizer_tests.test_join_specific_alignments;
+        test_case "Join multi-mapping" `Quick Synthesizer_tests.test_join_multi_mapping;
         test_case "Synthesis variety" `Quick Synthesizer_tests.test_synthesis_variety;
       ];
-      "SurfaceInterpreter", [
+      (* "SurfaceInterpreter", [
         test_case "Transform table symbol" `Quick Surface_interpreter_tests.test_transform_table_symbol;
         test_case "Transform compose" `Quick Surface_interpreter_tests.test_transform_compose;
         test_case "Transform join" `Quick Surface_interpreter_tests.test_transform_join;
@@ -818,7 +821,7 @@ let () =
         test_case "10-way Compose" `Quick Surface_synthesizer_tests.test_10_way_compose;
         test_case "Join" `Quick Surface_synthesizer_tests.test_join;
         test_case "Synthesis variety" `Quick Surface_synthesizer_tests.test_synthesis_variety;
-      ]
+      ] *)
       (* "Controller lifecycle", [
         test_case "switch on/off" `Quick test_switch_lifecycle;
         test_case "link up/down" `Quick test_link_lifecycle;

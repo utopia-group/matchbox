@@ -28,8 +28,7 @@ let test_compose () =
   let open BaseLogic in
   let phi (cand : t) =
     match cand.definition with
-    | Clause.Compose (g, h) ->
-      String.(g.name = "F0" && h.name = "F1" && cand.defined.name = "F2")
+    | Clause.Compose (g, h) -> String.(g.name = "F0" && h.name = "F1")
     | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
@@ -37,15 +36,18 @@ let test_compose () =
   let compose_prog =
     List.find_exn progs ~f:(fun p ->
         match p.definition with
-        | Clause.Compose (g, h) ->
-          String.(g.name = "F0" && h.name = "F1" && p.defined.name = "F2")
+        | Clause.Compose (g, h) -> String.(g.name = "F0" && h.name = "F1")
         | _ -> false)
   in
   match compose_prog.definition with
   | Clause.Compose (g, h) ->
-    check string "Defined is F2" "F2" compose_prog.defined.name;
     check string "Compose left is F0" "F0" g.name;
-    check string "Compose right is F1" "F1" h.name
+    check string "Compose right is F1" "F1" h.name;
+    (* Verify that defined symbol is new/different *)
+    check bool "Defined symbol is not F0" true
+      (not String.(compose_prog.defined.name = "F0"));
+    check bool "Defined symbol is not F1" true
+      (not String.(compose_prog.defined.name = "F1"))
   | _ -> fail "Expected Clause.Compose(F0,F1)"
 
 let test_invert () =
@@ -73,11 +75,8 @@ let test_multiple_clause_kinds () =
   let open BaseLogic in
   let phi (cand : t) =
     match cand.definition with
-    | Clause.Id f' when String.(f'.name = "F0" && cand.defined.name = "F0") ->
-      true
-    | Clause.Invert f' when String.(f'.name = "F1" && cand.defined.name = "F1")
-      ->
-      true
+    | Clause.Id f' when String.(f'.name = "F0") -> true
+    | Clause.Invert f' when String.(f'.name = "F1") -> true
     | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
@@ -100,30 +99,30 @@ let test_multiple_clause_kinds () =
   check bool "Found both clause types" true (has_id && has_inv)
 
 let test_10_way_compose () =
-  let assignments =
+  let composition_pairs =
     [
-      ("F2", "F0", "F1");
-      ("F4", "F2", "F3");
-      ("F6", "F4", "F5");
-      ("F8", "F6", "F7");
-      ("F10", "F8", "F9");
-      ("F12", "F10", "F11");
-      ("F14", "F12", "F13");
-      ("F16", "F14", "F15");
-      ("F18", "F16", "F17");
-      ("F20", "F18", "F19");
+      ("F0", "F1");
+      ("F2", "F3");
+      ("F4", "F5");
+      ("F6", "F7");
+      ("F8", "F9");
+      ("F10", "F11");
+      ("F12", "F13");
+      ("F14", "F15");
+      ("F16", "F17");
+      ("F18", "F19");
     ]
   in
   let want =
     Hash_set.of_list
       (module String)
-      (List.map assignments ~f:(fun (d, l, r) ->
-           sprintf "%s := Compose(%s,%s)" d l r))
+      (List.map composition_pairs ~f:(fun (l, r) ->
+           sprintf "Compose(%s,%s)" l r))
   in
   let key_of (cand : BaseLogic.t) =
     match cand.definition with
     | BaseLogic.Clause.Compose (g, h) ->
-      Some (sprintf "%s := Compose(%s,%s)" cand.defined.name g.name h.name)
+      Some (sprintf "Compose(%s,%s)" g.name h.name)
     | _ -> None
   in
   let phi (cand : BaseLogic.t) =
@@ -133,17 +132,16 @@ let test_10_way_compose () =
   let got =
     Hash_set.of_list (module String) (List.filter_map progs ~f:key_of)
   in
-  check int "Found all 10 assignments" 10 (Hash_set.length got);
-  List.iter assignments ~f:(fun (d, l, r) ->
-      let k = sprintf "%s := Compose(%s,%s)" d l r in
+  check int "Found all 10 composition patterns" 10 (Hash_set.length got);
+  List.iter composition_pairs ~f:(fun (l, r) ->
+      let k = sprintf "Compose(%s,%s)" l r in
       check bool ("Contains " ^ k) true (Hash_set.mem got k))
 
 let test_join () =
   let open BaseLogic in
   let phi (cand : t) =
     match cand.definition with
-    | Clause.Join (f, g, _) ->
-      String.(f.name = "F0" && g.name = "F1" && cand.defined.name = "F0")
+    | Clause.Join (f, g, _) -> String.(f.name = "F0" && g.name = "F1")
     | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
@@ -154,10 +152,141 @@ let test_join () =
   in
   match join_prog.definition with
   | Clause.Join (f, g, _) ->
-    check string "Defined is F0" "F0" join_prog.defined.name;
     check string "Join left is F0" "F0" f.name;
-    check string "Join right is F1" "F1" g.name
+    check string "Join right is F1" "F1" g.name;
+    check bool "Defined symbol is not F0" true
+      (not String.(join_prog.defined.name = "F0"));
+    check bool "Defined symbol is not F1" true
+      (not String.(join_prog.defined.name = "F1"))
   | _ -> fail "Expected Clause.Join(F0,F1,[])"
+
+let test_join_with_alignment () =
+  let open BaseLogic in
+  let phi (cand : t) =
+    match cand.definition with
+    | Clause.Join (f, g, alignment) ->
+      String.(f.name = "F0" && g.name = "F1")
+      && List.exists alignment ~f:(fun ((a1, a2), result) ->
+             String.(a1 = "fwd" && a2 = "allow" && result = "fwd_allow"))
+    | _ -> false
+  in
+  let progs = BaseSynthesizer.synth phi in
+  check bool "Found join with concrete alignment (fwd, allow) -> fwd_allow" true
+    (not (List.is_empty progs));
+  let join_prog =
+    List.find_exn progs ~f:(fun p ->
+        match p.definition with
+        | Clause.Join (_, _, alignment) ->
+          List.exists alignment ~f:(fun ((a1, a2), result) ->
+              String.(a1 = "fwd" && a2 = "allow" && result = "fwd_allow"))
+        | _ -> false)
+  in
+  match join_prog.definition with
+  | Clause.Join (f, g, alignment) ->
+    check string "Join left is F0" "F0" f.name;
+    check string "Join right is F1" "F1" g.name;
+    check bool "Defined symbol is not F0" true
+      (not String.(join_prog.defined.name = "F0"));
+    check bool "Defined symbol is not F1" true
+      (not String.(join_prog.defined.name = "F1"));
+    check bool "Alignment contains expected mapping" true
+      (List.exists alignment ~f:(fun ((a1, a2), result) ->
+           String.(a1 = "fwd" && a2 = "allow" && result = "fwd_allow")))
+  | _ -> fail "Expected Clause.Join with non-empty alignment"
+
+let test_join_specific_alignments () =
+  let open BaseLogic in
+  let test_fwd_drop () =
+    let phi (cand : t) =
+      match cand.definition with
+      | Clause.Join (f, g, alignment) ->
+        String.(f.name = "F0" && g.name = "F1")
+        && List.exists alignment ~f:(fun ((a1, a2), result) ->
+               String.(a1 = "fwd" && a2 = "drop" && result = "fwd_drop"))
+      | _ -> false
+    in
+    let progs = BaseSynthesizer.synth phi in
+    check bool "Found join with concrete alignment (fwd, drop) -> fwd_drop" true
+      (not (List.is_empty progs))
+  in
+
+  let test_route_mirror () =
+    let phi (cand : t) =
+      match cand.definition with
+      | Clause.Join (f, g, alignment) ->
+        String.(f.name = "F0" && g.name = "F1")
+        && List.exists alignment ~f:(fun ((a1, a2), result) ->
+               String.(a1 = "route" && a2 = "mirror" && result = "route_mirror"))
+      | _ -> false
+    in
+    let progs = BaseSynthesizer.synth phi in
+    check bool
+      "Found join with concrete alignment (route, mirror) -> route_mirror" true
+      (not (List.is_empty progs))
+  in
+
+  let test_multi_mapping_concrete () =
+    let phi (cand : t) =
+      match cand.definition with
+      | Clause.Join (f, g, alignment) ->
+        String.(f.name = "F0" && g.name = "F1")
+        && List.exists alignment ~f:(fun ((a1, a2), result) ->
+               String.(
+                 a1 = "fwd" && a2 = "tag_vlan" && result = "fwd_with_vlan"))
+        && List.exists alignment ~f:(fun ((a1, a2), result) ->
+               String.(a1 = "drop" && a2 = "tag_vlan" && result = "drop_tagged"))
+      | _ -> false
+    in
+    let progs = BaseSynthesizer.synth phi in
+    check bool "Found join with concrete multi-mapping alignment" true
+      (not (List.is_empty progs))
+  in
+
+  test_fwd_drop ();
+  test_route_mirror ();
+  test_multi_mapping_concrete ()
+
+let test_join_multi_mapping () =
+  let open BaseLogic in
+  let phi (cand : t) =
+    match cand.definition with
+    | Clause.Join (f, g, alignment) ->
+      String.(f.name = "F0" && g.name = "F1")
+      && List.exists alignment ~f:(fun ((a1, a2), result) ->
+             String.(a1 = "fwd" && a2 = "tag_vlan" && result = "fwd_with_vlan"))
+      && List.exists alignment ~f:(fun ((a1, a2), result) ->
+             String.(a1 = "drop" && a2 = "tag_vlan" && result = "drop_tagged"))
+    | _ -> false
+  in
+  let progs = BaseSynthesizer.synth phi in
+  check bool "Found concrete multi-mapping join with fwd+tag_vlan pattern" true
+    (not (List.is_empty progs));
+  let multi_join_prog =
+    List.find_exn progs ~f:(fun p ->
+        match p.definition with
+        | Clause.Join (_, _, alignment) ->
+          List.exists alignment ~f:(fun ((a1, a2), result) ->
+              String.(a1 = "fwd" && a2 = "tag_vlan" && result = "fwd_with_vlan"))
+          && List.exists alignment ~f:(fun ((a1, a2), result) ->
+                 String.(
+                   a1 = "drop" && a2 = "tag_vlan" && result = "drop_tagged"))
+        | _ -> false)
+  in
+  match multi_join_prog.definition with
+  | Clause.Join (f, g, alignment) ->
+    check bool "Defined symbol is not F0" true
+      (not String.(multi_join_prog.defined.name = "F0"));
+    check bool "Defined symbol is not F1" true
+      (not String.(multi_join_prog.defined.name = "F1"));
+    check string "Join left is F0" "F0" f.name;
+    check string "Join right is F1" "F1" g.name;
+    check bool "Contains fwd+tag_vlan->fwd_with_vlan mapping" true
+      (List.exists alignment ~f:(fun ((a1, a2), result) ->
+           String.(a1 = "fwd" && a2 = "tag_vlan" && result = "fwd_with_vlan")));
+    check bool "Contains drop+tag_vlan->drop_tagged mapping" true
+      (List.exists alignment ~f:(fun ((a1, a2), result) ->
+           String.(a1 = "drop" && a2 = "tag_vlan" && result = "drop_tagged")))
+  | _ -> fail "Expected Clause.Join with concrete multi-mapping alignment"
 
 (* Test that synthesizer can find various kinds of clauses for the same target *)
 let test_synthesis_variety () =
