@@ -249,10 +249,16 @@ module MatchTfx = struct
     | SubK of expr * Bit.Vector.t
   [@@deriving sexp, compare]
 
+  let rec e_fvs : expr -> String.Set.t = function 
+    | Var x -> String.Set.singleton x
+    | Match _ -> String.Set.empty
+    | AddK (e, _) | SubK(e,_) ->
+      e_fvs e
+
   type t = 
     | Project of string list
     | SetTo of string * expr
-    | Filter of (Semantics.Match.t) Map.M(String).t
+    | Filter of (Semantics.Match.t) String.Map.t
   [@@deriving sexp, compare]
 end
 
@@ -263,6 +269,12 @@ module ActionTfx = struct
     | AddK of expr * Bit.Vector.t
     | SubK of expr * Bit.Vector.t
   [@@deriving sexp, compare]
+
+  let rec e_fvs : expr -> String.Set.t = function 
+    | Var x -> String.Set.singleton x
+    | Data _ -> String.Set.empty
+    | AddK (e, _) | SubK(e,_) ->
+      e_fvs e
 
   type t = 
     | Project of string list
@@ -547,7 +559,7 @@ module SurfaceLogic = struct
   }
 
   let to_string {defined; definition} =
-    sprintf "%s := %s" defined.name (TransformExpr.to_string definition)
+    sprintf "%s o-- %s" defined.name (TransformExpr.to_string definition)
 
   let define_table symbol expr = {defined = symbol; definition = expr}
 end

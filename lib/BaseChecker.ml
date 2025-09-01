@@ -20,15 +20,39 @@ let rec match_expr_type ctx e =
     assert (w = Bit.Vector.length bv);
     (w,mk)
 
+let rec action_expr_type ctx e = 
+  let open ActionTfx in 
+  match e with 
+  | Var x ->
+    let w, mk = Type.find_matchtype_exn ctx x in 
+    assert (Type.mkeq Exact mk);
+    w
+  | Data bv -> 
+    Bit.Vector.length bv
+  | AddK (e, bv) | SubK(e, bv) ->
+    let w = action_expr_type ctx e in
+    let w' = Bit.Vector.length bv in 
+    assert (w = w');
+    w
 
 let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : (int * Type.match_kind) String.Map.t) : (int * Type.match_kind) String.Map.t =
-let open MatchTfx in
+  let open MatchTfx in
   match tfx with 
   | Project vars -> 
     Map.filter_keys rowtype ~f:(List.mem vars ~equal:String.equal)
   | SetTo (x, e) -> 
     Map.set rowtype ~key:x ~data:(match_expr_type ctx e)
-  | Filter _matches -> rowtype
+  | Filter _ -> rowtype
+
+let data_tfx_type (ctx : Type.ctx) tfx (rowtype : int String.Map.t) : int String.Map.t = 
+  let open ActionTfx in 
+  match tfx with 
+  | Project vars -> 
+    Map.filter_keys rowtype ~f:(List.mem vars ~equal:String.equal)
+  | SetTo(x, e) ->
+    Map.set rowtype ~key:x ~data:(action_expr_type ctx e)
+  | Filter _ -> rowtype
+    
 
 let clause_type (ctx : Type.ctx) (clause : Clause.t) = 
   match clause with 
@@ -54,11 +78,12 @@ let clause_type (ctx : Type.ctx) (clause : Clause.t) =
     Type.(Table {gtype with keys = ftype.keys})
   | Invert f -> 
     let ftype = Type.find_table_exn ctx f.name in
-    (* Add cispec that f is invertible *)
     Type.(Table (invert_table ftype))
-
-  | MapOut (_,_) ->
-    failwith "todo"
+  | MapOut (f,tfx) ->
+    let tbl = Type.find_table_exn ctx f.name in
+    let data_types = Type.get_data tbl in  
+    let data_types' = data_tfx_type ctx tfx data_types in 
+    Type.(Table {tbl with data = data_types'})
   | MapIn (f,tfx) ->
     let tbl = Type.find_table_exn ctx f.name in 
     let in_match_type = tbl.keys in
@@ -66,5 +91,3 @@ let clause_type (ctx : Type.ctx) (clause : Clause.t) =
     Type.(Table {tbl with 
       keys = out_match_typ
     })
-
-

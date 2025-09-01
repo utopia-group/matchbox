@@ -106,6 +106,18 @@ module Match = struct
     | Lpm (bv, _) -> (Bit.Vector.length bv, Type.LPM)
     | Ternary tv -> (Trit.Vector.length tv, Type.Ternary)
 
+  let map_to_bexpr (matches : t String.Map.t) : Gpl.BExpr.t = 
+    let open Gpl in 
+    let open Gpl.BExpr in
+    Map.fold matches ~init:true_ ~f:(fun ~key ~data phi -> and_ phi(
+        let size = length data in
+        let x = Expr.var (Var.make key size) in 
+        let v,m = to_mask_pair data in 
+        let valu = Expr.bvi (Bit.Vector.to_int v) size in
+        let mask = Expr.bvi (Bit.Vector.to_int m) size in 
+        TComp(Eq, BinOp(BAnd, x, mask),
+                  BinOp(BAnd, valu, mask))))
+
 end
 
 

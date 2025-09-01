@@ -258,7 +258,6 @@ module Vector = struct
     end 
     | _, _ -> failwithf "uneven intersection widths %d <> %d " (List.length cube1) (List.length cube2) ()
 
-
 end
 
 include Trit
