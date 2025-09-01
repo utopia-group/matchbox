@@ -13,9 +13,9 @@ let test_id () =
     | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
-  check bool "Found at least one Id(F2)" true (not (List.is_empty progs));
+  check bool "Found at least one Id(F2)" true (not (Set.is_empty progs));
   let identity_prog =
-    List.find_exn progs ~f:(fun p ->
+    Set.find_exn progs ~f:(fun p ->
         match p.definition with Clause.Id _ -> true | _ -> false)
   in
   match identity_prog with
@@ -32,9 +32,9 @@ let test_compose () =
     | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
-  check bool "Found at least one composition" true (not (List.is_empty progs));
+  check bool "Found at least one composition" true (not (Set.is_empty progs));
   let compose_prog =
-    List.find_exn progs ~f:(fun p ->
+    Set.find_exn progs ~f:(fun p ->
         match p.definition with
         | Clause.Compose (g, h) -> String.(g.name = "F0" && h.name = "F1")
         | _ -> false)
@@ -59,9 +59,9 @@ let test_invert () =
     | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
-  check bool "Found at least one Invert(F3)" true (not (List.is_empty progs));
+  check bool "Found at least one Invert(F3)" true (not (Set.is_empty progs));
   let inv_prog =
-    List.find_exn progs ~f:(fun p ->
+    Set.find_exn progs ~f:(fun p ->
         match p.definition with Clause.Invert _ -> true | _ -> false)
   in
   match inv_prog with
@@ -82,13 +82,13 @@ let test_multiple_clause_kinds () =
   let progs = BaseSynthesizer.synth phi in
 
   let has_id =
-    List.exists progs ~f:(fun p ->
+    Set.exists progs ~f:(fun p ->
         match p.definition with
         | Clause.Id f' when String.(f'.name = "F0") -> true
         | _ -> false)
   in
   let has_inv =
-    List.exists progs ~f:(fun p ->
+    Set.exists progs ~f:(fun p ->
         match p.definition with
         | Clause.Invert f' when String.(f'.name = "F1") -> true
         | _ -> false)
@@ -114,7 +114,7 @@ let test_10_way_compose () =
     ]
   in
   let want =
-    Hash_set.of_list
+    Set.of_list
       (module String)
       (List.map composition_pairs ~f:(fun (l, r) ->
            sprintf "Compose(%s,%s)" l r))
@@ -126,16 +126,14 @@ let test_10_way_compose () =
     | _ -> None
   in
   let phi (cand : BaseLogic.t) =
-    match key_of cand with Some k -> Hash_set.mem want k | None -> false
+    match key_of cand with Some k -> Set.mem want k | None -> false
   in
   let progs = BaseSynthesizer.synth phi in
-  let got =
-    Hash_set.of_list (module String) (List.filter_map progs ~f:key_of)
-  in
-  check int "Found all 10 composition patterns" 10 (Hash_set.length got);
+  let got = Set.filter_map (module String) progs ~f:key_of in
+  check int "Found all 10 composition patterns" 10 (Set.length got);
   List.iter composition_pairs ~f:(fun (l, r) ->
       let k = sprintf "Compose(%s,%s)" l r in
-      check bool ("Contains " ^ k) true (Hash_set.mem got k))
+      check bool ("Contains " ^ k) true (Set.mem got k))
 
 let test_join () =
   let open BaseLogic in
@@ -145,9 +143,9 @@ let test_join () =
     | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
-  check bool "Found at least one join" true (not (List.is_empty progs));
+  check bool "Found at least one join" true (not (Set.is_empty progs));
   let join_prog =
-    List.find_exn progs ~f:(fun p ->
+    Set.find_exn progs ~f:(fun p ->
         match p.definition with Clause.Join _ -> true | _ -> false)
   in
   match join_prog.definition with
@@ -172,9 +170,9 @@ let test_join_with_alignment () =
   in
   let progs = BaseSynthesizer.synth phi in
   check bool "Found join with concrete alignment (fwd, allow) -> fwd_allow" true
-    (not (List.is_empty progs));
+    (not (Set.is_empty progs));
   let join_prog =
-    List.find_exn progs ~f:(fun p ->
+    Set.find_exn progs ~f:(fun p ->
         match p.definition with
         | Clause.Join (_, _, alignment) ->
           List.exists alignment ~f:(fun ((a1, a2), result) ->
@@ -207,7 +205,7 @@ let test_join_specific_alignments () =
     in
     let progs = BaseSynthesizer.synth phi in
     check bool "Found join with concrete alignment (fwd, drop) -> fwd_drop" true
-      (not (List.is_empty progs))
+      (not (Set.is_empty progs))
   in
 
   let test_route_mirror () =
@@ -222,7 +220,7 @@ let test_join_specific_alignments () =
     let progs = BaseSynthesizer.synth phi in
     check bool
       "Found join with concrete alignment (route, mirror) -> route_mirror" true
-      (not (List.is_empty progs))
+      (not (Set.is_empty progs))
   in
 
   let test_multi_mapping_concrete () =
@@ -239,7 +237,7 @@ let test_join_specific_alignments () =
     in
     let progs = BaseSynthesizer.synth phi in
     check bool "Found join with concrete multi-mapping alignment" true
-      (not (List.is_empty progs))
+      (not (Set.is_empty progs))
   in
 
   test_fwd_drop ();
@@ -260,9 +258,9 @@ let test_join_multi_mapping () =
   in
   let progs = BaseSynthesizer.synth phi in
   check bool "Found concrete multi-mapping join with fwd+tag_vlan pattern" true
-    (not (List.is_empty progs));
+    (not (Set.is_empty progs));
   let multi_join_prog =
-    List.find_exn progs ~f:(fun p ->
+    Set.find_exn progs ~f:(fun p ->
         match p.definition with
         | Clause.Join (_, _, alignment) ->
           List.exists alignment ~f:(fun ((a1, a2), result) ->
@@ -303,16 +301,10 @@ let test_synthesis_variety () =
     | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
-  check bool "Found multiple synthesis options" true (List.length progs >= 2);
-  let clause_types =
-    List.map progs ~f:(fun p ->
-        match p.definition with
-        | Clause.Id _ -> "Id"
-        | Clause.Invert _ -> "Invert"
-        | Clause.MapOut _ -> "MapOut"
-        | Clause.MapIn _ -> "MapIn"
-        | _ -> "Other")
-    |> Set.of_list (module String)
-  in
-  check bool "Has identity" true (Set.mem clause_types "Id");
-  check bool "Has Invert" true (Set.mem clause_types "Invert")
+  check bool "Found multiple synthesis options" true (Set.length progs >= 2);
+  check bool "Has identity" true
+    (Set.exists progs ~f:(fun p ->
+         match p.definition with Clause.Id _ -> true | _ -> false));
+  check bool "Has Invert" true
+    (Set.exists progs ~f:(fun p ->
+         match p.definition with Clause.Invert _ -> true | _ -> false))

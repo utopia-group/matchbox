@@ -16,7 +16,7 @@ module Key = struct
   include Comparable.Make (T)
 end
 
-let synth ?(max_depth = 4) (phi : t -> bool) : t list =
+let synth ?(max_depth = 4) (phi : t -> bool) : Set.M(Key).t =
   (* Symbol universe *)
   let symbols : Symbol.t list =
     List.init 32 ~f:(fun i -> Symbol.make (sprintf "F%d" i) [] 0)
@@ -24,13 +24,13 @@ let synth ?(max_depth = 4) (phi : t -> bool) : t list =
 
   let mk f def : t = {defined = f; definition = def} in
 
-  let seeds : t list =
+  let seeds : Set.M(Key).t =
     let ids = List.map symbols ~f:(fun f -> mk f (Clause.Id f)) in
     let invs = List.map symbols ~f:(fun f -> mk f (Clause.Invert f)) in
-    ids @ invs
+    Set.of_list (module Key) (ids @ invs)
   in
 
-  let dedup_by_key (xs : t list) : t list =
+  let _dedup_by_key (xs : t list) : t list =
     fst
       (List.fold_right xs
          ~init:([], Set.empty (module Key))
@@ -42,7 +42,6 @@ let synth ?(max_depth = 4) (phi : t -> bool) : t list =
     [
       "fwd";
       "drop";
-      "forward";
       "route";
       "tag_vlan";
       "load_balance";
@@ -79,7 +78,7 @@ let synth ?(max_depth = 4) (phi : t -> bool) : t list =
         ];
         [
           (("route", "mirror"), "route_mirror");
-          (("forward", "drop"), "conditional_fwd");
+          (("fwd", "drop"), "conditional_fwd");
         ];
         [
           (("allow", "setgroup_eth"), "allow_with_group");
@@ -90,7 +89,7 @@ let synth ?(max_depth = 4) (phi : t -> bool) : t list =
     [[]] @ single_mappings @ multi_mappings
   in
 
-  let expand (p : t) : t list =
+  let expand (p : t) : Set.M(Key).t =
     let f = p.defined in
     let fresh_symbols =
       List.filter symbols ~f:(fun s -> Symbol.compare s f <> 0)
@@ -131,35 +130,37 @@ let synth ?(max_depth = 4) (phi : t -> bool) : t list =
               let new_defined = List.nth_exn available_symbols symbol_idx in
               mk new_defined (Clause.Join (f, g, alignment))))
     in
-    base @ comps_rebound @ joins
+    Set.of_list (module Key) (base @ comps_rebound @ joins)
   in
 
   depth := 0;
 
-  let scan_layer (layer : t list) : t list = List.filter layer ~f:phi in
+  let scan_layer (layer : Set.M(Key).t) : Set.M(Key).t =
+    Set.filter layer ~f:phi
+  in
 
-  let seen0 = Set.of_list (module Key) seeds in
-  let sols0 = scan_layer seeds in
-  if not (List.is_empty sols0) then (
-    printf "Depth reached: %d\n%!" !depth;
-    sols0)
-  else if max_depth = 0 then failwith "Depth limit reached"
-  else
-    let rec grow (current_layer : t list) (seen : Set.M(Key).t) : t list =
+  let rec grow (current_layer : Set.M(Key).t) (seen : Set.M(Key).t) :
+      Set.M(Key).t =
+    if !depth > max_depth then failwith "Depth limit reached";
+
+    let sols = scan_layer current_layer in
+    if not (Set.is_empty sols) then (
+      printf "Depth reached: %d\n%!" !depth;
+      sols)
+    else (
       depth := !depth + 1;
-      if !depth > max_depth then failwith "Depth limit reached";
+
       let grown =
-        current_layer |> List.concat_map ~f:expand |> dedup_by_key
-        |> List.filter ~f:(fun p -> not (Set.mem seen p))
+        current_layer
+        |> Set.fold
+             ~init:(Set.empty (module Key))
+             ~f:(fun acc entry -> Set.union acc (expand entry))
+        |> Set.filter ~f:(fun p -> not (Set.mem seen p))
       in
-      if List.is_empty grown then failwith "Search space exhausted";
-      let seen' = List.fold grown ~init:seen ~f:Set.add in
-      let sols = scan_layer grown in
-      if not (List.is_empty sols) then (
-        printf "Depth reached: %d\n%!" !depth;
-        sols)
-      else (
-        if !depth = max_depth then failwith "Depth limit reached";
-        grow grown seen')
-    in
-    grow seeds seen0
+
+      if Set.is_empty grown then failwith "Search space exhausted";
+
+      let seen' = Set.union seen grown in
+      grow grown seen')
+  in
+  grow seeds seeds
