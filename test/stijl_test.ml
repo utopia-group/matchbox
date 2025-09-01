@@ -801,6 +801,11 @@ let () =
         test_case "Join specific alignments" `Quick Synthesizer_tests.test_join_specific_alignments;
         test_case "Join multi-mapping" `Quick Synthesizer_tests.test_join_multi_mapping;
         test_case "Synthesis variety" `Quick Synthesizer_tests.test_synthesis_variety;
+        test_case "MapOut action transformations" `Quick Synthesizer_tests.test_mapout_action_transformations;
+        test_case "MapIn match transformations" `Quick Synthesizer_tests.test_mapin_match_transformations;
+        test_case "Specific action transformations" `Quick Synthesizer_tests.test_specific_action_transformations;
+        test_case "Specific match transformations" `Quick Synthesizer_tests.test_specific_match_transformations;
+        test_case "Mixed transformation synthesis" `Quick Synthesizer_tests.test_mixed_transformation_synthesis;
       ];
       (* "SurfaceInterpreter", [
         test_case "Transform table symbol" `Quick Surface_interpreter_tests.test_transform_table_symbol;

@@ -1,18 +1,110 @@
+[@@@warning "-32"]
+
 open Core
 open Stijl
 open Alcotest
 
 let f i = BaseLogic.Symbol.make (sprintf "F%d" i) [] 0
 
+let create_basic_type_context () : Type.ctx =
+  let open Type in
+  Map.of_alist_exn
+    (module String)
+    [
+      ( "F0",
+        Table
+          {
+            keys =
+              Map.of_alist_exn
+                (module String)
+                [
+                  ("src_ip", (32, Exact));
+                  ("dst_ip", (32, Exact));
+                  ("src_port", (16, Exact));
+                ];
+            actions = ["fwd"; "drop"; "route"];
+            data =
+              Map.of_alist_exn (module String) [("port", 16); ("next_hop", 32)];
+          } );
+      ( "F1",
+        Table
+          {
+            keys =
+              Map.of_alist_exn
+                (module String)
+                [("vlan_id", (16, Exact)); ("protocol", (8, Exact))];
+            actions = ["allow"; "deny"; "tag_vlan"; "mirror"];
+            data =
+              Map.of_alist_exn
+                (module String)
+                [("vlan_tag", 16); ("mirror_port", 16)];
+          } );
+      ( "F2",
+        Table
+          {
+            keys =
+              Map.of_alist_exn
+                (module String)
+                [("dst_port", (16, Exact)); ("priority", (8, Exact))];
+            actions = ["fwd"; "load_balance"; "broadcast"];
+            data =
+              Map.of_alist_exn (module String) [("action", 32); ("weight", 8)];
+          } );
+      ( "F3",
+        Table
+          {
+            keys =
+              Map.of_alist_exn
+                (module String)
+                [("src_ip", (32, Exact)); ("dst_ip", (32, Exact))];
+            actions = ["encap"; "decap"; "rewrite"];
+            data =
+              Map.of_alist_exn
+                (module String)
+                [("tunnel_id", 32); ("new_header", 64)];
+          } );
+    ]
+
+let create_extended_type_context () : Type.ctx =
+  let basic_ctx = create_basic_type_context () in
+  let open Type in
+  List.fold (List.range 4 32) ~init:basic_ctx ~f:(fun acc i ->
+      let name = sprintf "F%d" i in
+      let table =
+        {
+          keys =
+            Map.of_alist_exn
+              (module String)
+              [("src_ip", (32, Exact)); ("dst_ip", (32, Exact))];
+          actions = ["fwd"; "drop"];
+          data =
+            Map.of_alist_exn (module String) [("port", 16); ("next_hop", 32)];
+        }
+      in
+      Map.set acc ~key:name ~data:(Table table))
+
+let create_transformation_context () : Type.ctx =
+  let basic_ctx = create_extended_type_context () in
+  let open Type in
+  List.fold
+    [
+      ("new_dst", Match (32, Exact));
+      ("base_vlan", Match (16, Exact));
+      ("target_port", Match (16, Exact));
+    ]
+    ~init:basic_ctx
+    ~f:(fun acc (key, data) -> Map.set acc ~key ~data)
+
 let test_id () =
   let open BaseLogic in
+  let type_ctx = create_basic_type_context () in
   let target = f 2 in
   let phi (cand : t) =
     match cand.definition with
     | Clause.Id f' -> Symbol.(f' = target) && Symbol.(cand.defined = target)
     | _ -> false
   in
-  let progs = BaseSynthesizer.synth phi in
+  let progs = BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi in
   check bool "Found at least one Id(F2)" true (not (Set.is_empty progs));
   let identity_prog =
     Set.find_exn progs ~f:(fun p ->
@@ -26,12 +118,13 @@ let test_id () =
 
 let test_compose () =
   let open BaseLogic in
+  let type_ctx = create_basic_type_context () in
   let phi (cand : t) =
     match cand.definition with
     | Clause.Compose (g, h) -> String.(g.name = "F0" && h.name = "F1")
     | _ -> false
   in
-  let progs = BaseSynthesizer.synth phi in
+  let progs = BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi in
   check bool "Found at least one composition" true (not (Set.is_empty progs));
   let compose_prog =
     Set.find_exn progs ~f:(fun p ->
@@ -52,13 +145,14 @@ let test_compose () =
 
 let test_invert () =
   let open BaseLogic in
+  let type_ctx = create_basic_type_context () in
   let target = f 3 in
   let phi (cand : t) =
     match cand.definition with
     | Clause.Invert f' -> Symbol.(f' = target) && Symbol.(cand.defined = target)
     | _ -> false
   in
-  let progs = BaseSynthesizer.synth phi in
+  let progs = BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi in
   check bool "Found at least one Invert(F3)" true (not (Set.is_empty progs));
   let inv_prog =
     Set.find_exn progs ~f:(fun p ->
@@ -73,14 +167,14 @@ let test_invert () =
 (* Test that synthesizer can find both Id and Invert for different symbols *)
 let test_multiple_clause_kinds () =
   let open BaseLogic in
+  let type_ctx = create_basic_type_context () in
   let phi (cand : t) =
     match cand.definition with
     | Clause.Id f' when String.(f'.name = "F0") -> true
     | Clause.Invert f' when String.(f'.name = "F1") -> true
     | _ -> false
   in
-  let progs = BaseSynthesizer.synth phi in
-
+  let progs = BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi in
   let has_id =
     Set.exists progs ~f:(fun p ->
         match p.definition with
@@ -93,13 +187,13 @@ let test_multiple_clause_kinds () =
         | Clause.Invert f' when String.(f'.name = "F1") -> true
         | _ -> false)
   in
-
   check bool "Has identity clause" true has_id;
   check bool "Has Invert clause" true has_inv;
   check bool "Found both clause types" true (has_id && has_inv)
 
 let test_10_way_compose () =
-  let composition_pairs =
+  let open BaseLogic in
+  let composition_patterns : (string * string) list =
     [
       ("F0", "F1");
       ("F2", "F3");
@@ -113,36 +207,56 @@ let test_10_way_compose () =
       ("F18", "F19");
     ]
   in
-  let want =
-    Set.of_list
-      (module String)
-      (List.map composition_pairs ~f:(fun (l, r) ->
-           sprintf "Compose(%s,%s)" l r))
-  in
-  let key_of (cand : BaseLogic.t) =
+  let phi (cand : BaseLogic.t) : bool =
     match cand.definition with
-    | BaseLogic.Clause.Compose (g, h) ->
-      Some (sprintf "Compose(%s,%s)" g.name h.name)
-    | _ -> None
-  in
-  let phi (cand : BaseLogic.t) =
-    match key_of cand with Some k -> Set.mem want k | None -> false
+    | Clause.Compose (g, h) ->
+      List.exists composition_patterns ~f:(fun (rhs1, rhs2) ->
+          String.(g.name = rhs1 && h.name = rhs2))
+    | _ -> false
   in
   let progs = BaseSynthesizer.synth phi in
-  let got = Set.filter_map (module String) progs ~f:key_of in
-  check int "Found all 10 composition patterns" 10 (Set.length got);
-  List.iter composition_pairs ~f:(fun (l, r) ->
-      let k = sprintf "Compose(%s,%s)" l r in
-      check bool ("Contains " ^ k) true (Set.mem got k))
+  let assignments =
+    Set.to_list progs
+    |> List.map ~f:(fun (prog : BaseLogic.t) ->
+           match prog.definition with
+           | Clause.Compose (g, h) ->
+             sprintf "%s := Compose(%s,%s)" prog.defined.name g.name h.name
+           | _ -> "non-compose")
+  in
+  let assignment_msg = String.concat ~sep:"; " assignments in
+  check string "Concrete LHS assignments verified"
+    (String.length assignment_msg > 0 |> string_of_bool)
+    "true";
+  check int "Found all 10 composition patterns" 10 (Set.length progs);
+  List.iter composition_patterns ~f:(fun (rhs1, rhs2) ->
+      let found =
+        Set.exists progs ~f:(fun (prog : BaseLogic.t) ->
+            match prog.definition with
+            | Clause.Compose (g, h) -> String.(g.name = rhs1 && h.name = rhs2)
+            | _ -> false)
+      in
+      check bool (sprintf "Contains Fx := Compose(%s,%s)" rhs1 rhs2) true found);
+  Set.iter progs ~f:(fun (prog : BaseLogic.t) ->
+      match prog.definition with
+      | Clause.Compose (g, h) ->
+        (* Verify LHS symbol is different from RHS *)
+        check bool
+          (sprintf "LHS %s is concrete and distinct from RHS %s,%s"
+             prog.defined.name g.name h.name)
+          true
+          (not
+             String.(prog.defined.name = g.name || prog.defined.name = h.name))
+      | _ -> fail "Expected only Compose clauses")
 
 let test_join () =
   let open BaseLogic in
+  let type_ctx = create_basic_type_context () in
   let phi (cand : t) =
     match cand.definition with
     | Clause.Join (f, g, _) -> String.(f.name = "F0" && g.name = "F1")
     | _ -> false
   in
-  let progs = BaseSynthesizer.synth phi in
+  let progs = BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi in
   check bool "Found at least one join" true (not (Set.is_empty progs));
   let join_prog =
     Set.find_exn progs ~f:(fun p ->
@@ -308,3 +422,215 @@ let test_synthesis_variety () =
   check bool "Has Invert" true
     (Set.exists progs ~f:(fun p ->
          match p.definition with Clause.Invert _ -> true | _ -> false))
+
+(* Test synthesis of various ActionTfx transformations *)
+let test_mapout_action_transformations () =
+  let open BaseLogic in
+  let type_ctx = create_transformation_context () in
+  let target = f 0 in
+  let sample_data = Bit.Vector.of_int ~width:32 42 in
+  let phi (cand : t) =
+    match cand.definition with
+    | Clause.MapOut (f', tfx) when Symbol.(f' = target) -> (
+      match tfx with
+      | ActionTfx.Project [] -> true
+      | ActionTfx.Project
+          ["src_ip"; "dst_ip"; "src_port"; "dst_port"; "vlan_id"; "protocol"] ->
+        true
+      | ActionTfx.Project ["src_ip"; "dst_ip"] -> true
+      | ActionTfx.SetTo ("action", ActionTfx.Data data)
+        when Bit.Vector.compare data sample_data = 0 ->
+        true
+      | ActionTfx.SetTo ("dst_ip", ActionTfx.Var "new_dst") -> true
+      | ActionTfx.SetTo
+          ("vlan_id", ActionTfx.AddK (ActionTfx.Var "base_vlan", _)) ->
+        true
+      | ActionTfx.Filter _ -> true
+      | _ -> false)
+    | _ -> false
+  in
+  let progs = BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi in
+  check bool "Found MapOut with various transformations" true
+    (Set.length progs >= 4);
+  check bool "Has Project transformation" true
+    (Set.exists progs ~f:(fun p ->
+         match p.definition with
+         | Clause.MapOut (_, ActionTfx.Project _) -> true
+         | _ -> false));
+  check bool "Has SetTo transformation" true
+    (Set.exists progs ~f:(fun p ->
+         match p.definition with
+         | Clause.MapOut (_, ActionTfx.SetTo (_, _)) -> true
+         | _ -> false));
+  check bool "Has Filter transformation" true
+    (Set.exists progs ~f:(fun p ->
+         match p.definition with
+         | Clause.MapOut (_, ActionTfx.Filter _) -> true
+         | _ -> false))
+
+(* Test synthesis of various MatchTfx transformations *)
+let test_mapin_match_transformations () =
+  let open BaseLogic in
+  let type_ctx = create_transformation_context () in
+  let target = f 0 in
+  let phi (cand : t) =
+    match cand.definition with
+    | Clause.MapIn (f', tfx) when Symbol.(f' = target) -> (
+      match tfx with
+      | MatchTfx.Project [] -> true
+      | MatchTfx.Project fields when List.length fields > 0 -> true
+      | MatchTfx.SetTo (_, MatchTfx.Match _) -> true
+      | MatchTfx.SetTo (_, MatchTfx.Var _) -> true
+      | MatchTfx.SetTo (_, MatchTfx.AddK (_, _)) -> true
+      | MatchTfx.Filter _ -> true
+      | _ -> false)
+    | _ -> false
+  in
+  let progs = BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi in
+  check bool "Found MapIn with various transformations" true
+    (Set.length progs >= 4);
+  check bool "Has Project transformation" true
+    (Set.exists progs ~f:(fun p ->
+         match p.definition with
+         | Clause.MapIn (_, MatchTfx.Project _) -> true
+         | _ -> false));
+  check bool "Has SetTo transformation" true
+    (Set.exists progs ~f:(fun p ->
+         match p.definition with
+         | Clause.MapIn (_, MatchTfx.SetTo (_, _)) -> true
+         | _ -> false));
+  check bool "Has Filter transformation" true
+    (Set.exists progs ~f:(fun p ->
+         match p.definition with
+         | Clause.MapIn (_, MatchTfx.Filter _) -> true
+         | _ -> false))
+
+(* Test specific ActionTfx transformation types *)
+let test_specific_action_transformations () =
+  let open BaseLogic in
+  let type_ctx = create_transformation_context () in
+  let target = f 0 in
+  let sample_data = Bit.Vector.of_int ~width:32 42 in
+  let phi_setto_data (cand : t) =
+    match cand.definition with
+    | Clause.MapOut (f', ActionTfx.SetTo ("action", ActionTfx.Data data))
+      when Symbol.(f' = target) && Bit.Vector.compare data sample_data = 0 ->
+      true
+    | _ -> false
+  in
+  let progs_data =
+    BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi_setto_data
+  in
+  check bool "Found SetTo with Data" true (not (Set.is_empty progs_data));
+  let phi_setto_addk (cand : t) =
+    match cand.definition with
+    | Clause.MapOut
+        ( f',
+          ActionTfx.SetTo
+            ("vlan_id", ActionTfx.AddK (ActionTfx.Var "base_vlan", _)) )
+      when Symbol.(f' = target) ->
+      true
+    | _ -> false
+  in
+  let progs_addk =
+    BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi_setto_addk
+  in
+  check bool "Found SetTo with AddK" true (not (Set.is_empty progs_addk));
+  let phi_project_fields (cand : t) =
+    match cand.definition with
+    | Clause.MapOut (f', ActionTfx.Project ["src_ip"; "dst_ip"])
+      when Symbol.(f' = target) ->
+      true
+    | _ -> false
+  in
+  let progs_project =
+    BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi_project_fields
+  in
+  check bool "Found Project with specific fields" true
+    (not (Set.is_empty progs_project))
+
+(* Test specific MatchTfx transformation types *)
+let test_specific_match_transformations () =
+  let open BaseLogic in
+  let type_ctx = create_transformation_context () in
+  let target = f 0 in
+  let sample_match_data = Bit.Vector.of_int ~width:32 192 in
+  let phi_setto_match (cand : t) =
+    match cand.definition with
+    | Clause.MapIn
+        ( f',
+          MatchTfx.SetTo ("src_ip", MatchTfx.Match (Semantics.Match.Exact data))
+        )
+      when Symbol.(f' = target) && Bit.Vector.compare data sample_match_data = 0
+      ->
+      true
+    | _ -> false
+  in
+  let progs_match =
+    BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi_setto_match
+  in
+  check bool "Found SetTo with Match" true (not (Set.is_empty progs_match));
+  let phi_setto_addk (cand : t) =
+    match cand.definition with
+    | Clause.MapIn
+        ( f',
+          MatchTfx.SetTo ("vlan_id", MatchTfx.AddK (MatchTfx.Var "base_vlan", _))
+        )
+      when Symbol.(f' = target) ->
+      true
+    | _ -> false
+  in
+  let progs_addk =
+    BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi_setto_addk
+  in
+  check bool "Found SetTo with AddK" true (not (Set.is_empty progs_addk));
+  let phi_filter (cand : t) =
+    match cand.definition with
+    | Clause.MapIn (f', MatchTfx.Filter filter_map)
+      when Symbol.(f' = target) && Map.mem filter_map "protocol" ->
+      true
+    | _ -> false
+  in
+  let progs_filter =
+    BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi_filter
+  in
+  check bool "Found Filter with specific field" true
+    (not (Set.is_empty progs_filter))
+
+(* Test that synthesis still works for combined transformation types *)
+let test_mixed_transformation_synthesis () =
+  let open BaseLogic in
+  let type_ctx = create_transformation_context () in
+  let target = f 0 in
+  let phi (cand : t) =
+    match cand.definition with
+    | Clause.MapOut (f', tfx) when Symbol.(f' = target) -> (
+      match tfx with
+      | ActionTfx.Project [] -> true
+      | ActionTfx.Project fields when List.length fields > 0 -> true
+      | ActionTfx.SetTo (_, _) -> true
+      | ActionTfx.Filter _ -> true
+      | _ -> false)
+    | Clause.MapIn (f', tfx) when Symbol.(f' = target) -> (
+      match tfx with
+      | MatchTfx.Project [] -> true
+      | MatchTfx.Project fields when List.length fields > 0 -> true
+      | MatchTfx.SetTo (_, _) -> true
+      | MatchTfx.Filter _ -> true
+      | _ -> false)
+    (* Remove Id and Invert to force exploration of MapOut/MapIn *)
+    | _ -> false
+  in
+  let progs = BaseSynthesizer.synth ~type_ctx:(Some type_ctx) phi in
+  let mapout_count =
+    Set.count progs ~f:(fun p ->
+        match p.definition with Clause.MapOut _ -> true | _ -> false)
+  in
+  let mapin_count =
+    Set.count progs ~f:(fun p ->
+        match p.definition with Clause.MapIn _ -> true | _ -> false)
+  in
+  check bool "Has MapOut transformations" true (mapout_count > 0);
+  check bool "Has MapIn transformations" true (mapin_count > 0);
+  check bool "Has sufficient transformation variety" true
+    (mapout_count >= 2 && mapin_count >= 2)
