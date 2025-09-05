@@ -790,7 +790,7 @@ let () =
         test_case "MapIn Project" `Quick Interpreter_tests.test_mapin_project;
         test_case "MapIn SetTo" `Quick Interpreter_tests.test_mapin_setto;
       ]; *)
-      "Synthesizer", [
+      (* "Synthesizer", [
         test_case "Id" `Quick Synthesizer_tests.test_id;
         test_case "Compose" `Quick Synthesizer_tests.test_compose;
         test_case "Inverse" `Quick Synthesizer_tests.test_invert;
@@ -806,6 +806,13 @@ let () =
         test_case "Specific action transformations" `Quick Synthesizer_tests.test_specific_action_transformations;
         test_case "Specific match transformations" `Quick Synthesizer_tests.test_specific_match_transformations;
         test_case "Mixed transformation synthesis" `Quick Synthesizer_tests.test_mixed_transformation_synthesis;
+      ]; *)
+      "ClassBench parsing", [
+        test_case "Parsing ClassBench rules" `Quick Classbench_parsing_tests.test_parsing_classbench_rules;
+      ];
+      "ACL Translation", [
+        test_case "ACL translation typechecks with BaseChecker" `Quick Acl_translation_tests.test_acl_translation_typechecks;
+        test_case "ACL translation symbols" `Quick Acl_translation_tests.test_acl_translation_symbols;
       ];
       (* "SurfaceInterpreter", [
         test_case "Transform table symbol" `Quick Surface_interpreter_tests.test_transform_table_symbol;

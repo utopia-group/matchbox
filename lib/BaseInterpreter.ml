@@ -103,10 +103,8 @@ let eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
         let action = MatchAction.get_action row in
         let action_name = Action.get_name action in
         let action_data = Action.get_data action in
-
         let new_matches = Map.map action_data ~f:Match.exact in
         let new_action_args = Map.map matches ~f:Match.unsafe_explicit_set in
-
         (* Handle multiple possible action arg combinations *)
         let args_combinations = ProvRow.pivot new_action_args in
         List.map args_combinations ~f:(fun args ->
