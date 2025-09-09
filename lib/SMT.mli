@@ -95,6 +95,8 @@ val bvslt : expr list -> expr
 val bvsgt : expr list -> expr
 val bvsge : expr list -> expr
 
+val apply : string -> expr list -> expr
+
 module Model : sig
     type 'a t = 'a Core.String.Map.t 
     val parse : string -> string t 
