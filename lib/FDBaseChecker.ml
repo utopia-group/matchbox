@@ -30,13 +30,13 @@ module DepFunDep = struct
   let implies (spec : itfc_spec) (symbol : Symbol.t) (fd : t) = 
     Option.filter (find_fd spec symbol) ~f:(fd_eq fd)
 
-  let check (ctx : itfc_spec) (gamma : Type.ctx) (clause : Clause.t) : t option =
+  let check (ctx : itfc_spec) (clause : Clause.t) : t option =
     let (let*) b f = Option.bind b ~f in 
     let (let+) b f = Option.map b ~f in
     match clause with 
     | Id f -> 
       find_fd ctx f
-    | Join (f, g, _) -> 
+    | Join (Id f, Id g, _) -> 
       let* f_fd = find_fd ctx f in
       let+ g_fd = find_fd ctx g in
       assert (Set.are_disjoint g_fd.target f_fd.target);
@@ -44,7 +44,7 @@ module DepFunDep = struct
         source = Set.union f_fd.source g_fd.source;
         target = Set.union g_fd.target g_fd.target;
       }
-    | Compose (f, g) -> 
+    | Compose (Id f, Id g) -> 
       let* f_fd = find_fd ctx f in 
       let+ g_fd = find_fd ctx g in
       assert (Set.equal f_fd.target g_fd.source);
@@ -54,14 +54,7 @@ module DepFunDep = struct
          source = f_fd.source;
          target = g_fd.target
       }
-    | Invert f -> 
-      let f_fd = inherent_fd gamma f in 
-      let f_inv_fd = { f_fd with 
-        source = f_fd.target;
-        target = f_fd.source
-      } in 
-      implies ctx f f_inv_fd
-    | MapOut(f, tfx) ->
+    | MapOut(Id f, tfx) ->
       let* f_fd = find_fd ctx f in 
       begin match tfx with 
         | Project xs -> 
@@ -78,9 +71,9 @@ module DepFunDep = struct
           {f_fd with target = Set.add f_fd.target d }
         | Filter _ ->  failwith "not sure how to filter outputs"
       end 
-    | MapIn(f, tfx) -> 
+    | MapIn(Id f, tfx) -> 
       let* f_fd = find_fd ctx f in 
-      match tfx with 
+      begin match tfx with 
       | Project keys ->
         (* It must be the case that f : keys -> f_fd.target *)
         let new_fd = {f_fd with source = String.Set.of_list keys} in
@@ -101,5 +94,7 @@ module DepFunDep = struct
         in
         let+ _ = implies ctx f filtered_fd in
         f_fd
+      end
+    | _  -> failwith "nomalize!!!!"
 end
 

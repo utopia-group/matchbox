@@ -44,8 +44,7 @@ let mk f def : t = {defined = f; definition = def}
 
 let seeds : Set.M(Key).t =
   let ids = List.map symbols ~f:(fun f -> mk f (Clause.Id f)) in
-  let invs = List.map symbols ~f:(fun f -> mk f (Clause.Invert f)) in
-  Set.of_list (module Key) (ids @ invs)
+  Set.of_list (module Key) ids
 
 let action_pool =
   [
@@ -151,15 +150,13 @@ let expand (p : t) (type_ctx : Type.ctx option) : Set.M(Key).t =
     List.take fresh_symbols total_count
     |> List.mapi ~f:(fun i new_symbol ->
            if i < map_out_count then
-             mk new_symbol (Clause.MapOut (f, List.nth_exn action_tfxs i))
+             mk new_symbol (Clause.MapOut (Id f, List.nth_exn action_tfxs i))
            else if i < map_out_count + map_in_count then
              mk new_symbol
-               (Clause.MapIn (f, List.nth_exn match_tfxs (i - map_out_count)))
+               (Clause.MapIn (Id f, List.nth_exn match_tfxs (i - map_out_count)))
            else if i = map_out_count + map_in_count then
              mk new_symbol (Clause.Id f)
-           else if i = map_out_count + map_in_count + 1 then
-             mk new_symbol (Clause.Invert f)
-           else failwith "Unexpected index")
+           else failwithf "Unexpected index %d" i ())
   in
   let comps_rebound =
     let action_tfxs = gen_action_tfxs () in
@@ -170,7 +167,7 @@ let expand (p : t) (type_ctx : Type.ctx option) : Set.M(Key).t =
           List.nth_exn fresh_symbols
             (base_count + (i % (List.length fresh_symbols - base_count)))
         in
-        mk new_defined (Clause.Compose (f, g)))
+        mk new_defined (Clause.Compose (Id f, Id g)))
   in
   let joins =
     let alignments = gen_join_alignments () in
@@ -185,7 +182,7 @@ let expand (p : t) (type_ctx : Type.ctx option) : Set.M(Key).t =
               ((alignment_idx * 10) + g_idx) % List.length available_symbols
             in
             let new_defined = List.nth_exn available_symbols symbol_idx in
-            mk new_defined (Clause.Join (f, g, alignment))))
+            mk new_defined (Clause.Join (Id f, Id g, alignment))))
   in
   base @ comps_rebound @ joins
   |> List.filter ~f:(typecheck_cand type_ctx)

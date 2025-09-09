@@ -4,8 +4,7 @@ open Semantics
 
 let get_mat (config : Config.t) (symbol : Symbol.t) : MatchActionTable.t =
   try
-    let provtable = Config.find_exn config symbol in
-    List.map provtable.rows ~f:(fun provrow -> provrow.row)
+    Config.find_exn config symbol 
   with _ -> []
 
 let rec apply_match_tfx matches tfx =
@@ -69,12 +68,12 @@ and eval_action_expr action expr =
     let neg_bv = Bit.Vector.(incr (not bv)) in
     Bit.Vector.(base_data + neg_bv)
 
-let eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
+let rec eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
   match clause with
   | Id f -> get_mat config f
   | Join (f, g, merge) ->
-    let f_mat = get_mat config f in
-    let g_mat = get_mat config g in
+    let f_mat = eval f config in
+    let g_mat = eval g config in
     List.fold f_mat ~init:[] ~f:(fun acc f_row ->
         List.fold g_mat ~init:acc ~f:(fun acc g_row ->
             match MatchAction.pair f_row g_row ~f:(JoinExp.eval_exn merge) with
@@ -82,8 +81,8 @@ let eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
             | Some joined_row -> joined_row :: acc))
     |> List.rev
   | Compose (f, g) ->
-    let f_mat = get_mat config f in
-    let g_mat = get_mat config g in
+    let f_mat = eval f config in
+    let g_mat = eval g config in
     List.fold f_mat ~init:[] ~f:(fun acc f_row ->
         let f_action = MatchAction.get_action f_row in
         let output_keys = Action.get_data f_action in
@@ -95,30 +94,15 @@ let eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
               composed_row :: acc
             else acc))
     |> List.rev
-  | Invert f ->
-    (* Swap matches and actions *)
-    let f_mat = get_mat config f in
-    List.bind f_mat ~f:(fun row ->
-        let matches = MatchAction.get_matches row in
-        let action = MatchAction.get_action row in
-        let action_name = Action.get_name action in
-        let action_data = Action.get_data action in
-        let new_matches = Map.map action_data ~f:Match.exact in
-        let new_action_args = Map.map matches ~f:Match.unsafe_explicit_set in
-        (* Handle multiple possible action arg combinations *)
-        let args_combinations = ProvRow.pivot new_action_args in
-        List.map args_combinations ~f:(fun args ->
-            let new_action = Action.make action_name args in
-            MatchAction.make new_matches new_action))
   | MapOut (f, tfx) ->
-    let f_mat = get_mat config f in
+    let f_mat = eval f config in
     List.map f_mat ~f:(fun row ->
         let matches = MatchAction.get_matches row in
         let action = MatchAction.get_action row in
         let transformed_action = apply_action_tfx action tfx in
         MatchAction.make matches transformed_action)
   | MapIn (f, tfx) ->
-    let f_mat = get_mat config f in
+    let f_mat = eval f config in
     List.map f_mat ~f:(fun row ->
         let matches = MatchAction.get_matches row in
         let action = MatchAction.get_action row in
@@ -130,28 +114,13 @@ let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :
     (string * MatchActionTable.t) list * Config.t =
   let execute_step (current_config, accumulated_results) step =
     let result_table = eval step.definition current_config in
-    let prov_rows =
-      List.mapi result_table ~f:(fun i row ->
-          BaseLogic.ProvRow.
-            {loc = (step.defined, i); row; prov = Some [(step.defined, i)]})
-    in
-    let new_prov_table =
-      BaseLogic.ProvTable.
-        {
-          name = step.defined.name;
-          ins = step.defined.ins;
-          out = step.defined.out;
-          idgen = IdGen.init ();
-          rows = prov_rows;
-        }
-    in
     let new_config =
       BaseLogic.Config.
         {
           symbols = step.defined :: current_config.symbols;
           cfg =
             Map.set current_config.cfg ~key:step.defined.name
-              ~data:new_prov_table;
+              ~data:result_table
         }
     in
     (new_config, (step.defined.name, result_table) :: accumulated_results)

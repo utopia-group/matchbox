@@ -111,7 +111,7 @@ let compile_clause (ctx : Type.ctx) (acts : ActionMapper.t) ({defined; definitio
                     ])
             )
             ))
-    | Compose (f, g) -> 
+    | Compose (Id f, Id g) -> 
         let fouts = Map.to_alist (Type.get_data (Type.find_table_exn ctx (Symbol.to_string f))) in
         (* by the type system, we know fouts == gins *)
         let fs_of_xs = List.map fouts ~f:(fun (arg, _) ->
@@ -130,7 +130,7 @@ let compile_clause (ctx : Type.ctx) (acts : ActionMapper.t) ({defined; definitio
                         apply (data_fun g arg) fs_of_xs
                     ])
             )))
-    | Join (f, g, _) ->
+    | Join (Id f, Id g, _) ->
         let ftype = Type.find_table_exn ctx (Symbol.to_string f) in 
         let gtype = Type.find_table_exn ctx (Symbol.to_string g) in 
         let fins = Type.get_keys ftype |> List.map ~f:(fun (x,_) -> SMT.var x) in

@@ -54,13 +54,13 @@ let data_tfx_type (ctx : Type.ctx) tfx (rowtype : int String.Map.t) : int String
   | Filter _ -> rowtype
     
 
-let clause_type (ctx : Type.ctx) (clause : Clause.t) = 
+let rec clause_type (ctx : Type.ctx) (clause : Clause.t) = 
   match clause with 
   | Id f -> 
     Type.(Table (find_table_exn ctx f.name))
   | Join (f, g, merge) ->
-    let ftype = Type.find_table_exn ctx f.name in
-    let gtype = Type.find_table_exn ctx g.name in
+    let ftype = clause_type ctx f |> Type.get_table_exn in
+    let gtype = clause_type ctx g |> Type.get_table_exn in
     let actions = JoinExp.out_actions merge in 
     assert Type.(JoinExp.wf ftype.actions gtype.actions actions merge);
     Type.(Table {
@@ -72,22 +72,21 @@ let clause_type (ctx : Type.ctx) (clause : Clause.t) =
       data = union_data_exn ftype.data gtype.data;
     })
   | Compose (f,g) -> 
-    let ftype = Type.find_table_exn ctx f.name in
-    let gtype = Type.find_table_exn ctx g.name in 
+    let ftype = clause_type ctx f |> Type.get_table_exn in
+    let gtype = clause_type ctx g |> Type.get_table_exn in 
     assert (actions_compat_keys ftype gtype);
     Type.(Table {gtype with keys = ftype.keys})
-  | Invert f -> 
-    let ftype = Type.find_table_exn ctx f.name in
-    Type.(Table (invert_table ftype))
   | MapOut (f,tfx) ->
-    let tbl = Type.find_table_exn ctx f.name in
+    let tbl = clause_type ctx f |> Type.get_table_exn in
     let data_types = Type.get_data tbl in  
     let data_types' = data_tfx_type ctx tfx data_types in 
     Type.(Table {tbl with data = data_types'})
   | MapIn (f,tfx) ->
-    let tbl = Type.find_table_exn ctx f.name in 
+    let tbl = clause_type ctx f |> Type.get_table_exn in 
     let in_match_type = tbl.keys in
     let out_match_typ = match_tfx_type ctx tfx in_match_type in
     Type.(Table {tbl with 
       keys = out_match_typ
     })
+
+    

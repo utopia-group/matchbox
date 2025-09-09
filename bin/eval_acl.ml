@@ -1,6 +1,5 @@
 open Core
 open Stijl
-open Stijl.BaseLogic
 module Time = Time_ns
 
 let generate_classbench_rules count =
@@ -33,25 +32,10 @@ let rules_to_mat rule_strings =
 (* Initial configuration populating the ACL table *)
 let create_initial_config acl_rules =
   let acl_symbol = AclTranslation.acl_symbol in
-  let prov_rows =
-    List.mapi acl_rules ~f:(fun i row ->
-        BaseLogic.ProvRow.
-          {loc = (acl_symbol, i); row; prov = Some [(acl_symbol, i)]})
-  in
-  let acl_prov_table =
-    BaseLogic.ProvTable.
-      {
-        name = acl_symbol.name;
-        ins = acl_symbol.ins;
-        out = acl_symbol.out;
-        idgen = IdGen.init ();
-        rows = prov_rows;
-      }
-  in
   BaseLogic.Config.
     {
       symbols = [acl_symbol];
-      cfg = Map.singleton (module String) acl_symbol.name acl_prov_table;
+      cfg = Map.singleton (module String) acl_symbol.name acl_rules;
     }
 
 let timed_translate acl_rules =
