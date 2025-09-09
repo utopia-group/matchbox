@@ -7,6 +7,8 @@
   synthesizer_tests
   interpreter_tests
   surface_synthesizer_tests
-  surface_interpreter_tests)
+  surface_interpreter_tests
+  classbench_parsing_tests
+  acl_translation_tests)
  (action
   (run %{exe:stijl_test.exe} --verbose)))

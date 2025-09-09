@@ -103,10 +103,8 @@ let eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
         let action = MatchAction.get_action row in
         let action_name = Action.get_name action in
         let action_data = Action.get_data action in
-
         let new_matches = Map.map action_data ~f:Match.exact in
         let new_action_args = Map.map matches ~f:Match.unsafe_explicit_set in
-
         (* Handle multiple possible action arg combinations *)
         let args_combinations = ProvRow.pivot new_action_args in
         List.map args_combinations ~f:(fun args ->
@@ -126,3 +124,39 @@ let eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
         let action = MatchAction.get_action row in
         let transformed_matches = apply_match_tfx matches tfx in
         MatchAction.make transformed_matches action)
+
+(* Execute a list of BaseLogic Clauses step by step *)
+let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :
+    (string * MatchActionTable.t) list * Config.t =
+  let execute_step (current_config, accumulated_results) step =
+    let result_table = eval step.definition current_config in
+    let prov_rows =
+      List.mapi result_table ~f:(fun i row ->
+          BaseLogic.ProvRow.
+            {loc = (step.defined, i); row; prov = Some [(step.defined, i)]})
+    in
+    let new_prov_table =
+      BaseLogic.ProvTable.
+        {
+          name = step.defined.name;
+          ins = step.defined.ins;
+          out = step.defined.out;
+          idgen = IdGen.init ();
+          rows = prov_rows;
+        }
+    in
+    let new_config =
+      BaseLogic.Config.
+        {
+          symbols = step.defined :: current_config.symbols;
+          cfg =
+            Map.set current_config.cfg ~key:step.defined.name
+              ~data:new_prov_table;
+        }
+    in
+    (new_config, (step.defined.name, result_table) :: accumulated_results)
+  in
+  let final_config, step_results =
+    List.fold program ~init:(initial_config, []) ~f:execute_step
+  in
+  (List.rev step_results, final_config)

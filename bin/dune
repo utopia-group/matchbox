@@ -2,3 +2,8 @@
  (public_name stijl)
  (name main)
  (libraries stijl))
+
+(executable
+ (public_name eval_acl)
+ (name eval_acl)
+ (libraries stijl core))
