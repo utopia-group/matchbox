@@ -3,24 +3,11 @@ open BaseLogic
 open Semantics
 
 let get_mat (config : Config.t) (symbol : Symbol.t) : MatchActionTable.t =
-  try
-    Config.find_exn config symbol 
-  with _ -> []
+  try Config.find_exn config symbol with _ -> []
 
-let rec apply_match_tfx matches tfx =
-  match tfx with
-  | MatchTfx.Project vars ->
-    (* Keep only the specified variables *)
-    Map.filter_keys matches ~f:(List.mem vars ~equal:String.equal)
-  | SetTo (var, expr) ->
-    (* Set a variable to the result of evaluating an expression *)
-    let new_match = eval_match_expr matches expr in
-    Map.set matches ~key:var ~data:new_match
-  | Filter _ -> failwith "todo"
-
-and eval_match_expr matches expr =
+let rec eval_match_expr matches expr =
   match expr with
-  | Var var_name -> (
+  | MatchTfx.Var var_name -> (
     match Map.find matches var_name with
     | Some match_val -> match_val
     | None -> failwith (sprintf "Variable not found in matches: %s" var_name))
@@ -42,20 +29,20 @@ and eval_match_expr matches expr =
       Match.Exact result_bv
     | _ -> failwith "SubK operation requires exact match")
 
-let rec apply_action_tfx action tfx =
+let apply_match_tfx matches tfx =
   match tfx with
-  | ActionTfx.Project vars ->
-    (* Keep only the specified action parameters *)
-    Action.project_data vars action
+  | MatchTfx.Project vars ->
+    (* Keep only the specified variables *)
+    Map.filter_keys matches ~f:(List.mem vars ~equal:String.equal)
   | SetTo (var, expr) ->
-    (* Set a parameter to the result of evaluating an expression *)
-    let new_data = eval_action_expr action expr in
-    Action.update_data action var new_data
+    (* Set a variable to the result of evaluating an expression *)
+    let new_match = eval_match_expr matches expr in
+    Map.set matches ~key:var ~data:new_match
   | Filter _ -> failwith "todo"
 
-and eval_action_expr action expr =
+let rec eval_action_expr action expr =
   match expr with
-  | Var var_name -> (
+  | ActionTfx.Var var_name -> (
     match Action.get_datum action var_name with
     | Some data_val -> data_val
     | None -> failwith (sprintf "Variable not found in action: %s" var_name))
@@ -67,6 +54,17 @@ and eval_action_expr action expr =
     let base_data = eval_action_expr action inner_expr in
     let neg_bv = Bit.Vector.(incr (not bv)) in
     Bit.Vector.(base_data + neg_bv)
+
+let apply_action_tfx action tfx =
+  match tfx with
+  | ActionTfx.Project vars ->
+    (* Keep only the specified action parameters *)
+    Action.project_data vars action
+  | SetTo (var, expr) ->
+    (* Set a parameter to the result of evaluating an expression *)
+    let new_data = eval_action_expr action expr in
+    Action.update_data action var new_data
+  | Filter _ -> failwith "todo"
 
 let rec eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
   match clause with
@@ -119,8 +117,7 @@ let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :
         {
           symbols = step.defined :: current_config.symbols;
           cfg =
-            Map.set current_config.cfg ~key:step.defined.name
-              ~data:result_table
+            Map.set current_config.cfg ~key:step.defined.name ~data:result_table;
         }
     in
     (new_config, (step.defined.name, result_table) :: accumulated_results)
