@@ -78,6 +78,17 @@ module Match = struct
       Intify.realize_operation "x" tv (Intify.Exp.xdecr "x")
       |> List.map ~f:(fun tv -> Ternary tv)
 
+  let bvor m1 m2 = 
+    match m1, m2 with 
+    | Exact bv1, Exact bv2 -> 
+      Exact (Bit.Vector.(bv1 || bv2))
+    | Ternary tv1, Ternary tv2 ->
+      Ternary (Trit.Vector.(tv1 || tv2))
+    | Lpm (v1, w1), Lpm (v2,w2) ->
+      failwithf "lpm is so hard %s/%d %s/%d" (Bit.Vector.to_string v1) w1 (Bit.Vector.to_string v2) w2 ()
+    | _, _ -> 
+      failwith "matchkind mismatch"
+
   let remask mask = function 
   | Ternary tv -> 
     let bv, _ = Trit.Vector.to_bitmask tv in 

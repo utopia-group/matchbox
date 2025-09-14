@@ -7,24 +7,23 @@ let get_mat (config : Config.t) (symbol : Symbol.t) : MatchActionTable.t =
     Config.find_exn config symbol 
   with _ -> []
 
-let tv_eval2 op tv1 tv2 =
-  let open Gpl.Expr in 
-  let open Trit.Vector in 
-  match op with 
-  | BAnd -> tv1 && tv2
-  | BOr -> tv1 || tv2
-  | _ -> failwith "to implement"
-
-let tv_eval1 op tv = 
+let tv_eval2 op tv1 tv2 : Match.t =
   let open Gpl.Expr in
   match op with 
-  | UNeg -> Trit.Vector.not tv
+  | BAnd -> Match.(tv1 && tv2)
+  | BOr -> Match.(tv1 || tv2)
+  | _ -> failwith "to implement"
+
+let tv_eval1 op (m : Match.t) : Match.t = 
+  let open Gpl.Expr in
+  match op with 
+  | UNeg -> Match.not tv
   | _ -> failwith "arith negative?"
 
 
-let rec eval_match_expr matches (expr : Gpl.Expr.t) : Trit.Vector.t =
+let rec eval_match_expr (matches : Match.t Var.Map.t) (expr : Gpl.Expr.t) : Match.t =
   match expr with
-  | BV (value, width) -> Bit.Vector.of_int (Bigint.to_int_exn value) ~width |> Trit.Vector.of_bv
+  | BV (value, width) -> Bit.Vector.of_int (Bigint.to_int_exn value) ~width |> Match.Exact
   | Var var_name -> (
     match Map.find matches var_name with
     | Some match_val -> match_val
@@ -52,7 +51,13 @@ let rec eval_match_expr matches (expr : Gpl.Expr.t) : Trit.Vector.t =
       let new_match = eval_match_expr matches expr in
       Map.set matches ~key:var ~data:new_match
     | Filter _ -> failwith "todo"
-    | CubeFilter _ -> failwith "todo"
+    | CubeFilter cube -> 
+      Map.filter_mapi matches ~f:(fun ~key ~data ->
+        match Map.find cube (Var.str key) with 
+        | None -> Some data 
+        | Some mexpr -> 
+          Match.intersect mexpr (Match.Ternary data)
+      )
       
 
 let rec apply_action_tfx action tfx =
