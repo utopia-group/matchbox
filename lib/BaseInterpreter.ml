@@ -17,7 +17,7 @@ let tv_eval2 op tv1 tv2 : Match.t =
 let tv_eval1 op (m : Match.t) : Match.t = 
   let open Gpl.Expr in
   match op with 
-  | UNeg -> Match.not tv
+  | UNeg -> Match.not m
   | _ -> failwith "arith negative?"
 
 
@@ -56,7 +56,7 @@ let rec eval_match_expr (matches : Match.t Var.Map.t) (expr : Gpl.Expr.t) : Matc
         match Map.find cube (Var.str key) with 
         | None -> Some data 
         | Some mexpr -> 
-          Match.intersect mexpr (Match.Ternary data)
+          Match.intersect mexpr data
       )
       
 
@@ -74,7 +74,10 @@ let rec apply_action_tfx action tfx =
     let ys = Action.get_data action |> Map.key_set in 
     let ys' = Set.remove ys (Var.str x) in 
     Action.project_data (Set.to_list ys') action
-  | Rename _ -> failwith "TODO!"
+  | Rename (a1, a2) when String.(a1 = Action.get_name action) -> 
+    Action.make a2 (Action.get_data action)
+  | Rename _ -> 
+    action
 
 and eval_action_expr action expr =
   let open Gpl.Expr in 
@@ -125,7 +128,7 @@ let rec eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
     List.map f_mat ~f:(fun row ->
         let matches = MatchAction.get_matches row in
         let matches = Map.fold matches ~init:Var.Map.empty ~f:(fun ~key ~data acc -> 
-          Map.set acc ~key:(Var.make key (Match.length data)) ~data:(Match.get_tv data)
+          Map.set acc ~key:(Var.make key (Match.length data)) ~data
         ) in
         let action = MatchAction.get_action row in
         let transformed_matches = apply_match_tfx matches tfx in
