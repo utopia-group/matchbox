@@ -7,3 +7,8 @@
  (public_name eval_acl)
  (name eval_acl)
  (libraries stijl core))
+
+(executable
+ (public_name gen_translations)
+ (name gen_translations)
+ (libraries stijl core))

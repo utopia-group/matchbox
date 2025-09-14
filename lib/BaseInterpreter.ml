@@ -3,9 +3,7 @@ open BaseLogic
 open Semantics
 
 let get_mat (config : Config.t) (symbol : Symbol.t) : MatchActionTable.t =
-  try
-    Config.find_exn config symbol 
-  with _ -> []
+  try Config.find_exn config symbol with _ -> []
 
 let tv_eval2 op tv1 tv2 : Match.t =
   let open Gpl.Expr in
@@ -90,6 +88,17 @@ and eval_action_expr action expr =
   Bit.Vector.of_int (Bigint.to_int_exn v) ~width:w
 
 
+let apply_action_tfx action tfx =
+  match tfx with
+  | ActionTfx.Project vars ->
+    (* Keep only the specified action parameters *)
+    Action.project_data vars action
+  | SetTo (var, expr) ->
+    (* Set a parameter to the result of evaluating an expression *)
+    let new_data = eval_action_expr action expr in
+    Action.update_data action var new_data
+  | Filter _ -> failwith "todo"
+
 let rec eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
   match clause with
   | Id (f,_) -> get_mat config f
@@ -147,8 +156,7 @@ let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :
         {
           symbols = step.defined :: current_config.symbols;
           cfg =
-            Map.set current_config.cfg ~key:step.defined.name
-              ~data:result_table
+            Map.set current_config.cfg ~key:step.defined.name ~data:result_table;
         }
     in
     (new_config, (step.defined.name, result_table) :: accumulated_results)

@@ -3,5 +3,4 @@ _build
 .ocamlformat-ignore
 venv/
 *.png
-*.csv
 *.tmp
