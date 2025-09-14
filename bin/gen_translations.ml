@@ -139,8 +139,8 @@ let transform_csv_file (input_file : string)
 
 (* logical.p4 to action_decompose.p4 *)
 
-let ipv4_to_fib : Clause.t = MapOut (Id ipv4, ActionTfx.Project ["port"])
-let ipv4_to_rewrite : Clause.t = MapOut (Id ipv4, ActionTfx.Project ["dstAddr"])
+let ipv4_to_fib : Clause.t = Clause.(Project [Var.make "port" 9] <<| id ipv4)
+let ipv4_to_rewrite : Clause.t = Clause.(Project [Var.make "dstAddr" 48] <<| id ipv4)
 
 let action_decompose_tfxs : (string * Clause.t) list =
   [("ipv4_fib", ipv4_to_fib); ("ipv4_rewrite", ipv4_to_rewrite)]
@@ -152,21 +152,26 @@ let transform_to_action_decompose
 
 (* logical.p4 to choice.p4 *)
 
-let ethernet_to_ethernet : Clause.t = Id ethernet
-let ethernet_to_ethernet2 : Clause.t = Id ethernet
-let ipv4_to_ipv4 : Clause.t = Id ipv4
-let ipv4_to_ipv42 : Clause.t = Id ipv4
-let punt_to_punt : Clause.t = Id punt
-let punt_to_punt2 : Clause.t = Id punt
+let ethernet_to_ethernet : Clause.t = Clause.id ethernet
+let ethernet_to_ethernet2 : Clause.t = Clause.id ethernet
+let ipv4_to_ipv4 : Clause.t = Clause.id ipv4
+let ipv4_to_ipv42 : Clause.t = Clause.id ipv4
+let punt_to_punt : Clause.t = Clause.id punt
+let punt_to_punt2 : Clause.t = Clause.id punt
 
 let ethernet_to_staging : Clause.t =
-  MapOut
+  Clause.table [
+    String.Map.of_alist_exn ["c", Bit.Vector.of_int 3 ~width:4]
+    |> Action.make "set_choice"
+    |> MatchAction.make (String.Map.of_alist_exn ["standard_metadata.ingress_port", Match.Ternary (Trit.Vector.wc 9)])
+  ]
+  (* MapOut
     ( MapIn
         ( Id ethernet,
           MatchTfx.SetTo
             ( "standard_metadata.ingress_port",
               MatchTfx.Match (Semantics.Match.Ternary (Trit.Vector.wc 9)) ) ),
-      ActionTfx.SetTo ("c", ActionTfx.Data (Bit.Vector.of_int 3 ~width:4)) )
+      ActionTfx.SetTo ("c", ActionTfx.Data (Bit.Vector.of_int 3 ~width:4)) ) *)
 
 let choice_tfxs : (string * Clause.t) list =
   [
@@ -204,25 +209,42 @@ let transform_to_double (input_tables : (string * MatchActionTable.t) list) :
 (* logical.p4 to early_validate.p4 *)
 
 let punt_to_ethernet_validate : Clause.t =
-  MapIn
+  let open Clause in 
+  Project [
+    Var.make "hdr.ethernet.etherType" 16; 
+    Var.make "hdr.ipv4.isValid()" 1;
+    Var.make "hdr.ipv4.ttl" 8
+  ] <<| id punt
+  (* MapIn
     ( Id punt,
       MatchTfx.Project
-        ["hdr.ethernet.etherType"; "hdr.ipv4.isValid()"; "hdr.ipv4.ttl"] )
+        ["hdr.ethernet.etherType"; "hdr.ipv4.isValid()"; "hdr.ipv4.ttl"] ) *)
 
 let punt_to_ipv4_validate : Clause.t =
-  MapIn (Id punt, MatchTfx.Project ["hdr.ipv4.version"; "hdr.ipv4.ttl"])
+  let open Clause in
+  Project [
+    Var.make "hdr.ipv4.version" 4; 
+    Var.make "hdr.ipv4.ttl" 8
+  ] <<| id punt
 
 let punt_to_acl : Clause.t =
-  MapIn
+  let open Clause in 
+  (WildCard (Var.make "hdr.ethernet.srcAddr" 32)
+  <<| (WildCard (Var.make "hdr.ethernet.srcAddr" 32)
+  <<| (Project [Var.make "hdr.ipv4.srcAddr" 32; Var.make "hdr.ipv4.dstAddr" 32]
+  <<| id punt)))
+
+
+  (* MapIn
     ( MapIn
         ( MapIn
-            (Id punt, MatchTfx.Project ["hdr.ipv4.srcAddr"; "hdr.ipv4.dstAddr"]),
+            (Id punt, MatchTfx.),
           MatchTfx.SetTo
             ( "hdr.ethernet.srcAddr",
               MatchTfx.Match (Semantics.Match.Ternary (Trit.Vector.wc 48)) ) ),
       MatchTfx.SetTo
         ( "hdr.ethernet.dstAddr",
-          MatchTfx.Match (Semantics.Match.Ternary (Trit.Vector.wc 48)) ) )
+          MatchTfx.Match (Semantics.Match.Ternary (Trit.Vector.wc 48)) ) ) *)
 
 let early_validate_tfxs : (string * Clause.t) list =
   [

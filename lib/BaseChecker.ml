@@ -34,6 +34,8 @@ let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : (int * Type.match_kind) Stri
     Map.filter_keys rowtype ~f:(fun k -> List.exists vars ~f:(fun x -> String.equal k (Var.str x)))
   | SetTo (x, e) -> 
     Map.set rowtype ~key:(Var.str x) ~data:(match_expr_type ctx e)
+  | WildCard x -> 
+    Map.set rowtype ~key:(Var.str x) ~data:(Var.width x, LPM)
   | Filter _ -> rowtype
   | CubeFilter _ -> rowtype
 
@@ -59,6 +61,8 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
   | Id (f, None) -> 
     let typ = Type.(Table (find_table_exn ctx f.name)) in
     Id (f, Some typ)
+  | Table (_, _) -> 
+    failwith "infer type for tables"
   | Join (f, g, None) ->
     let f = infer ctx f in 
     let g = infer ctx g in 

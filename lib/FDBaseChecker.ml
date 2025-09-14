@@ -72,6 +72,7 @@ module DepFunDep = struct
     match clause with 
     | Id (f, _) -> 
       Map.add_multi ctx ~key:f.name ~data:goal
+    | Table (_, _) -> failwith "check FD of table"
     | Join (c1, c2, _) -> 
       let goal1 = fd_of_table_type (typeof_exn c1) in 
       let goal2 = fd_of_table_type (typeof_exn c2) in 
@@ -111,7 +112,7 @@ module DepFunDep = struct
     let matchset = Map.key_set goal.source in 
     assert (Set.is_subset matchset ~of_:xsset);
     check ctx c goal
-  | MapIn(c, Del x, _) ->
+  | MapIn(c, Del x, _) | MapIn(c, WildCard x, _ ) ->
     assert (not (Map.mem goal.source (Var.str x)));
     assert (not (Set.exists (BExpr.free_vars goal.refine) ~f:(Var.equal x)));
     check ctx c goal

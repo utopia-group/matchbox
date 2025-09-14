@@ -45,6 +45,7 @@ module MatchTfx = struct
 
   type t = 
     | Del of Var.t
+    | WildCard of Var.t
     | Project of Var.t list
     | SetTo of Var.t * Expr.t
     | CubeFilter of (Semantics.Match.t) String.Map.t
@@ -93,6 +94,7 @@ module Clause = struct
   type f = Symbol.t [@@deriving sexp, compare]
   type t =
     | Id of f * Type.t option
+    | Table of Semantics.MatchActionTable.t * Type.t option
     | Join of t * t * Type.t option
     | Compose of t * t * Type.t option
     | MapOut of t * ActionTfx.t * Type.t option
@@ -100,6 +102,7 @@ module Clause = struct
 
   let typeof_exn = function 
     | Id (_, Some t)
+    | Table (_, Some t)
     | Join (_, _, Some t)
     | Compose (_, _, Some t)
     | MapOut (_, _, Some t)
@@ -117,8 +120,10 @@ module Clause = struct
   let (>>>) = compose
   let mapout c tfx = MapOut (c, tfx, None)
   let (|>>) = mapout
-  let mapin c tfx = MapOut (c, tfx, None)
+  let mapin c tfx = MapIn (c, tfx, None)
   let (<<|) tfx c = mapin c tfx
+
+  let table mat = Table(mat, None)
 
 end
 

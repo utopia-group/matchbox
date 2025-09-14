@@ -41,6 +41,8 @@ let rec eval_match_expr (matches : Match.t Var.Map.t) (expr : Gpl.Expr.t) : Matc
     match tfx with
     | Del x -> 
       Map.remove matches x
+    | WildCard x -> 
+      Map.set matches ~key:x ~data:(Match.Ternary(Trit.Vector.wc (Var.width x)))
     | Project vars ->
       (* Keep only the specified variables *)
       Map.filter_keys matches ~f:(List.mem vars ~equal:Var.equal)
@@ -87,21 +89,10 @@ and eval_action_expr action expr =
   let v, w = eval model expr |> Result.ok_or_failwith in
   Bit.Vector.of_int (Bigint.to_int_exn v) ~width:w
 
-
-let apply_action_tfx action tfx =
-  match tfx with
-  | ActionTfx.Project vars ->
-    (* Keep only the specified action parameters *)
-    Action.project_data vars action
-  | SetTo (var, expr) ->
-    (* Set a parameter to the result of evaluating an expression *)
-    let new_data = eval_action_expr action expr in
-    Action.update_data action var new_data
-  | Filter _ -> failwith "todo"
-
 let rec eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
   match clause with
   | Id (f,_) -> get_mat config f
+  | Table (t, _) -> t
   | Join (f, g, _) ->
     let f_mat = eval f config in
     let g_mat = eval g config in
