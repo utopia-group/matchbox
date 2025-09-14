@@ -39,7 +39,9 @@ let test_acl_translation_typechecks () =
   let final_ctx, all_typecheck =
     List.fold translation ~init:(type_ctx, true) ~f:(fun (ctx, success) step ->
         try
-          let inferred_table = BaseLogic.Clause.typeof_exn (BaseChecker.infer ctx step.definition) in
+          let inferred_table =
+            BaseLogic.Clause.typeof_exn (BaseChecker.infer ctx step.definition)
+          in
           let new_ctx =
             Map.set ctx ~key:step.defined.name ~data:(Type.Table inferred_table)
           in
@@ -74,16 +76,12 @@ let test_acl_translation_typechecks () =
 (* Test that symbols reference the correct P4 table names *)
 let test_acl_translation_symbols () =
   (* Check that the main symbols have the expected names *)
-  check string "ACL symbol name" "acl" AclTranslation.acl_symbol.name;
+  check string "ACL symbol name" "acl" AclTranslation.acl.name;
   check string "Ethernet ACL symbol name" "ethernet_acl"
-    AclTranslation.ethernet_acl_symbol.name;
-  check string "IPv4 ACL symbol name" "ipv4_acl"
-    AclTranslation.ipv4_acl_symbol.name;
-  check string "TCP ACL symbol name" "tcp_acl"
-    AclTranslation.tcp_acl_symbol.name;
-  check string "UDP ACL symbol name" "udp_acl"
-    AclTranslation.udp_acl_symbol.name;
-  check string "ICMP ACL symbol name" "icmp_acl"
-    AclTranslation.icmp_acl_symbol.name;
+    AclTranslation.ethernet_acl.name;
+  check string "IPv4 ACL symbol name" "ipv4_acl" AclTranslation.ipv4_acl.name;
+  check string "TCP ACL symbol name" "tcp_acl" AclTranslation.tcp_acl.name;
+  check string "UDP ACL symbol name" "udp_acl" AclTranslation.udp_acl.name;
+  check string "ICMP ACL symbol name" "icmp_acl" AclTranslation.icmp_acl.name;
   check string "Distributed ACL symbol name" "distributed_acl"
-    AclTranslation.distributed_acl_symbol.name
+    AclTranslation.distributed_acl.name

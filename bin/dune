@@ -9,6 +9,6 @@
  (libraries stijl core))
 
 (executable
- (public_name gen_translations)
- (name gen_translations)
+ (public_name eval_retargeting)
+ (name eval_retargeting)
  (libraries stijl core))
