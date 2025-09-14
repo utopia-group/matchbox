@@ -125,7 +125,7 @@ control MyIngress (
       hdr.ethernet.srcAddr : ternary;
       hdr.vlan_tag.vlan_id : ternary;
       hdr.eth_type.value : ternary;
-      hdr.ipv4.srcAddr : ternary;
+      hdr.ipv4.dstAddr : ternary;
       hdr.ipv4.srcAddr : ternary;
       hdr.ipv4.proto : ternary;
       hdr.icmp.type : ternary;
