@@ -21,7 +21,8 @@ let solve holes phi =
   ] in
   solver smt
 
-let bv_sortify = List.map ~f:(fun (x,w) -> (x, SMT.(bv_sort w)))
+let bv_sortify = List.map ~f:(fun (x,(w,_)) -> (x, SMT.(bv_sort w)))
+let bv_sortify' = List.map ~f:(fun (x, w ) -> (x, SMT.(bv_sort w)))
 
 let does_match k v m =
   let open SMT in 
@@ -112,7 +113,7 @@ let table_to_smt (tbl : MatchActionTable.t) : (string * int) list * ((string * i
   let act_mapping = abstract_actions tbl in
   let anum = length act_mapping in 
   let choose_action aid = SMT.((=) [var action_var; bv aid anum]) in 
-  let keys = MatchActionTable.keys tbl in
+  let keys = MatchActionTable.keys tbl |> List.map ~f:(fun (x, (w,_)) -> (x,w)) in
   let n = List.length tbl in  
   let open SMT in 
   (action_var, anum) :: keys, (*tables have fixed keys, so we can return the key variables*)
@@ -127,7 +128,7 @@ let table_to_smt (tbl : MatchActionTable.t) : (string * int) list * ((string * i
   )
 
 let table_to_optmt tbl n concrete =
-  let keys = MatchActionTable.keys tbl in 
+  let keys = MatchActionTable.keys tbl |> List.map ~f:(fun (s, (w, _)) -> (s,w)) in 
   let action_mapping = abstract_actions tbl in 
   let num_acts = length action_mapping in 
   let action = SMT.var action_var in
@@ -197,8 +198,8 @@ let reconstruct_mask tbl tbl_model =
 
 let widen tbl =
   let vars, (holes, spec, sketch) = table_to_smt tbl in 
-  let qvars = bv_sortify vars in 
-  let consts = bv_sortify holes in 
+  let qvars = bv_sortify' vars in 
+  let consts = bv_sortify' holes in 
   let phi = SMT.(forall qvars ((=) [sketch; spec])) in 
   match solve consts phi with 
   | None -> failwith "ERROR:: couldn't widen table, this should never happen" 

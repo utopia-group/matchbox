@@ -56,13 +56,18 @@ let data_tfx_type tfx actions (datatypes : int String.Map.t) : String.Set.t * in
 
 
 let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t = 
+  let open Semantics in 
   let open Clause in
   match clause with 
   | Id (f, None) -> 
     let typ = Type.(Table (find_table_exn ctx f.name)) in
     Id (f, Some typ)
-  | Table (_, _) -> 
-    failwith "infer type for tables"
+  | Table (t, _) ->
+    let keys = String.Map.of_alist_exn (MatchActionTable.keys t) in 
+    let actions = MatchActionTable.action_names t in 
+    let data = MatchActionTable.data t in 
+    let typ= Type.Table {keys; actions; data} in
+    Table (t, Some typ)
   | Join (f, g, None) ->
     let f = infer ctx f in 
     let g = infer ctx g in 

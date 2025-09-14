@@ -72,7 +72,11 @@ module DepFunDep = struct
     match clause with 
     | Id (f, _) -> 
       Map.add_multi ctx ~key:f.name ~data:goal
-    | Table (_, _) -> failwith "check FD of table"
+    | Table (_, None) -> 
+      failwith "Must run base type interpreter before FDChecker"
+    | Table (_, Some typ) -> 
+      assert (fd_eq (fd_of_typ typ) goal);
+      ctx
     | Join (c1, c2, _) -> 
       let goal1 = fd_of_table_type (typeof_exn c1) in 
       let goal2 = fd_of_table_type (typeof_exn c2) in 

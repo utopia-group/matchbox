@@ -23,6 +23,11 @@ module Match = struct
       Trit.Vector.equal v tv'
     | _, _ -> false
 
+  let kind = function 
+  | Exact _ -> Type.Exact
+  | Lpm _ -> Type.LPM
+  | Ternary _ -> Type.Ternary
+
   let matches x = function
     | Exact y -> Bit.Vector.equal x y
     | Lpm _ -> failwith "TODO implement lpm"
@@ -234,7 +239,7 @@ module MatchAction = struct
   let keys_widths row = 
     Map.fold row.matches ~init:[] ~f:(fun ~key ~data kws -> 
       let width = Match.length data in 
-      kws @ [key, width]
+      kws @ [key, (width, Match.kind data)]
     )
 
   let to_string ({matches; action}: t) = 
@@ -322,7 +327,10 @@ module MatchActionTable = struct
 
   let keys (tbl : t) = 
     let sort = List.sort ~compare:(fun (s, _) (s',_) -> String.compare s s') in
-    let (==) = List.equal (Tuple2.equal ~eq1:String.equal ~eq2:Int.equal) in 
+    let (==) = List.equal (fun (s1, (w1, mk1)) (s2, (w2, mk2)) -> 
+      String.(s1 = s2) && Int.(w1 = w2) &&
+      (Type.castable mk1 ~to_:mk2 || Type.castable mk2 ~to_:mk1)) 
+    in 
     List.fold tbl ~init:None ~f:(fun keysopt row -> 
       let keys' = MatchAction.keys_widths row |> sort in 
       match keysopt with 
@@ -336,6 +344,28 @@ module MatchActionTable = struct
 
   let actions : t -> Action.t list =
     List.map ~f:(fun (row : MatchAction.t) -> row.action)
+
+  let action_names mat = 
+    actions mat 
+    |> List.map ~f:(Action.get_name)
+    |> String.Set.of_list
+
+  let data mat = 
+    let union = Map.merge ~f:(fun ~key -> function 
+      | `Left w -> Some w
+      | `Right bv -> Some (Bit.Vector.length bv)
+      | `Both (w, bv) -> 
+        if Bit.Vector.length bv = w then 
+          Some w
+        else 
+          failwithf "Ill-typed table with different sized data args: %s has length %d but value %s" key w (Bit.Vector.to_string bv) ()
+    )
+    in
+    actions mat 
+    |> List.map ~f:(Action.get_data)
+    |> List.fold ~init:String.Map.empty ~f:(fun acc data ->
+      union acc data
+    )
 
   let equal = List.equal MatchAction.equal
 
