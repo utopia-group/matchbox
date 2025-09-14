@@ -27,7 +27,7 @@ let create_acl_type_context () : Type.ctx =
                   ("meta.l4_sport", (16, Ternary));
                   ("meta.l4_dport", (16, Ternary));
                 ];
-            actions = ["allow"; "deny"];
+            actions = String.Set.of_list ["allow"; "deny"];
             data = Map.of_alist_exn (module String) [];
           } );
     ]
@@ -39,9 +39,9 @@ let test_acl_translation_typechecks () =
   let final_ctx, all_typecheck =
     List.fold translation ~init:(type_ctx, true) ~f:(fun (ctx, success) step ->
         try
-          let inferred_type = BaseChecker.clause_type ctx step.definition in
+          let inferred_table = BaseLogic.Clause.typeof_exn (BaseChecker.infer ctx step.definition) in
           let new_ctx =
-            Map.set ctx ~key:step.defined.name ~data:inferred_type
+            Map.set ctx ~key:step.defined.name ~data:(Type.Table inferred_table)
           in
           (new_ctx, success)
         with _ ->

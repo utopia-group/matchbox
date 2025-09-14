@@ -17,13 +17,13 @@ let typecheck_cand (ctx : Type.ctx option) (cand : t) : bool =
         (* TODO: for now assume unknown symbols are valid *)
         true
       | Some _ ->
-        let _ = BaseChecker.clause_type type_ctx cand.definition in
+        let _ = BaseChecker.infer type_ctx cand.definition in
         true
     with _ ->
       incr typecheck_pruned;
       false)
 
-module Key = struct
+(* module Key = struct
   module T = struct
     type t = BaseLogic.t
 
@@ -220,4 +220,4 @@ let synth ?(max_depth = 4) ?(type_ctx = None) (phi : t -> bool) : Set.M(Key).t =
       let seen' = Set.union seen grown in
       grow grown seen')
   in
-  grow seeds seeds
+  grow seeds seeds *)

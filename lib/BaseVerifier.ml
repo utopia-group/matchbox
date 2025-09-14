@@ -1,5 +1,4 @@
 open Core
-open BaseLogic
 
 
 module ActionMapper = struct 
@@ -80,7 +79,7 @@ module ActionMapper = struct
 end
 
 
-let action_fun (f : Symbol.t) = 
+(* let action_fun (f : Symbol.t) = 
     Symbol.to_string f
     |> Printf.sprintf "%s$action"
 
@@ -193,6 +192,8 @@ let compile_clause (ctx : Type.ctx) (acts : ActionMapper.t) ({defined; definitio
                 ))
             )
         ]
-    (* | MapOut f o -> *)
-
-    | _ -> failwith "[verifier] todo"
+    | MapOut (Id f, _) ->
+        failwithf "verifier MapOut %s" (Symbol.to_string f) ()
+    | MapIn (Id f, _) -> 
+        failwithf "verifier MapIn %s" (Symbol.to_string f) ()
+     | _ -> failwith "[verifier] todo"  *)

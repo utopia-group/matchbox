@@ -4,97 +4,127 @@ open BaseLogic
 module DepFunDep = struct 
   type t = {
     refine : BExpr.t;
-    source : String.Set.t;
-    target : String.Set.t;
+    source : int String.Map.t;
+    target : int String.Map.t;
   }
 
   let fd_eq fd1 fd2 = 
     BExpr.equal fd1.refine fd2.refine
-    && Set.equal fd1.source fd2.source
-    && Set.equal fd1.target fd2.target
+    && Map.equal (=) fd1.source fd2.source
+    && Map.equal (=) fd1.target fd2.target
 
-  type itfc_spec = t String.Map.t 
+  type itfc_spec = t list String.Map.t 
 
-  let inherent_fd (gamma : Type.ctx) (f : Symbol.t) : t =
-    let table_type = Type.find_table_exn gamma (Symbol.to_string f) in 
+
+  let fd_of_table_type table_type =
     let data_types = Type.get_data table_type in 
     let key_types = Type.get_keys table_type in 
     { refine = BExpr.true_;
-      source = Set.of_list (module String) (List.map ~f:fst key_types);
-      target = Set.of_map_keys data_types;
+      source = Map.of_alist_exn (module String) key_types;
+      target = data_types;
     }
+ 
+
+  let fd_of_typ typ = 
+    Type.get_table_exn typ
+    |> fd_of_table_type
+
+  let inherent_fd (gamma : Type.ctx) (f : Symbol.t) : t =
+    Type.find_exn gamma (Symbol.to_string f)
+    |> fd_of_typ
+
 
   let find_fd (spec : itfc_spec) (symbol : Symbol.t) = 
     Map.find spec (Symbol.to_string symbol)
 
   let implies (spec : itfc_spec) (symbol : Symbol.t) (fd : t) = 
-    Option.filter (find_fd spec symbol) ~f:(fd_eq fd)
+    Option.filter (find_fd spec symbol) ~f:(List.exists ~f:(fd_eq fd))
 
-  let check (ctx : itfc_spec) (clause : Clause.t) : t option =
-    let (let*) b f = Option.bind b ~f in 
-    let (let+) b f = Option.map b ~f in
+  let union = Map.merge ~f:(fun ~key -> function 
+    | `Left w | `Right w -> Some w
+    | `Both (w1, w2) -> 
+      if w1 = w2 then 
+        Some w1
+    else 
+      failwithf "union failed on key %s" key ()
+  ) 
+
+  let diff m1 m2 = 
+    Map.filter_keys m1 ~f:(fun k -> 
+      not (Map.mem m2 k)  
+    )
+
+  let var_set (m : int String.Map.t) : Var.Set.t = 
+    Map.fold m ~init:Var.Set.empty ~f:(fun ~key ~data acc -> 
+      Set.add acc (Var.make key data)
+    ) 
+
+  let map_of_varlist xs = 
+    List.fold xs ~init:String.Map.empty ~f:(fun acc x -> 
+      Map.add_exn acc ~key:(Var.str x) ~data:(Var.width x)
+    )
+
+  let map_of_varset xs = 
+    Set.to_list xs |> map_of_varlist
+
+  let rec check (ctx : itfc_spec) (clause : Clause.t) (goal : t) : itfc_spec =
+    let open Clause in 
     match clause with 
-    | Id f -> 
-      find_fd ctx f
-    | Join (Id f, Id g, _) -> 
-      let* f_fd = find_fd ctx f in
-      let+ g_fd = find_fd ctx g in
-      assert (Set.are_disjoint g_fd.target f_fd.target);
-      { refine = BExpr.and_ f_fd.refine g_fd.refine;
-        source = Set.union f_fd.source g_fd.source;
-        target = Set.union g_fd.target g_fd.target;
-      }
-    | Compose (Id f, Id g) -> 
-      let* f_fd = find_fd ctx f in 
-      let+ g_fd = find_fd ctx g in
-      assert (Set.equal f_fd.target g_fd.source);
-      assert (BExpr.(equal true_) f_fd.refine);
-      assert (BExpr.(equal true_) g_fd.refine);
-      {  refine = BExpr.true_;
-         source = f_fd.source;
-         target = g_fd.target
-      }
-    | MapOut(Id f, tfx) ->
-      let* f_fd = find_fd ctx f in 
-      begin match tfx with 
-        | Project xs -> 
-          let xs_set = String.Set.of_list xs in 
-          Some {
-            f_fd with 
-              target = Set.(inter xs_set f_fd.target)
-          }
-        | SetTo (d, e) -> 
-          (* e must denote a function *)
-          let es = ActionTfx.e_fvs e in
-          let fvs_determined = {f_fd with target = es} in 
-          let+ _ = implies ctx f fvs_determined in 
-          {f_fd with target = Set.add f_fd.target d }
-        | Filter _ ->  failwith "not sure how to filter outputs"
-      end 
-    | MapIn(Id f, tfx) -> 
-      let* f_fd = find_fd ctx f in 
-      begin match tfx with 
-      | Project keys ->
-        (* It must be the case that f : keys -> f_fd.target *)
-        let new_fd = {f_fd with source = String.Set.of_list keys} in
-        implies ctx f new_fd
-      | SetTo (k, e) -> 
-        (* e has to be invertible! *)
-        let es = MatchTfx.e_fvs e in 
-        assert (Set.(equal (union es (remove f_fd.source k)) f_fd.source));
-        Some {f_fd with 
-          source = Set.add f_fd.source k;
-        }
-      | Filter matches ->
-        let filtered_fd = 
-          {
-            f_fd with 
-              refine = Semantics.Match.map_to_bexpr matches;
-          }
-        in
-        let+ _ = implies ctx f filtered_fd in
-        f_fd
-      end
-    | _  -> failwith "nomalize!!!!"
+    | Id (f, _) -> 
+      Map.add_multi ctx ~key:f.name ~data:goal
+    | Join (c1, c2, _) -> 
+      let goal1 = fd_of_table_type (typeof_exn c1) in 
+      let goal2 = fd_of_table_type (typeof_exn c2) in 
+      assert (Map.(equal (=) goal.source (union goal1.source goal2.source)));
+      assert (Map.(equal (=) goal.target (union goal1.target goal2.target)));
+      assert (Set.is_subset (BExpr.free_vars goal.refine) ~of_:(var_set goal1.source));
+      assert (Set.is_subset (BExpr.free_vars goal.refine) ~of_:(var_set goal2.target));
+      let rgoal1 = {goal1 with refine = goal.refine } in 
+      let rgoal2 = {goal2 with refine = goal.refine } in
+      check (check ctx c1 rgoal1) c2 rgoal2
+    | Compose (before, after, _) -> 
+      let goal_before = fd_of_table_type (typeof_exn before) in 
+      let goal_after = fd_of_table_type (typeof_exn after) in 
+      assert (Set.equal (Map.key_set goal_before.target) (Map.key_set goal_after.source));
+      let refined_goal_before = {goal_before with refine = goal.refine} in 
+      check (check ctx before refined_goal_before) after goal_after
+  | MapOut(c, Project xs, _) ->
+    assert (Map.(equal (=) (map_of_varlist xs) goal.target));
+    check ctx c goal
+  | MapOut(c, SetTo (x, e), _) ->
+    if Map.mem goal.target (Var.str x) then 
+      let w = Map.find_exn goal.target (Var.str x) in 
+      let target = 
+        union (map_of_varset (Expr.vars e))
+              (Map.set (Map.remove goal.target (Var.str x)) ~key:(Var.str x) ~data:w)
+      in
+      check ctx c {goal with target}
+    else
+      check ctx c goal
+  | MapOut(c, Del x, _) -> 
+    assert (not (Map.mem goal.target (Var.str x)));
+    check ctx c goal
+  | MapOut(c, Rename _, _) ->
+    check ctx c goal
+  | MapIn(c, Project xs, _) -> 
+    let xsset = String.Set.of_list (List.map ~f:Var.str xs) in 
+    let matchset = Map.key_set goal.source in 
+    assert (Set.is_subset matchset ~of_:xsset);
+    check ctx c goal
+  | MapIn(c, Del x, _) ->
+    assert (not (Map.mem goal.source (Var.str x)));
+    assert (not (Set.exists (BExpr.free_vars goal.refine) ~f:(Var.equal x)));
+    check ctx c goal
+  | MapIn(c, SetTo(x,e), _) -> 
+    let refine = BExpr.subst x e goal.refine  in
+    check ctx c {goal with refine}
+  | MapIn(c, CubeFilter cube,_ ) ->
+    let phi = Semantics.Match.map_to_bexpr cube in 
+    check ctx c {goal with refine = BExpr.and_ phi goal.refine}
+  | MapIn(c, Filter phi, _) -> 
+    (* This is overly strong, but idk how to fix it*)
+    check ctx c {goal with refine = BExpr.and_ phi goal.refine}
+    
 end
+
 

@@ -9,84 +9,104 @@ let actions_compat_keys table_type table_type' =
   |> String.Map.equal Int.equal action_data 
 
 let rec match_expr_type ctx e =
-  let open MatchTfx in
-  match e with 
+  let open Gpl.Expr in
+  match e with
+  | BV (_, w) -> (w, Type.Exact)
   | Var x -> 
-    Type.find_matchtype_exn ctx x
-  | Match m -> 
-    Semantics.Match.get_type m
-  | AddK (e, bv) | SubK (e, bv) ->
-    let w, mk = match_expr_type ctx e in 
-    assert (w = Bit.Vector.length bv);
-    (w,mk)
+    Type.find_matchtype_exn ctx (Var.str x)
+  | BinOp(_, e1, e2) ->
+    let (w1, mk1) = match_expr_type ctx e1 in 
+    let (w2, mk2) = match_expr_type ctx e2 in
+    assert (w1 = w2);
+    (w1, Type.join mk1 mk2)
+  | UnOp (_, e) ->
+    match_expr_type ctx e
+  | Apply _ -> failwith "[typeof] apply"
 
-let rec action_expr_type ctx e = 
-  let open ActionTfx in 
-  match e with 
-  | Var x ->
-    let w, mk = Type.find_matchtype_exn ctx x in 
-    assert (Type.mkeq Exact mk);
-    w
-  | Data bv -> 
-    Bit.Vector.length bv
-  | AddK (e, bv) | SubK(e, bv) ->
-    let w = action_expr_type ctx e in
-    let w' = Bit.Vector.length bv in 
-    assert (w = w');
-    w
+let action_expr_type e = Gpl.Expr.width e
 
 let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : (int * Type.match_kind) String.Map.t) : (int * Type.match_kind) String.Map.t =
   let open MatchTfx in
   match tfx with 
+  | Del x ->
+    Map.remove rowtype (Var.str x)
   | Project vars -> 
-    Map.filter_keys rowtype ~f:(List.mem vars ~equal:String.equal)
+    Map.filter_keys rowtype ~f:(fun k -> List.exists vars ~f:(fun x -> String.equal k (Var.str x)))
   | SetTo (x, e) -> 
-    Map.set rowtype ~key:x ~data:(match_expr_type ctx e)
+    Map.set rowtype ~key:(Var.str x) ~data:(match_expr_type ctx e)
   | Filter _ -> rowtype
+  | CubeFilter _ -> rowtype
 
-let data_tfx_type (ctx : Type.ctx) tfx (rowtype : int String.Map.t) : int String.Map.t = 
+let data_tfx_type tfx actions (datatypes : int String.Map.t) : String.Set.t * int String.Map.t = 
   let open ActionTfx in 
   match tfx with 
+  | Del x -> 
+    actions, Map.remove datatypes (Var.str x)
   | Project vars -> 
-    Map.filter_keys rowtype ~f:(List.mem vars ~equal:String.equal)
+    let datatypes' = 
+      Map.filter_keys datatypes ~f:(fun k -> List.exists vars ~f:(fun x -> String.equal k (Var.str x)))
+    in
+    actions, datatypes'
   | SetTo(x, e) ->
-    Map.set rowtype ~key:x ~data:(action_expr_type ctx e)
-  | Filter _ -> rowtype
-    
+    actions, Map.set datatypes ~key:(Var.str x) ~data:(action_expr_type e)
+  | Rename (a1,a2) ->
+    Set.(add (remove actions a1) a2), datatypes
 
-let rec clause_type (ctx : Type.ctx) (clause : Clause.t) = 
+
+let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t = 
+  let open Clause in
   match clause with 
-  | Id f -> 
-    Type.(Table (find_table_exn ctx f.name))
-  | Join (f, g, merge) ->
-    let ftype = clause_type ctx f |> Type.get_table_exn in
-    let gtype = clause_type ctx g |> Type.get_table_exn in
-    let actions = JoinExp.out_actions merge in 
-    assert Type.(JoinExp.wf ftype.actions gtype.actions actions merge);
-    Type.(Table {
-      keys = merge_keys_exn ftype.keys gtype.keys;
-      actions = 
-      List.cartesian_product ftype.actions gtype.actions 
-      |> List.map ~f:(JoinExp.eval_exn merge)
-      ;
-      data = union_data_exn ftype.data gtype.data;
-    })
-  | Compose (f,g) -> 
-    let ftype = clause_type ctx f |> Type.get_table_exn in
-    let gtype = clause_type ctx g |> Type.get_table_exn in 
+  | Id (f, None) -> 
+    let typ = Type.(Table (find_table_exn ctx f.name)) in
+    Id (f, Some typ)
+  | Join (f, g, None) ->
+    let f = infer ctx f in 
+    let g = infer ctx g in 
+    let ftype = typeof_exn f in
+    let gtype = typeof_exn g in
+    let typ = let open Type in 
+      Table {
+        keys = merge_keys_exn ftype.keys gtype.keys;
+        actions = 
+          List.cartesian_product (Set.to_list ftype.actions) (Set.to_list gtype.actions)
+          |> List.map ~f:(fun (a1, a2) -> Printf.sprintf "%s$%s" a1 a2)
+          |> String.Set.of_list
+        ;
+        data = union_data_exn ftype.data gtype.data;
+      } in
+    Join (f, g, Some typ)
+  | Compose (f,g, None) -> 
+    let f = infer ctx f in 
+    let g = infer ctx g in 
+    let ftype = typeof_exn f in
+    let gtype = typeof_exn g in
     assert (actions_compat_keys ftype gtype);
-    Type.(Table {gtype with keys = ftype.keys})
-  | MapOut (f,tfx) ->
-    let tbl = clause_type ctx f |> Type.get_table_exn in
-    let data_types = Type.get_data tbl in  
-    let data_types' = data_tfx_type ctx tfx data_types in 
-    Type.(Table {tbl with data = data_types'})
-  | MapIn (f,tfx) ->
-    let tbl = clause_type ctx f |> Type.get_table_exn in 
-    let in_match_type = tbl.keys in
+    let typ = Type.(Table {gtype with keys = ftype.keys}) in
+    Join (f, g, Some typ)
+  | MapOut (f, tfx, None) ->
+    let f = infer ctx f in 
+    let ftype = typeof_exn f in
+    let data_types = Type.get_data ftype in  
+    let actions = Type.get_actions ftype in 
+    let actions, data_types' = data_tfx_type tfx actions data_types in 
+    let typ = let open Type in 
+      Table {ftype with actions; data = data_types'}
+    in
+    MapOut(f, tfx, Some typ)
+  | MapIn (f,tfx, None) ->
+    let f = infer ctx f in 
+    let ftype = typeof_exn f in 
+    let in_match_type = ftype.keys in
     let out_match_typ = match_tfx_type ctx tfx in_match_type in
-    Type.(Table {tbl with 
-      keys = out_match_typ
-    })
-
-    
+    let out = 
+      Type.(Table {ftype with 
+        keys = out_match_typ
+      })
+    in
+    MapIn(f, tfx, Some out)
+  | Id (_, Some _) 
+  | Join (_,_, Some _)
+  | Compose (_, _, Some _) 
+  | MapIn (_, _, Some _)
+  | MapOut(_, _, Some _) -> 
+    failwith "unexpected type annotation during inference"

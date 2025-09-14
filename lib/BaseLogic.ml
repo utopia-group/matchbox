@@ -41,45 +41,24 @@ end
 
 
 module MatchTfx = struct
-  type expr = 
-    | Var of string 
-    | Match of Semantics.Match.t
-    | AddK of expr * Bit.Vector.t
-    | SubK of expr * Bit.Vector.t
-  [@@deriving sexp, compare]
-
-  let rec e_fvs : expr -> String.Set.t = function 
-    | Var x -> String.Set.singleton x
-    | Match _ -> String.Set.empty
-    | AddK (e, _) | SubK(e,_) ->
-      e_fvs e
+  open Gpl
 
   type t = 
-    | Project of string list
-    | SetTo of string * expr
-    | Filter of (Semantics.Match.t) String.Map.t
-  [@@deriving sexp, compare]
+    | Del of Var.t
+    | Project of Var.t list
+    | SetTo of Var.t * Expr.t
+    | CubeFilter of (Semantics.Match.t) String.Map.t
+    | Filter of BExpr.t
 end
 
 module ActionTfx = struct
-  type expr = 
-    | Var of string 
-    | Data of Bit.Vector.t
-    | AddK of expr * Bit.Vector.t
-    | SubK of expr * Bit.Vector.t
-  [@@deriving sexp, compare]
-
-  let rec e_fvs : expr -> String.Set.t = function 
-    | Var x -> String.Set.singleton x
-    | Data _ -> String.Set.empty
-    | AddK (e, _) | SubK(e,_) ->
-      e_fvs e
+  open Gpl
 
   type t = 
-    | Project of string list
-    | SetTo of string * expr
-    | Filter of Semantics.Match.t String.Map.t
-  [@@deriving sexp, compare]
+    | Del of Var.t
+    | Project of Var.t list
+    | SetTo of Var.t * Expr.t
+    | Rename of string * string
 end
 
 module JoinExp = struct
@@ -113,15 +92,37 @@ end
 module Clause = struct
   type f = Symbol.t [@@deriving sexp, compare]
   type t =
-    | Id of f
-    | Join of t * t * (((string * string) * string) list)
-    | Compose of t * t
-    | MapOut of t * ActionTfx.t
-    | MapIn of t * MatchTfx.t
-  [@@deriving sexp, compare]
+    | Id of f * Type.t option
+    | Join of t * t * Type.t option
+    | Compose of t * t * Type.t option
+    | MapOut of t * ActionTfx.t * Type.t option
+    | MapIn of t * MatchTfx.t * Type.t option
+
+  let typeof_exn = function 
+    | Id (_, Some t)
+    | Join (_, _, Some t)
+    | Compose (_, _, Some t)
+    | MapOut (_, _, Some t)
+    | MapIn (_, _, Some t) -> 
+      Type.get_table_exn t
+    | _ -> 
+      failwith "[typeof_exn] Couldn't deduce type"
+
+
+  let id f = Id (f, None)
+  let join c1 c2 = Join (c1, c2, None)
+  let ( * ) = join
+
+  let compose c1 c2 = Compose (c1, c2, None)
+  let (>>>) = compose
+  let mapout c tfx = MapOut (c, tfx, None)
+  let (|>>) = mapout
+  let mapin c tfx = MapOut (c, tfx, None)
+  let (<<|) tfx c = mapin c tfx
+
 end
 
-type t = {defined : Symbol.t; definition : Clause.t } [@@deriving sexp, compare]
+type t = {defined : Symbol.t; definition : Clause.t }
 
 (* Encodings of Fig. 2 transformations via BaseLogic.t list *)
 

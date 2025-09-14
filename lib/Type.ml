@@ -1,15 +1,16 @@
 open Core
 
-type varwidth = int
-type match_kind = Exact | LPM | Ternary | Range | Optional
+type varwidth = int [@@deriving sexp, compare]
+type match_kind = Exact | LPM | Ternary | Range | Optional [@@deriving sexp, compare]
 type table = {keys : (varwidth * match_kind) String.Map.t;
-              actions : string list; 
-              data : varwidth String.Map.t}
+              actions : String.Set.t; 
+              data : varwidth String.Map.t} [@@deriving sexp, compare]
 
 type t = 
   | Table of table
   | Var of varwidth
   | Match of (varwidth * match_kind)
+  [@@deriving sexp, compare]
 
 type ctx = t String.Map.t
 
@@ -24,7 +25,7 @@ let mkeq mk mk' =
   | _,_ -> false
 
 let castable original ~to_ = 
-  (* this is "castable without incurring performance penalties" *)
+  (* this means "castable without incurring performance penalties" *)
   match original, to_ with 
   | Exact,_ 
   | LPM, LPM 
@@ -37,6 +38,20 @@ let castable original ~to_ =
   | Ternary, Ternary -> true
   | _, _ -> false
 
+let join mk1 mk2 = 
+  match mk1, mk2 with
+  | Exact, _ -> mk2
+  | _, Exact -> mk1
+  | LPM, LPM -> LPM
+  | LPM, Ternary -> Ternary
+  | Range, Range -> Range
+  | Range, LPM | LPM, Range -> failwith "lpm and range incompatible matchkinds"
+  | Range, Ternary | Ternary, Range -> failwith "range and ternary incompatible matchkinds"
+  | Ternary, _ | _, Ternary -> Ternary
+  | Optional, _ | _, Optional -> 
+    failwith "Optional only compatible with Exact and Ternary, got something else"
+
+
 
 let get_table = function 
   | Table t -> Some t
@@ -45,6 +60,9 @@ let get_table = function
 let get_table_exn typ = 
   get_table typ
   |> Option.value_exn ~message:"Type Error, expected table"
+
+
+let get_actions ttype = ttype.actions
 
 let get_action _ = failwith "No action?"
 

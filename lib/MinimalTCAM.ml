@@ -421,19 +421,3 @@ let incremental keys actions
       delta
   in 
   loop 0
-
-(* module Provenance = struct 
-
-  type t = (string * int) list 
-
-end
-
-
-let prov_incr keys actions sabove sdelta sbelow target delta_spec =
-  let start = MatchActionTable.length sabove in 
-  let end_ = start + MatchActionTable.length sdelta in 
-  let tabove, tbelow = provenance_partition target start in 
-  let tdelta = incremental keys actions sabove delta_spec in 
-
-  
- *)

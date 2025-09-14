@@ -27,6 +27,11 @@ header udp_t {
   bit<16> srcPort;
   bit<16> dstPort;
 }
+header icmp_t {
+  bit<8> type;
+  bit<8> code;
+}
+
 // Assemble headers in a single struct
 struct my_headers_t {
   eth_type_t eth_type;
