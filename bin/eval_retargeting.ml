@@ -139,8 +139,8 @@ let transform_csv_file (input_file : string)
 
 (* logical.p4 to action_decompose.p4 *)
 
-let ipv4_to_fib : Clause.t = Clause.(Project [Var.make "port" 9] <<| id ipv4)
-let ipv4_to_rewrite : Clause.t = Clause.(Project [Var.make "dstAddr" 48] <<| id ipv4)
+let ipv4_to_fib : Clause.t = Clause.(id ipv4 |>> Project [Var.make "port" 9] )
+let ipv4_to_rewrite : Clause.t = Clause.(id ipv4 |>> Project [Var.make "dstAddr" 48])
 
 let action_decompose_tfxs : (string * Clause.t) list =
   [("ipv4_fib", ipv4_to_fib); ("ipv4_rewrite", ipv4_to_rewrite)]
@@ -206,42 +206,25 @@ let transform_to_double (input_tables : (string * MatchActionTable.t) list) :
 (* logical.p4 to early_validate.p4 *)
 
 let punt_to_ethernet_validate : Clause.t =
-  let open Clause in 
-  Project [
+  Clause.(Project [
     Var.make "hdr.ethernet.etherType" 16; 
     Var.make "hdr.ipv4.isValid()" 1;
     Var.make "hdr.ipv4.ttl" 8
-  ] <<| id punt
-  (* MapIn
-    ( Id punt,
-      MatchTfx.Project
-        ["hdr.ethernet.etherType"; "hdr.ipv4.isValid()"; "hdr.ipv4.ttl"] ) *)
+  ] <<| id punt)
 
 let punt_to_ipv4_validate : Clause.t =
   let open Clause in
   Project [
-    Var.make "hdr.ipv4.version" 4; 
+    Var.make "hdr.ipv4.version" 4;
     Var.make "hdr.ipv4.ttl" 8
   ] <<| id punt
 
 let punt_to_acl : Clause.t =
   let open Clause in 
   (WildCard (Var.make "hdr.ethernet.srcAddr" 32)
-  <<| (WildCard (Var.make "hdr.ethernet.srcAddr" 32)
+  <<| (WildCard (Var.make "hdr.ethernet.dstAddr" 32)
   <<| (Project [Var.make "hdr.ipv4.srcAddr" 32; Var.make "hdr.ipv4.dstAddr" 32]
   <<| id punt)))
-
-
-  (* MapIn
-    ( MapIn
-        ( MapIn
-            (Id punt, MatchTfx.),
-          MatchTfx.SetTo
-            ( "hdr.ethernet.srcAddr",
-              MatchTfx.Match (Semantics.Match.Ternary (Trit.Vector.wc 48)) ) ),
-      MatchTfx.SetTo
-        ( "hdr.ethernet.dstAddr",
-          MatchTfx.Match (Semantics.Match.Ternary (Trit.Vector.wc 48)) ) ) *)
 
 let early_validate_tfxs : (string * Clause.t) list =
   [
@@ -257,6 +240,43 @@ let transform_to_early_validate
     (string * MatchActionTable.t) list =
   transform_mats early_validate_tfxs input_tables
 
+(* logical.p4 to link_agg.p4 *)
+
+let ethernet_to_ethernet : Clause.t = 
+  Clause.(
+    id ethernet
+    |>> ActionTfx.SetTo (Var.make "nexthop" 32, Gpl.Expr.var (Var.make "param0" 9))
+  )
+
+let ipv4_to_ipv4 : Clause.t = 
+  Clause.(
+    id ipv4
+    |>> ActionTfx.SetTo (Var.make "nexthop" 32, Gpl.Expr.var (Var.make "param1" 9))
+  )
+
+(* Create nexthop table with static mappings for ports 1-500 *)
+let create_nexthop : Clause.t =
+  Clause.table (List.init 500 ~f:(fun i ->
+    let port = i + 1 in
+    Map.of_alist_exn (module String) ["port", Bit.Vector.of_int port ~width:9]
+    |> Action.make "set_port"
+    |> MatchAction.make (Map.of_alist_exn (module String) ["nexthop", Match.Exact (Bit.Vector.of_int port ~width:32)])
+  ))
+
+let punt_to_punt_linkagg : Clause.t = Clause.id punt
+
+let link_agg_tfxs : (string * Clause.t) list =
+  [
+    ("ethernet", ethernet_to_ethernet);
+    ("ipv4", ipv4_to_ipv4);
+    ("nexthop", create_nexthop);
+    ("punt", punt_to_punt_linkagg);
+  ]
+
+let transform_to_link_agg (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats link_agg_tfxs input_tables
+
 let () =
   let input_file = "Pipelines/retargeting/logical_inserts_1001.csv" in
   let output_dir = "Pipelines/retargeting" in
@@ -267,6 +287,7 @@ let () =
       ("choice", transform_to_choice);
       ("double", transform_to_double);
       ("early_validate", transform_to_early_validate);
+      ("link_agg", transform_to_link_agg);
     ]
   in
 
