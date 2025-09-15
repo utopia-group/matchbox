@@ -245,32 +245,34 @@ let transform_to_early_validate
 let ethernet_to_ethernet : Clause.t = 
   Clause.(
     id ethernet
-    |>> ActionTfx.SetTo (Var.make "nexthop" 32, Gpl.Expr.var (Var.make "param0" 9))
+    |>> OutTfx.SetTo (Var.make "nexthop" 32, Gpl.Expr.var (Var.make "param0" 9))
   )
 
 let ipv4_to_ipv4 : Clause.t = 
   Clause.(
     id ipv4
-    |>> ActionTfx.SetTo (Var.make "nexthop" 32, Gpl.Expr.var (Var.make "param1" 9))
+    |>> OutTfx.SetTo (Var.make "nexthop" 32, Gpl.Expr.var (Var.make "param1" 9))
   )
 
 (* Create nexthop table with static mappings for ports 1-500 *)
 let create_nexthop : Clause.t =
   Clause.table (List.init 500 ~f:(fun i ->
     let port = i + 1 in
-    Map.of_alist_exn (module String) ["port", Bit.Vector.of_int port ~width:9]
-    |> Action.make "set_port"
-    |> MatchAction.make (Map.of_alist_exn (module String) ["nexthop", Match.Exact (Bit.Vector.of_int port ~width:32)])
+    MatchAction.make
+      TCAM
+      (Map.of_alist_exn (module String) ["nexthop", Match.Exact (Bit.Vector.of_int port ~width:32)])
+      (MagmaAction.make "set_port")
+      (Map.of_alist_exn (module String) ["port", Bit.Vector.of_int port ~width:9])
   ))
 
-let punt_to_punt_linkagg : Clause.t = Clause.id punt
+let punt_to_punt : Clause.t = Clause.id punt
 
 let link_agg_tfxs : (string * Clause.t) list =
   [
     ("ethernet", ethernet_to_ethernet);
     ("ipv4", ipv4_to_ipv4);
     ("nexthop", create_nexthop);
-    ("punt", punt_to_punt_linkagg);
+    ("punt", punt_to_punt);
   ]
 
 let transform_to_link_agg (input_tables : (string * MatchActionTable.t) list) :
