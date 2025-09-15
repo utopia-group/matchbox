@@ -31,7 +31,7 @@ let rules_to_mat rule_strings =
 
 (* Initial configuration populating the ACL table *)
 let create_initial_config acl_rules =
-  let acl_symbol = AclTranslation.acl_symbol in
+  let acl_symbol = AclTranslation.acl in
   BaseLogic.Config.
     {
       symbols = [acl_symbol];

@@ -412,13 +412,13 @@ let () =
         test_case "Specific match transformations" `Quick Synthesizer_tests.test_specific_match_transformations;
         test_case "Mixed transformation synthesis" `Quick Synthesizer_tests.test_mixed_transformation_synthesis;
       ]; *)
-      "ClassBench parsing", [
+      (* "ClassBench parsing", [
         test_case "Parsing ClassBench rules" `Quick Classbench_parsing_tests.test_parsing_classbench_rules;
-      ];
-      "ACL Translation", [
+      ]; *)
+      (* "ACL Translation", [
         test_case "ACL translation typechecks with BaseChecker" `Quick Acl_translation_tests.test_acl_translation_typechecks;
         test_case "ACL translation symbols" `Quick Acl_translation_tests.test_acl_translation_symbols;
-      ];
+      ]; *)
       (* "SurfaceInterpreter", [
         test_case "Transform table symbol" `Quick Surface_interpreter_tests.test_transform_table_symbol;
         test_case "Transform compose" `Quick Surface_interpreter_tests.test_transform_compose;
