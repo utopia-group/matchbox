@@ -84,19 +84,19 @@ let widen_sketch hw pkt =
   | `LPM -> 
     failwith "sketch lpm"
 
-let extract_guard model xs hw : Semantics.Match.t Var.Map.t =
+let extract_guard model xs hw : MatchExpression.t =
   match hw with
   | `TCAM ->
     let find_bv_exn x = 
       Var.str x 
       |> Map.find_exn model
     in
-    List.fold xs ~init:(Var.Map.empty) ~f:(fun guard x -> 
+    List.fold xs ~init:(String.Map.empty) ~f:(fun guard x -> 
       let h = holes x in 
       let mask = find_bv_exn h.mask in 
       let value = find_bv_exn h.value in
       let tv = Trit.Vector.of_bitmask value mask in
-      Map.add_exn guard ~key:x ~data:(Match.Ternary tv)
+      Map.add_exn guard ~key:(Var.str x) ~data:(Match.Ternary tv)
     )
   | `LPM -> failwith "handle LPM"
 
@@ -114,7 +114,7 @@ let guard_to_smt guard : SMT.expr =
   Map.fold guard ~init:true_ ~f:(fun ~key ~data acc -> 
     let value, mask = Match.to_mask_pair data in
     SMT.and_ [
-      (=) [bvand [var (Var.str key); bv' mask]; bvand [bv' value; bv' mask]];
+      (=) [bvand [var (key); bv' mask]; bvand [bv' value; bv' mask]];
       acc
     ]
   )
@@ -136,10 +136,10 @@ let suffices xs prev phi : Bit.Vector.t Var.Map.t option =
     Map.set ~key:(Var.make key (Bit.Vector.length data)) ~data
   ))
 
-let split_ hw xs (matches : Match.t Var.Map.t) vartheta : Match.t Var.Map.t list = 
+let split_ hw xs (matches : MatchExpression.t) vartheta : MatchExpression.t list = 
   let mu = guard_to_smt matches in 
   let phi = SMT.and_ [mu; vartheta] in
-  let rec loop prev (guards : Match.t Var.Map.t list) : Match.t Var.Map.t list =
+  let rec loop prev (guards : MatchExpression.t list) : MatchExpression.t list =
     match suffices xs prev phi with 
     | None -> 
       guards
@@ -150,7 +150,7 @@ let split_ hw xs (matches : Match.t Var.Map.t) vartheta : Match.t Var.Map.t list
   in
   loop SMT.true_ []
 
-let split hw matches bexpr = 
+let split hw (matches : MatchExpression.t) bexpr = 
   let expr = SMT.of_bexpr bexpr in 
-  let xs = Map.keys matches in
+  let xs = MatchExpression.keysv matches in
   split_ hw xs matches expr

@@ -29,13 +29,15 @@ let replace_switch (st : t) (sw : switch) : t =
 
 let make_forward_rule ~(dst_bv : Bit.Vector.t) ~(egress_port : Bit.Vector.t) : MatchAction.t =
   let matches = Map.singleton (module String) "dst" (Match.Ternary (Trit.Vector.of_bv dst_bv)) in
-  let action = Action.make "fwd" (Map.singleton (module String) "port" egress_port) in
-  MatchAction.make matches action
+  let action = MagmaAction.make "fwd" in
+  let data =  String.Map.singleton "port" egress_port in
+  MatchAction.make TCAM matches action data
 
 let make_drop_rule ~(dst_width : int) : MatchAction.t =
-  let matches = Map.singleton (module String) "dst" (Match.catch_all dst_width) in
-  let action = Action.nullary "drop" in
-  MatchAction.make matches action
+  let matches = String.Map.singleton "dst" (Match.catch_all dst_width) in
+  let action = MagmaAction.make "drop" in
+  let data = String.Map.empty in 
+  MatchAction.make TCAM matches action data
 
 let upsert_forward_rule (sw : switch) ~(dst_bv : Bit.Vector.t) ~(egress_port : Bit.Vector.t) : switch =
   let row_new = make_forward_rule ~dst_bv ~egress_port in
@@ -45,7 +47,7 @@ let upsert_forward_rule (sw : switch) ~(dst_bv : Bit.Vector.t) ~(egress_port : B
     List.filter tbl ~f:(fun row ->
       not (Match.equal (MatchAction.get_match row "dst") (Match.exact dst_bv)))
   in
-  let tbl' = MatchActionTable.(tbl_filtered <+ [row_new]) in
+  let tbl' = MatchActionTable.(tbl_filtered <+ row_new) in
   let tables' = Map.set sw.tables ~key:"Route" ~data:tbl' in
   { sw with tables = tables' }
 

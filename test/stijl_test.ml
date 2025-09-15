@@ -67,8 +67,10 @@ let of_aslist aslist =
     Tuple2.create tbl @@ 
     List.map entries ~f:(fun (matches, (name, raw_args)) -> 
       MatchAction.{
+        hw = TCAM;
         matches = String.Map.of_alist_exn (List.zip_exn matchvars matches); 
-        action = Action.{name = name; args = String.Map.of_alist_exn raw_args} 
+        action = MagmaAction.make name;
+        data = String.Map.of_alist_exn raw_args;
       }
     )
   )
@@ -290,15 +292,25 @@ let tv_math () =
   assert (List.for_all desired ~f);
   Alcotest.(check pass) "finished" () () *)
 
+let mk_tcam_acl (ins : (string list * string) list) = 
+  let open Semantics in 
+  let ofstring m = Match.Ternary (Trit.Vector.of_string m) in
+  let f (strings, action) = 
+    List.map strings ~f:ofstring,
+    MagmaAction.make action,
+    Data.empty
+  in
+  List.map ins ~f
+
+
 let minimization () =
   let open Semantics in 
-  let table = MatchActionTable.of_alist ["x"] Trit.Vector.[
-    [Match.Ternary (of_string "100")], Action.nullary "drop";
-    [Match.Ternary (of_string "110")], Action.nullary "drop";
-    [Match.Ternary (of_string "011")], Action.nullary "ctrl";
-    [Match.Ternary (of_string "010")], Action.nullary "ctrl";
-    [Match.Ternary (of_string "001")], Action.nullary "drop";
-    [Match.Ternary (of_string "***")], Action.nullary "drop";
+  let table = MatchActionTable.of_alist TCAM ["x"] @@ mk_tcam_acl [
+    ["100"], "drop";
+    ["110"], "drop";
+    ["110"], "drop";
+    ["001"], "drop";
+    ["***"], "drop";
   ] in
   let tbl',_ = MinimalTCAM.minimize table in
   Printf.printf "---------------------\n%s\n-----------------------\n%!" (MatchActionTable.to_string tbl');
@@ -307,13 +319,12 @@ let minimization () =
 
 let greedy_minimization () =
   let open Semantics in 
-  let table = MatchActionTable.of_alist ["x"] Trit.Vector.[
-    [Match.Ternary (of_string "100")], Action.nullary "drop";
-    [Match.Ternary (of_string "110")], Action.nullary "drop";
-    [Match.Ternary (of_string "011")], Action.nullary "ctrl";
-    [Match.Ternary (of_string "010")], Action.nullary "ctrl";
-    [Match.Ternary (of_string "001")], Action.nullary "drop";
-    [Match.Ternary (of_string "***")], Action.nullary "drop";
+  let table = MatchActionTable.of_alist TCAM ["x"] @@ mk_tcam_acl[
+    ["100"], "drop";
+    ["110"], "drop";
+    ["110"], "drop";
+    ["001"], "drop";
+    ["***"], "drop";
   ] in 
   let tbl',_ = MinimalTCAM.greedy_minimize table in 
   Printf.printf "---------------------\n%s\n-----------------------\n%!" (MatchActionTable.to_string tbl');
@@ -329,20 +340,20 @@ let all_binary_decisions ~nbits () =
   in
   let matches = List.init num_keys ~f:(Bit.Vector.of_int ~width:nbits) in
   let mk_match bits = [Match.Ternary (Trit.Vector.of_bv bits)] in
-  let drop = Action.nullary "drop" in 
-  let ctrl = Action.nullary "ctrl" in 
+  let drop = MagmaAction.make "drop" in 
+  let ctrl = MagmaAction.make "ctrl" in 
   let all_assignments = 
     List.fold matches ~init:([[]]) ~f:(fun all_alignments bits -> 
       List.bind all_alignments ~f:(fun alignment -> 
         [
-          alignment @ [mk_match bits, drop];
-          alignment @ [mk_match bits, ctrl];
+          alignment @ [mk_match bits, drop, Data.empty];
+          alignment @ [mk_match bits, ctrl, Data.empty];
         ] 
       )
     )
   in
   let all_tables =
-    List.map all_assignments ~f:(MatchActionTable.of_alist ["x"])
+    List.map all_assignments ~f:(MatchActionTable.of_alist TCAM ["x"])
   in 
   let data = 
     List.map all_tables ~f:(fun tbl -> 
@@ -364,12 +375,12 @@ let all_binary_decisions ~nbits () =
 
 let incremental () =
     let open Semantics in 
-    let above_rules = MatchActionTable.of_alist ["x"] Trit.Vector.[
-      [Match.Ternary (of_string "000")], Action.nullary "drop";
-      [Match.Ternary (of_string "011")], Action.nullary "drop"
+    let above_rules = MatchActionTable.of_alist TCAM ["x"] @@ mk_tcam_acl [
+      ["000"], "drop";
+      ["011"], "drop"
     ] in 
     let keys = ["x", 3] in 
-    let actions = [Action.nullary "drop"; Action.nullary "nop"] in 
+    let actions = [MagmaAction.make "drop"; MagmaAction.make "nop"] in 
     let spec = let open SMT in 
       implies [ 
         or_ [(=) [var "x"; bv 1 3 ]; (=) [var "x"; bv 2 3] ];

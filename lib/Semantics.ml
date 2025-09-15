@@ -1,3 +1,4 @@
+open Gpl
 open Core
 let (let+) r f = Result.map r ~f
 
@@ -22,11 +23,6 @@ module Match = struct
       let tv' = Trit.Vector.of_bv v' in 
       Trit.Vector.equal v tv'
     | _, _ -> false
-
-  let kind = function 
-  | Exact _ -> Type.Exact
-  | Lpm _ -> Type.LPM
-  | Ternary _ -> Type.Ternary
 
   let matches x = function
     | Exact y -> Bit.Vector.equal x y
@@ -134,11 +130,6 @@ module Match = struct
 
   let empty_intersection m1 m2 = intersect m1 m2 |> Option.is_none
 
-  let get_type = function
-    | Exact bv -> (Bit.Vector.length bv, Type.Exact)
-    | Lpm (bv, _) -> (Bit.Vector.length bv, Type.LPM)
-    | Ternary tv -> (Trit.Vector.length tv, Type.Ternary)
-
   let map_to_bexpr (matches : t String.Map.t) : Gpl.BExpr.t = 
     let open Gpl in 
     let open Gpl.BExpr in
@@ -160,7 +151,7 @@ module Match = struct
 end
 
 
-module Action = struct
+module DependentAction = struct
   type t = {
     name : string;
     args : Bit.Vector.t String.Map.t
@@ -234,58 +225,216 @@ module Action = struct
 
 end
 
-module MatchAction = struct 
-  type t = {
-    matches : Match.t String.Map.t;
-    action : Action.t;
-  }
+module Hardware = struct 
+  type t = TCAM | CAM | LPM
+  let to_string = function 
+  | TCAM -> "TCAM"
+  | CAM -> "CAM"
+  | LPM -> "LPM"
 
-  let make matches action = {matches;action}
+  let meet h1 h2 = 
+    match h1, h2 with 
+    | _, TCAM | TCAM,_ -> TCAM
+    | CAM, h | h, CAM -> h
+    | LPM, LPM -> LPM
+end
 
-  let keys_widths row = 
-    Map.fold row.matches ~init:[] ~f:(fun ~key ~data kws -> 
-      let width = Match.length data in 
-      kws @ [key, (width, Match.kind data)]
+module MatchExpression = struct
+  type t = Match.t String.Map.t
+
+  let find : t -> string -> Match.t option = Map.find
+
+  let findv m x = find m (Var.str x)
+
+  let find_exn : t -> string -> Match.t =  Map.find_exn
+  
+  let findv_exn (matches : t) x = find_exn matches (Var.str x)
+
+  let keys_widths matches = 
+    Map.fold matches ~init:[] ~f:(fun ~key ~data kws -> 
+        let width = Match.length data in 
+        kws @ [key, (width)])
+
+  let keysv matches =
+    keys_widths matches
+    |> List.map ~f:(fun (name, width) -> 
+      Var.make name width
     )
 
-  let to_string ({matches; action}: t) = 
-    Printf.sprintf "\t%s -> %s" 
-      (Map.to_alist matches |> List.map ~f:(fun (x,m) -> Printf.sprintf "'%s' ~ %s" x (Match.to_string m)) |> String.concat ~sep:", ")
-      (Action.to_string action)
-
-  let equal (ma : t) (ma' : t) =
-    String.Map.equal Match.equal ma.matches ma'.matches 
-    && Action.equal ma.action ma'.action
-
-  let get_match (ma : t) name = 
-    Map.find_exn ma.matches name
-
-  let get_field (ma : t) name =
-    match Action.get_datum ma.action name with 
-    | None -> get_match ma name
-    | Some v -> Match.Exact v
-
-  let does_match keys ({matches;action=_} : t) =
+  let does_match pkt (matches : t) =  
     Map.for_alli matches ~f:(fun ~key:x ~data:mtch -> 
-      match Map.find keys x with 
-      | None -> false
+      match Map.find pkt x with 
+      | None -> false 
       | Some value -> 
         Match.matches value mtch
     )
 
-  let runs_action name (ma : t) = Action.has_name ma.action name
+  let remove (matches : t) s :t = 
+    Map.remove matches s
 
-  let restrict_keys ma keys = 
-    {ma with 
-      matches = Map.filter_keys ma.matches ~f:(String.(List.mem keys ~equal))
-    }
-    
-  let get_action (ma : t) : Action.t = ma.action
-  let get_matches (ma : t) : Match.t String.Map.t = ma.matches
+  let removev matches x = remove matches (Var.str x)
 
-  let pair (row1 : t) (row2 : t) ~f = 
+  let set (matches : t) s me : t = 
+    Map.set matches ~key:s ~data:me
+
+  let setv matches x me : t =
+    Map.set matches ~key:(Var.str x) ~data:me
+
+  let project matches names : t = 
+    Map.filter_keys matches ~f:String.(List.mem names ~equal)
+
+  let projectv matches xs : t =
+    List.map xs ~f:Var.str
+    |> project matches
+
+  let intersect m1 m2 = 
+    try
+      Some (Map.merge m1 m2 ~f:(fun ~key:_ -> function
+        | `Left m | `Right m -> Some m
+        | `Both (m1,m2) -> 
+          match Match.intersect m1 m2 with 
+          | Some m -> Some m 
+          | _ -> failwith "intersect failed"
+      ))
+    with
+    | _ -> None
+
+end
+
+module Data = struct 
+  type t = Bit.Vector.t String.Map.t
+
+  let empty : t = String.Map.empty
+
+  let to_string data = 
+    Map.fold data ~init:[] ~f:(fun ~key ~data -> 
+      Printf.sprintf "%s=%s" key (Bit.Vector.to_string data)
+      |> List.cons 
+    )
+    |> String.concat ~sep:","
+
+  let equal data1 data2 = 
+    Map.equal Bit.Vector.equal data1 data2
+
+  let find : t -> string -> Bit.Vector.t option = Map.find
+  let findv data x = find data (Var.str x)
+  let find_exn (data : t) s = Map.find_exn data s
+  let findv_exn data x = find_exn data (Var.str x)
+
+  let varize data = 
+    Map.fold data ~init:Var.Map.empty ~f:(fun ~key ~data ->
+      let width = Bit.Vector.length data in 
+      let key = Var.make key width in
+      Map.set ~key ~data
+    )
+  let to_gpl_model data = 
+    varize data |> 
+    Var.Map.map ~f:(fun bv -> 
+      let v = Bit.Vector.to_int bv in 
+      let bigv = Bigint.of_int v in
+      let w = Bit.Vector.length bv in
+      (bigv, w)
+    )
+
+  let disjoint_union data1 data2 = 
+    Map.merge data1 data2 ~f:(fun ~key -> function 
+      | `Left bv | `Right bv -> Some bv
+      | `Both (bv1, bv2) -> 
+        if Bit.Vector.equal bv1 bv2 then 
+          Some bv1
+        else
+          failwithf "Could not disjoint union data %s had different values %s <> %s" key 
+            (Bit.Vector.to_string bv1) 
+            (Bit.Vector.to_string bv2) ()
+    )
+
+  let project data names = Map.filter_keys data ~f:String.(List.mem names ~equal)
+  let projectv data xs = List.map xs ~f:Var.str |> project data
+
+  let update (data : t) name value = 
+    Map.set data ~key:name ~data:value
+
+  let updatev data x value = 
+    update data (Var.str x) value
+
+  let remove (data : t) name =
+    Map.remove data name
+
+  let removev data x = remove data (Var.str x)
+
+end
+
+module MagmaAction = struct 
+  type t = 
+    | Name of string
+    | Pair of t * t
+    [@@deriving compare, equal, sexp]
+
+  let rec to_string = function 
+  | Name s -> s
+  | Pair (a1, a2) -> Printf.sprintf "(%s,%s)" (to_string a1) (to_string a2)
+
+  let make s = Name s
+
+  let rec to_list = function 
+  | Name s -> [s]
+  | Pair (a1, a2) -> to_list a1 @ to_list a2
+
+  let (@) a1 a2 = Pair (a1,a2) 
+
+  let (<@) a s = Pair (a, Name s)
+
+  let (@>) s a = Pair (Name s, a)
+
+end
+
+module MatchAction = struct 
+  type t = {
+    hw : Hardware.t;
+    matches : MatchExpression.t;
+    action : MagmaAction.t;
+    data : Data.t;
+  }
+
+  let make hw matches action data = {hw; matches;action; data}
+
+  let keys_widths row = 
+    MatchExpression.keys_widths row.matches
+
+  let to_string ({hw; matches; action; data}: t) = 
+    Printf.sprintf "%s<(%s); (%s); (%s)>"
+      (Hardware.to_string hw) 
+      (Map.to_alist matches |> List.map ~f:(fun (x,m) -> Printf.sprintf "'%s' ~ %s" x (Match.to_string m)) |> String.concat ~sep:", ")
+      (MagmaAction.to_string action)
+      (Data.to_string data)
+
+  let equal (row : t) (row' : t) =
+    String.Map.equal Match.equal row.matches row'.matches 
+    && MagmaAction.equal row.action row'.action
+    && Data.equal row.data row'.data
+
+  let get_match (row : t) name = 
+    Map.find_exn row.matches name
+
+  let get_field (row : t) name =
+    match Data.find row.data name with 
+    | None -> MatchExpression.find_exn row.matches name
+    | Some v -> Match.Exact v
+
+  let does_match pkt (row : t) =
+    MatchExpression.does_match pkt row.matches
+
+  let runs_action (a : MagmaAction.t) (row : t) =
+    MagmaAction.equal a row.action
+
+  let get_action (ma : t) : MagmaAction.t = ma.action
+  let get_matches (ma : t) : MatchExpression.t = ma.matches
+  let get_data (ma : t) : Data.t = ma.data
+
+  let pair (row1 : t) (row2 : t) = 
     let (let+) o f = Option.map o ~f in 
-    let (let*) o f = Option.bind o ~f in 
+    let (let*) o f = Option.bind o ~f in
+    let hw = Hardware.meet row1.hw row2.hw in
     let match_keys = Map.(
       keys row1.matches @ keys row2.matches 
       |> List.dedup_and_sort ~compare:String.compare)
@@ -303,19 +452,46 @@ module MatchAction = struct
           Map.set intersection ~key ~data
       )
     in
-    let action = Action.pair row1.action row2.action ~f in 
-    { matches; action }
+    let data = Data.disjoint_union row1.data row2.data in 
+    let action = MagmaAction.(row1.action @ row2.action) in 
+    { hw; matches; action; data }
 
-    let empty_intersection row1 row2 =
-      Map.merge row1.matches row2.matches ~f:(fun ~key:_ -> function 
-        | `Both (m1, m2) -> Some (m1,m2)
-        | _ -> None
-      ) |> 
-      Map.exists ~f:(fun (m1,m2) -> 
-        Match.empty_intersection m1 m2
-      )
+  let empty_intersection row1 row2 =
+    Map.merge row1.matches row2.matches ~f:(fun ~key:_ -> function 
+      | `Both (m1, m2) -> Some (m1,m2)
+      | _ -> None
+    ) |> 
+    Map.exists ~f:(fun (m1,m2) -> 
+      Match.empty_intersection m1 m2
+    )
 
-    let nonempty_intersection row1 row2 = not (empty_intersection row1 row2)
+  let nonempty_intersection row1 row2 = not (empty_intersection row1 row2)
+
+  let remove_key row name = 
+    {row with matches = MatchExpression.remove row.matches name}
+
+  let remove_keyv row x = remove_key row (Var.str x)
+
+  let set_match row name me = 
+    {row with matches = MatchExpression.set row.matches name me}
+
+  let set_matchv row x = set_match row (Var.str x)
+
+  let match_projectv row xs = 
+    {row with matches = MatchExpression.projectv row.matches xs}
+
+  let match_project row names = 
+    {row with matches = MatchExpression.project row.matches names}
+
+  let refine row matches = 
+    MatchExpression.intersect row.matches matches
+    |> Option.map ~f:(fun matches ->
+      {row with matches}
+    )
+
+  let update_with_matches_list (row : t) (matches_list : MatchExpression.t list) : t list = 
+    List.map matches_list ~f:(fun matches -> {row with matches})
+  
 
 end
 
@@ -324,18 +500,17 @@ module MatchActionTable = struct
 
   let length = List.length
 
-  let of_alist keys = List.map ~f:(fun (data, action) ->
+  let of_alist hw keys = List.map ~f:(fun (match_list, action, data) ->
     let matches = 
-      List.zip_exn keys data
+      List.zip_exn keys match_list
       |> String.Map.of_alist_exn
     in
-    MatchAction.{matches;action})
+    MatchAction.{hw; matches; action; data})
 
   let keys (tbl : t) = 
     let sort = List.sort ~compare:(fun (s, _) (s',_) -> String.compare s s') in
-    let (==) = List.equal (fun (s1, (w1, mk1)) (s2, (w2, mk2)) -> 
-      String.(s1 = s2) && Int.(w1 = w2) &&
-      (Type.castable mk1 ~to_:mk2 || Type.castable mk2 ~to_:mk1)) 
+    let (==) = List.equal (fun (s1, w1) (s2, w2) -> 
+      String.(s1 = s2) && Int.(w1 = w2)) 
     in 
     List.fold tbl ~init:None ~f:(fun keysopt row -> 
       let keys' = MatchAction.keys_widths row |> sort in 
@@ -348,13 +523,10 @@ module MatchActionTable = struct
           failwith "Match Action table rows had different key sets"      
     ) |> Option.value_exn ~message:"table was empty, couldn't get keys"
 
-  let actions : t -> Action.t list =
+  let actions : t -> MagmaAction.t list =
     List.map ~f:(fun (row : MatchAction.t) -> row.action)
 
-  let action_names mat = 
-    actions mat 
-    |> List.map ~f:(Action.get_name)
-    |> String.Set.of_list
+  let action_names mat = actions mat
 
   let data mat = 
     let union = Map.merge ~f:(fun ~key -> function 
@@ -367,8 +539,8 @@ module MatchActionTable = struct
           failwithf "Ill-typed table with different sized data args: %s has length %d but value %s" key w (Bit.Vector.to_string bv) ()
     )
     in
-    actions mat 
-    |> List.map ~f:(Action.get_data)
+    mat 
+    |> List.map ~f:(fun (row : MatchAction.t) -> row.data)
     |> List.fold ~init:String.Map.empty ~f:(fun acc data ->
       union acc data
     )
@@ -386,25 +558,38 @@ module MatchActionTable = struct
 
   let run (entries : t) keys = 
     let entry = find_match entries keys in 
-    entry.action
+    (entry.action, entry.data)
 
   let get_matches name entries = 
     List.map entries ~f:(fun row -> MatchAction.get_match row name)
 
-  let get_actions (name: string) entries = 
-    List.filter entries ~f:(MatchAction.runs_action name)
-    |> List.map ~f:(fun (ma : MatchAction.t) -> ma.action)
-
-  let map ~f : t -> t= 
+  let map ~f : t -> t = 
     List.map ~f
 
   let bind ~f : t -> t =
     List.bind ~f
 
+  let agg_bind ~f : t -> t =
+    List.fold ~init:[] ~f:(fun above row -> 
+      above @ f above row
+    )
+
+  let fold ~init ~f : t -> t = List.fold ~init ~f
+
   let size (mat : t) =
     List.length mat
 
-  let (<+) tbl new_rules =
-    new_rules @ tbl
+  let postcons (mat : t) row = mat @ [row]
 
+  let (<+) = postcons
+
+  let (<*) : t -> t -> t = List.append
+
+  module MonadicSyntax = struct
+    let (let*) m f : t = bind m ~f
+    let (let+) m f : t = map m ~f
+    let return row : t = [row]
+    let empty = []
   end
+
+end

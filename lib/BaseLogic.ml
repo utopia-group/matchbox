@@ -42,52 +42,25 @@ end
 
 module MatchTfx = struct
   open Gpl
+  open Semantics
 
   type t = 
     | Del of Var.t
     | WildCard of Var.t
     | Project of Var.t list
     | SetTo of Var.t * Expr.t
-    | CubeFilter of (Semantics.Match.t) String.Map.t
+    | CubeFilter of MatchExpression.t
     | Filter of BExpr.t
 end
 
-module ActionTfx = struct
+module OutTfx = struct
   open Gpl
-
+  open Semantics
   type t = 
     | Del of Var.t
     | Project of Var.t list
     | SetTo of Var.t * Expr.t
-    | Rename of string * string
-end
-
-module JoinExp = struct
-  type t = ((string * string) * string) list
-
-  let in_match (a1, a2) (b1, b2) = 
-    String.(a1 = b1 && a2 = b2)
-
-  let eval (e : t) a = 
-    List.find_map e ~f:(fun (b, out) -> 
-      if in_match a b then 
-        Some out
-      else None)
-
-  let eval_exn e (a1, a2) = 
-    eval e (a1, a2) 
-    |> Option.value_exn ~message:("couldn't evaluate (" ^ a1 ^ ", " ^ a2 ^ ")")
-  
-  let wf xs ys zs e = 
-    List.for_all2_exn xs ys ~f:(fun x y -> 
-      match eval e (x, y)  with 
-      | None -> false
-      | Some z -> List.exists zs ~f:(String.(=) z) 
-    )
-
-  let out_actions (e : t) : string list = 
-    List.map e ~f:snd
-
+    | Rename of MagmaAction.t * MagmaAction.t
 end
 
 module Clause = struct
@@ -97,7 +70,7 @@ module Clause = struct
     | Table of Semantics.MatchActionTable.t * Type.t option
     | Join of t * t * Type.t option
     | Compose of t * t * Type.t option
-    | MapOut of t * ActionTfx.t * Type.t option
+    | MapOut of t * OutTfx.t * Type.t option
     | MapIn of t * MatchTfx.t * Type.t option
 
   let typeof_exn = function 

@@ -23,13 +23,13 @@ let tv_eval1 op (m : Match.t) : Match.t =
   | _ -> failwith "arith negative?"
 
 
-let rec eval_match_expr (matches : Match.t Var.Map.t) (expr : Gpl.Expr.t) : Match.t =
-  match expr with
+let rec eval_match_expr (matches : MatchExpression.t) (expr : Gpl.Expr.t) : Match.t =
+  match expr with 
   | BV (value, width) -> Bit.Vector.of_int (Bigint.to_int_exn value) ~width |> Match.Exact
-  | Var var_name -> (
-    match Map.find matches var_name with
+  | Var x -> (
+    match MatchExpression.findv matches x with
     | Some match_val -> match_val
-    | None -> failwith (sprintf "Variable not found in matches: %s" (Var.str var_name)))
+    | None -> failwith (sprintf "Variable not found in matches: %s" (Var.str x)))
   | BinOp (op, e1, e2) ->
     let tv1 = eval_match_expr matches e1 in 
     let tv2 = eval_match_expr matches e2 in 
@@ -39,103 +39,83 @@ let rec eval_match_expr (matches : Match.t Var.Map.t) (expr : Gpl.Expr.t) : Matc
     |> tv_eval1 op
   | Apply _ -> failwith "apply??????"
 
-  let apply_match_tfx _ matches tfx =
+  let apply_in_tfx (row : MatchAction.t) tfx : MatchActionTable.t =
+    let open MatchActionTable.MonadicSyntax in 
     let open MatchTfx in
     match tfx with
     | Del x -> 
-      [Map.remove matches x]
-    | WildCard x -> 
-      [Map.set matches ~key:x ~data:(Match.Ternary(Trit.Vector.wc (Var.width x)))]
+      return (MatchAction.remove_keyv row x)
+    | WildCard x ->
+      let wild = Match.Ternary(Trit.Vector.wc (Var.width x)) in
+      return (MatchAction.set_matchv row x wild)
     | Project vars ->
       (* Keep only the specified variables *)
-      [Map.filter_keys matches ~f:(List.mem vars ~equal:Var.equal)]
-    | SetTo (var, expr) ->
+      return (MatchAction.match_projectv row vars)
+    | SetTo (x, expr) ->
       (* Set a variable to the result of evaluating an expression *)
-      let new_match = eval_match_expr matches expr in
-      [Map.set matches ~key:var ~data:new_match]
+      let new_match = eval_match_expr row.matches expr in
+      return (MatchAction.set_matchv row x new_match)
     | CubeFilter cube -> 
-      [Map.filter_mapi matches ~f:(fun ~key ~data ->
-        match Map.find cube (Var.str key) with 
-        | None -> Some data 
-        | Some mexpr -> 
-          Match.intersect mexpr data
-          )]
+      MatchAction.refine row cube
+      |> Option.value_map ~f:return ~default:empty
     | Filter phi -> 
-      Cover.split `TCAM matches phi
+      Cover.split `TCAM row.matches phi
+      |> MatchAction.update_with_matches_list row
 
-let rec apply_action_tfx action tfx =
-  let open ActionTfx in 
-  match tfx with
-  | Project vars ->
-    (* Keep only the specified action parameters *)
-    Action.project_data (List.map ~f:Var.str vars) action
-  | SetTo (var, expr) ->
-    (* Set a parameter to the result of evaluating an expression *)
-    let new_data = eval_action_expr action expr in
-    Action.update_data action (Var.str var) new_data
-  | Del x -> 
-    let ys = Action.get_data action |> Map.key_set in 
-    let ys' = Set.remove ys (Var.str x) in 
-    Action.project_data (Set.to_list ys') action
-  | Rename (a1, a2) when String.(a1 = Action.get_name action) -> 
-    Action.make a2 (Action.get_data action)
-  | Rename _ -> 
-    action
-
-and eval_action_expr action expr =
+let eval_action_expr data expr =
   let open Gpl.Expr in 
-  let model = Action.get_data action in
-  let model = Map.fold model ~init:Var.Map.empty ~f:(fun ~key ~data acc ->
-    Map.set ~key:(Var.make key (Bit.Vector.length data)) ~data acc 
-  ) in 
-  let model = Var.Map.map model ~f:(fun bv -> Bigint.of_int (Bit.Vector.to_int bv), Bit.Vector.length bv) in
+  let model = Data.to_gpl_model data in 
   let v, w = eval model expr |> Result.ok_or_failwith in
   Bit.Vector.of_int (Bigint.to_int_exn v) ~width:w
 
+let apply_out_tfx row tfx =
+  let action = MatchAction.get_action row in 
+  let data = MatchAction.get_data row in 
+  let action, data =
+    let open OutTfx in 
+    match tfx with
+    | Project vars ->
+      (* Keep only the specified action parameters *)
+      action, 
+      Data.projectv data vars
+    | SetTo (x, expr) ->
+      (* Set a parameter to the result of evaluating an expression *)
+      let value = eval_action_expr data expr in
+      action, 
+      Data.updatev data x value
+    | Del x -> 
+      action, 
+      Data.removev data x
+    | Rename (old_action,new_action) when MagmaAction.equal old_action action -> 
+      new_action,
+      data
+    | Rename _ -> 
+      action,
+      data
+    in
+    {row with action; data}
+
 let rec eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
+  let open MatchActionTable.MonadicSyntax in 
   match clause with
   | Id (f,_) -> get_mat config f
   | Table (t, _) -> t
   | Join (f, g, _) ->
-    let f_mat = eval f config in
-    let g_mat = eval g config in
-    List.fold f_mat ~init:[] ~f:(fun acc f_row ->
-        List.fold g_mat ~init:acc ~f:(fun acc g_row ->
-            match MatchAction.pair f_row g_row ~f:(fun _ -> failwith "joiN?") with
-            | None -> acc
-            | Some joined_row -> joined_row :: acc))
-    |> List.rev
+    let* f_row = eval f config in
+    let* g_row = eval g config in
+    MatchAction.pair f_row g_row
+    |> Option.value_map ~default:empty ~f:return
   | Compose (f, g, _) ->
-    let f_mat = eval f config in
-    let g_mat = eval g config in
-    List.fold f_mat ~init:[] ~f:(fun acc f_row ->
-        let f_action = MatchAction.get_action f_row in
-        let output_keys = Action.get_data f_action in
-        List.fold g_mat ~init:acc ~f:(fun acc g_row ->
-            if MatchAction.does_match output_keys g_row then
-              let f_matches = MatchAction.get_matches f_row in
-              let g_action = MatchAction.get_action g_row in
-              let composed_row = MatchAction.make f_matches g_action in
-              composed_row :: acc
-            else acc))
-    |> List.rev
+    let g_mat = eval g config in 
+    let+ f_row = eval f config in
+    let (action, data) = MatchActionTable.run g_mat f_row.data in 
+    MatchAction.{f_row with action;data}
   | MapOut (f, tfx, _) ->
-    let f_mat = eval f config in
-    List.map f_mat ~f:(fun row ->
-        let matches = MatchAction.get_matches row in
-        let action = MatchAction.get_action row in
-        let transformed_action = apply_action_tfx action tfx in
-        MatchAction.make matches transformed_action)
-  | MapIn (f, tfx, typ) ->
-    let f_mat = eval f config in
-    List.bind f_mat ~f:(fun row ->
-        let matches = MatchAction.get_matches row in
-        let matches = Map.fold matches ~init:Var.Map.empty ~f:(fun ~key ~data acc -> 
-          Map.set acc ~key:(Var.make key (Match.length data)) ~data
-        ) in
-        let action = MatchAction.get_action row in
-        apply_match_tfx typ matches tfx
-        |> List.map ~f:(fun ms -> MatchAction.make (unvar ms) action))
+    let+ row = eval f config in
+    apply_out_tfx row tfx 
+  | MapIn (f, tfx, _) ->
+    let* row = eval f config in
+    apply_in_tfx row tfx
 
 (* Execute a list of BaseLogic Clauses step by step *)
 let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :

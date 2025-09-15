@@ -133,9 +133,10 @@ let parse_rule_line line =
     let pairs = String.split ~on:',' line in
     let fields = List.map pairs ~f:parse_field_pair in
     let matches = fields_to_matches fields in
-    let action = Semantics.Action.make "forward" (Map.empty (module String)) in
+    let action = Semantics.MagmaAction.make "forward" in
+    let data = String.Map.empty in
     (* Default action *)
-    Semantics.MatchAction.{matches; action}
+    Semantics.MatchAction.{hw = TCAM; matches; action; data}
 
 (* Parse multiple rules from a string *)
 let parse_from_string content =

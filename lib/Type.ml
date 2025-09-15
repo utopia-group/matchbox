@@ -1,9 +1,11 @@
 open Core
 
+module ActionSet = Set.Make (Semantics.MagmaAction)
+
 type varwidth = int [@@deriving sexp, compare]
 type match_kind = Exact | LPM | Ternary | Range | Optional [@@deriving sexp, compare]
-type table = {keys : (varwidth * match_kind) String.Map.t;
-              actions : String.Set.t; 
+type table = {keys : varwidth String.Map.t;
+              actions : ActionSet.t; 
               data : varwidth String.Map.t} [@@deriving sexp, compare]
 
 type t = 
@@ -70,10 +72,19 @@ let get_action_exn typ =
   get_action typ
   |> Option.value_exn ~message:"Type Error: expected action"
   
+let action_product (actions1 : ActionSet.t) (actions2 : ActionSet.t) : ActionSet.t = 
+  let open Semantics.MagmaAction in 
+  let actionslist1 = Set.to_list actions1 in 
+  let actionslist2 = Set.to_list actions2 in
+  List.fold actionslist1 ~init:ActionSet.empty ~f:(fun init a1 -> 
+    List.fold actionslist2 ~init ~f:(fun acc a2 -> 
+      Set.add acc (a1 @ a2)
+    )
+  )
+
 
 let get_keys (t : table) : (string * int) list = 
   t.keys
-  |> Map.map ~f:fst
   |> Map.to_alist
 
 let get_data (t : table) : varwidth String.Map.t =
@@ -81,19 +92,19 @@ let get_data (t : table) : varwidth String.Map.t =
 
 let invert_table ( t : table ) : table = 
   {
-    keys = get_data t |> String.Map.map ~f:(fun w -> (w, Exact));
+    keys = get_data t |> String.Map.map ~f:(fun w -> w);
     actions = t.actions;
-    data = String.Map.map t.keys ~f:fst
+    data = t.keys
   }
 
-let merge_keys_exn (skeys : (int * match_kind) String.Map.t) (tkeys : (int * match_kind) String.Map.t) : (varwidth * match_kind) String.Map.t = 
+let merge_keys_exn (skeys : int String.Map.t) (tkeys : int String.Map.t) : int String.Map.t = 
   Map.merge skeys tkeys ~f:(fun ~key -> function 
-    | `Both ((w, mk), (w',mk')) -> 
-      if w = w' && mkeq mk mk' then 
-        Some (w, mk)
+    | `Both (w, w') -> 
+      if w = w' then 
+        Some w
       else 
         failwithf "Type error on key %s, types differed when merging" key ()
-    | `Left (w,mk) | `Right (w,mk) -> Some (w,mk)
+    | `Left w | `Right w -> Some w
   )
 
 let union_data_exn sdata tdata : varwidth String.Map.t =

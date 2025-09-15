@@ -82,8 +82,8 @@ let read_csv_by_table (filename : string) : (string * MatchActionTable.t) list =
            List.map (List.rev entries) ~f:(fun (key, params) ->
                let matches = parse_match_key key in
                let args = parse_action_params params in
-               let action = Action.make "action" args in
-               MatchAction.make matches action)
+               let action = MagmaAction.make "action"in
+               MatchAction.make TCAM matches action args)
          in
          (table_name, table))
 
@@ -103,8 +103,8 @@ let table_to_csv_lines (table_name : string) (table : MatchActionTable.t) :
         |> String.concat ~sep:";"
       in
       let action_params =
-        Semantics.MatchAction.get_action row
-        |> Semantics.Action.get_data |> Map.to_alist
+        Semantics.MatchAction.get_data row
+        |> Map.to_alist
         |> List.map ~f:(fun (_param, bv) -> Bit.Vector.to_string bv)
         |> String.concat ~sep:";"
       in
@@ -160,18 +160,15 @@ let punt_to_punt : Clause.t = Clause.id punt
 let punt_to_punt2 : Clause.t = Clause.id punt
 
 let ethernet_to_staging : Clause.t =
-  Clause.table [
-    String.Map.of_alist_exn ["c", Bit.Vector.of_int 3 ~width:4]
-    |> Action.make "set_choice"
-    |> MatchAction.make (String.Map.of_alist_exn ["standard_metadata.ingress_port", Match.Ternary (Trit.Vector.wc 9)])
-  ]
-  (* MapOut
-    ( MapIn
-        ( Id ethernet,
-          MatchTfx.SetTo
-            ( "standard_metadata.ingress_port",
-              MatchTfx.Match (Semantics.Match.Ternary (Trit.Vector.wc 9)) ) ),
-      ActionTfx.SetTo ("c", ActionTfx.Data (Bit.Vector.of_int 3 ~width:4)) ) *)
+  let matchexpr = 
+    String.Map.of_alist_exn ["standard_metadata.ingress_port", Match.Ternary (Trit.Vector.wc 9)]
+  in
+  let data = String.Map.of_alist_exn ["c", Bit.Vector.of_int 3 ~width:4] in
+  let row = 
+    MatchAction.make TCAM matchexpr (MagmaAction.make "set_choice") data
+  in
+  Clause.table [ row ]
+
 
 let choice_tfxs : (string * Clause.t) list =
   [

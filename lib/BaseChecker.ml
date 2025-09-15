@@ -5,27 +5,27 @@ let actions_compat_keys table_type table_type' =
   let open Type in  
   let action_data = get_data table_type in
   let arguments = table_type'.keys in
-  String.Map.map arguments ~f:fst
+  arguments
   |> String.Map.equal Int.equal action_data 
 
-let rec match_expr_type ctx e =
+let rec match_expr_type ctx e : int =
   let open Gpl.Expr in
   match e with
-  | BV (_, w) -> (w, Type.Exact)
+  | BV (_, w) -> w (*, Type.Exact)*)
   | Var x -> 
-    Type.find_matchtype_exn ctx (Var.str x)
+    fst (Type.find_matchtype_exn ctx (Var.str x))
   | BinOp(_, e1, e2) ->
-    let (w1, mk1) = match_expr_type ctx e1 in 
-    let (w2, mk2) = match_expr_type ctx e2 in
+    let w1 = match_expr_type ctx e1 in 
+    let w2 = match_expr_type ctx e2 in
     assert (w1 = w2);
-    (w1, Type.join mk1 mk2)
+    w1(*, Type.join mk1 mk2*)
   | UnOp (_, e) ->
     match_expr_type ctx e
   | Apply _ -> failwith "[typeof] apply"
 
 let action_expr_type e = Gpl.Expr.width e
 
-let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : (int * Type.match_kind) String.Map.t) : (int * Type.match_kind) String.Map.t =
+let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : int String.Map.t) : int String.Map.t =
   let open MatchTfx in
   match tfx with 
   | Del x ->
@@ -35,12 +35,12 @@ let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : (int * Type.match_kind) Stri
   | SetTo (x, e) -> 
     Map.set rowtype ~key:(Var.str x) ~data:(match_expr_type ctx e)
   | WildCard x -> 
-    Map.set rowtype ~key:(Var.str x) ~data:(Var.width x, LPM)
+    Map.set rowtype ~key:(Var.str x) ~data:(Var.width x)
   | Filter _ -> rowtype
   | CubeFilter _ -> rowtype
 
-let data_tfx_type tfx actions (datatypes : int String.Map.t) : String.Set.t * int String.Map.t = 
-  let open ActionTfx in 
+let data_tfx_type tfx (actions : Type.ActionSet.t) (datatypes : int String.Map.t) : Type.ActionSet.t * int String.Map.t = 
+  let open OutTfx in 
   match tfx with 
   | Del x -> 
     actions, Map.remove datatypes (Var.str x)
@@ -51,8 +51,9 @@ let data_tfx_type tfx actions (datatypes : int String.Map.t) : String.Set.t * in
     actions, datatypes'
   | SetTo(x, e) ->
     actions, Map.set datatypes ~key:(Var.str x) ~data:(action_expr_type e)
-  | Rename (a1,a2) ->
-    Set.(add (remove actions a1) a2), datatypes
+  | Rename (a1,a2) -> 
+    Set.(add (remove actions a1) a2), 
+    datatypes
 
 
 let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t = 
@@ -64,9 +65,9 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
     Id (f, Some typ)
   | Table (t, _) ->
     let keys = String.Map.of_alist_exn (MatchActionTable.keys t) in 
-    let actions = MatchActionTable.action_names t in 
+    let actions = Type.ActionSet.of_list (MatchActionTable.action_names t) in 
     let data = MatchActionTable.data t in 
-    let typ= Type.Table {keys; actions; data} in
+    let typ = Type.Table {keys; actions; data} in
     Table (t, Some typ)
   | Join (f, g, None) ->
     let f = infer ctx f in 
@@ -77,9 +78,7 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
       Table {
         keys = merge_keys_exn ftype.keys gtype.keys;
         actions = 
-          List.cartesian_product (Set.to_list ftype.actions) (Set.to_list gtype.actions)
-          |> List.map ~f:(fun (a1, a2) -> Printf.sprintf "%s$%s" a1 a2)
-          |> String.Set.of_list
+          Type.action_product ftype.actions gtype.actions
         ;
         data = union_data_exn ftype.data gtype.data;
       } in

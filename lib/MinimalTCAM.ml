@@ -21,8 +21,7 @@ let solve holes phi =
   ] in
   solver smt
 
-let bv_sortify = List.map ~f:(fun (x,(w,_)) -> (x, SMT.(bv_sort w)))
-let bv_sortify' = List.map ~f:(fun (x, w ) -> (x, SMT.(bv_sort w)))
+let bv_sortify = List.map ~f:(fun (x,w) -> (x, SMT.(bv_sort w)))
 
 let does_match k v m =
   let open SMT in 
@@ -31,11 +30,11 @@ let does_match k v m =
     bvand [v; m]
   ]
 
-let rec abstract_actions : MatchActionTable.t -> Action.t list = function 
+let rec abstract_actions : MatchActionTable.t -> MagmaAction.t list = function 
   | [] -> []
   | row::rows ->  
     let rst = abstract_actions rows in 
-    if Action.(List.mem rst row.action ~equal) then 
+    if MagmaAction.(List.mem rst row.action ~equal) then 
       rst
     else 
       row.action :: rst
@@ -43,11 +42,11 @@ let rec abstract_actions : MatchActionTable.t -> Action.t list = function
 let length act_mapping =
   List.length act_mapping
 
-let act_id (actions : Action.t list) a =
-  List.findi_exn actions ~f:(fun _ -> Action.equal a)
+let act_id (actions : MagmaAction.t list) a =
+  List.findi_exn actions ~f:(fun _ -> MagmaAction.equal a)
   |> fst
 
-let get_act (actions : Action.t list) i =
+let get_act (actions : MagmaAction.t list) i =
   List.nth actions i 
   |> Option.value_exn ~message:(Printf.sprintf "Couldn't find action with index %d" i)
 
@@ -60,7 +59,7 @@ let match_to_smt =
     vars @ [key, w], and_ [phi; does_match (var key) (bv' v) (bv' m)]
   )
 
-let action_to_smt act_mapping (action : Action.t) =
+let action_to_smt act_mapping (action : MagmaAction.t) =
   let avar = SMT.var "$action" in 
   let anum = length act_mapping in 
   let aid = act_id act_mapping action in 
@@ -113,7 +112,7 @@ let table_to_smt (tbl : MatchActionTable.t) : (string * int) list * ((string * i
   let act_mapping = abstract_actions tbl in
   let anum = length act_mapping in 
   let choose_action aid = SMT.((=) [var action_var; bv aid anum]) in 
-  let keys = MatchActionTable.keys tbl |> List.map ~f:(fun (x, (w,_)) -> (x,w)) in
+  let keys = MatchActionTable.keys tbl |> List.map ~f:(fun (x, w) -> (x,w)) in
   let n = List.length tbl in  
   let open SMT in 
   (action_var, anum) :: keys, (*tables have fixed keys, so we can return the key variables*)
@@ -128,7 +127,7 @@ let table_to_smt (tbl : MatchActionTable.t) : (string * int) list * ((string * i
   )
 
 let table_to_optmt tbl n concrete =
-  let keys = MatchActionTable.keys tbl |> List.map ~f:(fun (s, (w, _)) -> (s,w)) in 
+  let keys = MatchActionTable.keys tbl |> List.map ~f:(fun (s, w) -> (s,w)) in 
   let action_mapping = abstract_actions tbl in 
   let num_acts = length action_mapping in 
   let action = SMT.var action_var in
@@ -198,8 +197,8 @@ let reconstruct_mask tbl tbl_model =
 
 let widen tbl =
   let vars, (holes, spec, sketch) = table_to_smt tbl in 
-  let qvars = bv_sortify' vars in 
-  let consts = bv_sortify' holes in 
+  let qvars = bv_sortify vars in 
+  let consts = bv_sortify holes in 
   let phi = SMT.(forall qvars ((=) [sketch; spec])) in 
   match solve consts phi with 
   | None -> failwith "ERROR:: couldn't widen table, this should never happen" 
@@ -219,7 +218,7 @@ let reconstruct_row keys act_mapping tbl_model i =
     let aid = SMT.Model.find_exn tbl_model (Printf.sprintf "?action_%d" i) |> Bit.Vector.of_string |> Bit.Vector.to_int in 
     get_act act_mapping aid
   in 
-  MatchAction.{matches; action}
+  MatchAction.{hw = TCAM; matches; action; data = String.Map.empty}
 
 
 let extract_rows keys act_mapping n tbl_model =
@@ -348,7 +347,9 @@ let greedy keys actions spec =
 
 let greedy_minimize table =
   let keys = MatchActionTable.keys table |> bv_sortify in 
-  let actions = MatchActionTable.actions table |> List.dedup_and_sort ~compare:Action.compare in 
+  let actions = 
+    MatchActionTable.actions table 
+    |> MagmaAction.(List.dedup_and_sort ~compare)in 
   let spec = 
     let _, (_, phi, _) = table_to_smt table in 
     phi
