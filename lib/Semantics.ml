@@ -151,6 +151,12 @@ module Match = struct
         TComp(Eq, BinOp(BAnd, x, mask),
                   BinOp(BAnd, valu, mask))))
 
+  let vmap_to_bexpr (vmatches : t Gpl.Var.Map.t) : Gpl.BExpr.t = 
+    let matches = Map.fold vmatches ~init:String.Map.empty ~f:(fun ~key ~data -> 
+      Map.set ~key:(Gpl.Var.str key) ~data
+    ) in
+    map_to_bexpr matches
+
 end
 
 

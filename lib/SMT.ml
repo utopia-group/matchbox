@@ -184,6 +184,72 @@ let bvslt = apply "bvslt"
 let bvsgt = apply "bvsgt"
 let bvsge = apply "bvsge"
 
+
+let rec of_expr expr : expr =
+  let module E = Gpl.Expr in
+  match expr with 
+  | E.BV (v,w) -> 
+    bv (Bigint.to_int_exn v) w
+  | E.Var x -> var (Gpl.Var.str x)
+  | E.BinOp(op, e1, e2) -> 
+    let args = [of_expr e1; of_expr e2] in
+    begin match op with 
+    | E.BAdd -> bvadd args
+    | E.BSub -> bvsub args
+    | E.BMul -> bvmul args
+    | E.BAnd -> bvand args
+    | E.BOr -> bvor args
+    | E.BXor -> failwith "implement xor"
+    | E.BAshr -> failwith "implement >>a"
+    | E.BLshr -> failwith "implement >>l"
+    | E.BShl -> failwith "implement <<"
+    end
+  | E.UnOp (op, e) ->
+    let arg = of_expr e in
+    begin match op with 
+    | E.UNot -> not arg
+    | E.UNeg -> failwith "implement bvneg"
+    end
+  | E.Apply(f, _, args) ->
+    List.map args ~f:of_expr
+    |> apply (Gpl.Var.str f)
+
+let rec of_bexpr bexpr : expr = 
+  let module B = Gpl.BExpr in
+  match bexpr with
+  | B.TTrue -> true_
+  | B.TFalse -> false_
+  | B.TNary(bop, bs) -> 
+    let args = List.map bs ~f:of_bexpr in
+    begin match bop with 
+    | B.LAnd -> and_ args
+    | B.LOr -> or_ args
+    | B.LArr -> implies args
+    | B.LIff -> iff args
+    end
+  | B.TComp(cmp, e1, e2) -> 
+    let args = [of_expr e1; of_expr e2] in
+    begin match cmp with 
+    | B.Eq -> (=) args
+    | B.Sge -> bvsge args
+    | B.Sgt -> bvsgt args
+    | B.Slt -> bvslt args
+    | B.Sle -> bvsle args
+    | B.Uge -> bvuge args
+    | B.Ugt -> bvugt args
+    | B.Ult -> bvult args
+    | B.Ule -> bvule args
+    end
+  | B.Exists (x, b) -> 
+    of_bexpr b
+    |> exists [Gpl.Var.str x, bv_sort (Gpl.Var.width x)]
+  | B.Forall (x, b) -> 
+    of_bexpr b
+    |> forall [Gpl.Var.str x, bv_sort (Gpl.Var.width x)]
+  | B.TNot b -> 
+    of_bexpr b
+    |> not
+
 type response = Sexp.t list
 
 let run (r : Runner.t) (p : program) : response =

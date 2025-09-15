@@ -2,6 +2,10 @@ open Core
 open BaseLogic
 open Semantics
 
+let unvar = Map.fold ~init:String.Map.empty ~f:(fun ~key ~data ->
+  Map.add_exn ~key:(Var.str key) ~data
+)
+
 let get_mat (config : Config.t) (symbol : Symbol.t) : MatchActionTable.t =
   try Config.find_exn config symbol with _ -> []
 
@@ -35,30 +39,29 @@ let rec eval_match_expr (matches : Match.t Var.Map.t) (expr : Gpl.Expr.t) : Matc
     |> tv_eval1 op
   | Apply _ -> failwith "apply??????"
 
-
-  let apply_match_tfx matches tfx =
+  let apply_match_tfx _ matches tfx =
     let open MatchTfx in
     match tfx with
     | Del x -> 
-      Map.remove matches x
+      [Map.remove matches x]
     | WildCard x -> 
-      Map.set matches ~key:x ~data:(Match.Ternary(Trit.Vector.wc (Var.width x)))
+      [Map.set matches ~key:x ~data:(Match.Ternary(Trit.Vector.wc (Var.width x)))]
     | Project vars ->
       (* Keep only the specified variables *)
-      Map.filter_keys matches ~f:(List.mem vars ~equal:Var.equal)
+      [Map.filter_keys matches ~f:(List.mem vars ~equal:Var.equal)]
     | SetTo (var, expr) ->
       (* Set a variable to the result of evaluating an expression *)
       let new_match = eval_match_expr matches expr in
-      Map.set matches ~key:var ~data:new_match
-    | Filter _ -> failwith "todo"
+      [Map.set matches ~key:var ~data:new_match]
     | CubeFilter cube -> 
-      Map.filter_mapi matches ~f:(fun ~key ~data ->
+      [Map.filter_mapi matches ~f:(fun ~key ~data ->
         match Map.find cube (Var.str key) with 
         | None -> Some data 
         | Some mexpr -> 
           Match.intersect mexpr data
-      )
-      
+          )]
+    | Filter phi -> 
+      Cover.split `TCAM matches phi
 
 let rec apply_action_tfx action tfx =
   let open ActionTfx in 
@@ -123,19 +126,16 @@ let rec eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
         let action = MatchAction.get_action row in
         let transformed_action = apply_action_tfx action tfx in
         MatchAction.make matches transformed_action)
-  | MapIn (f, tfx, _) ->
+  | MapIn (f, tfx, typ) ->
     let f_mat = eval f config in
-    List.map f_mat ~f:(fun row ->
+    List.bind f_mat ~f:(fun row ->
         let matches = MatchAction.get_matches row in
         let matches = Map.fold matches ~init:Var.Map.empty ~f:(fun ~key ~data acc -> 
           Map.set acc ~key:(Var.make key (Match.length data)) ~data
         ) in
         let action = MatchAction.get_action row in
-        let transformed_matches = apply_match_tfx matches tfx in
-        let transformed_matches = Map.fold transformed_matches ~init:String.Map.empty ~f:(fun ~key ~data:_ acc -> 
-          Map.set acc ~key:(Var.str key) ~data:(failwith "")
-        ) in
-        MatchAction.make transformed_matches action)
+        apply_match_tfx typ matches tfx
+        |> List.map ~f:(fun ms -> MatchAction.make (unvar ms) action))
 
 (* Execute a list of BaseLogic Clauses step by step *)
 let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :

@@ -244,14 +244,11 @@ let minimize tbl =
       Printf.printf "couldn't solve with %d rules, trying one more" i;
       loop (i + 1)
     | Some tbl_model -> 
-      Printf.printf "found a solution iwth %d rows \n%!" i;
+      Printf.printf "found a solution with %d rows \n%!" i;
       minimum_reconstruct i tbl tbl_model
   in 
   let tbl' = loop 0 in 
   tbl', !num_smt_calls
-
-
-
 
 let widen_delta tbl delta =
   (* [tbl] is the minimal element in its equivalence class *)

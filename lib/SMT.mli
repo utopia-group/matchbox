@@ -97,6 +97,9 @@ val bvsge : expr list -> expr
 
 val apply : string -> expr list -> expr
 
+val of_expr : Gpl.Expr.t -> expr
+val of_bexpr : Gpl.BExpr.t -> expr
+
 module Model : sig
     type 'a t = 'a Core.String.Map.t 
     val parse : string -> string t 
