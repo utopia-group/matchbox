@@ -139,8 +139,8 @@ let transform_csv_file (input_file : string)
 
 (* logical.p4 to action_decompose.p4 *)
 
-let ipv4_to_fib : Clause.t = Clause.(Project [Var.make "port" 9] <<| id ipv4)
-let ipv4_to_rewrite : Clause.t = Clause.(Project [Var.make "dstAddr" 48] <<| id ipv4)
+let ipv4_to_fib : Clause.t = Clause.(id ipv4 |>> Project [Var.make "port" 9] )
+let ipv4_to_rewrite : Clause.t = Clause.(id ipv4 |>> Project [Var.make "dstAddr" 48])
 
 let action_decompose_tfxs : (string * Clause.t) list =
   [("ipv4_fib", ipv4_to_fib); ("ipv4_rewrite", ipv4_to_rewrite)]
@@ -161,9 +161,9 @@ let punt_to_punt2 : Clause.t = Clause.id punt
 
 let ethernet_to_staging : Clause.t =
   Clause.table [
-    String.Map.of_alist_exn ["c", Bit.Vector.of_int 3 ~width:4]
+    Map.of_alist_exn (module String) ["c", Bit.Vector.of_int 3 ~width:4]
     |> Action.make "set_choice"
-    |> MatchAction.make (String.Map.of_alist_exn ["standard_metadata.ingress_port", Match.Ternary (Trit.Vector.wc 9)])
+    |> MatchAction.make (Map.of_alist_exn (module String) ["standard_metadata.ingress_port", Match.Ternary (Trit.Vector.wc 9)])
   ]
   (* MapOut
     ( MapIn
@@ -209,12 +209,11 @@ let transform_to_double (input_tables : (string * MatchActionTable.t) list) :
 (* logical.p4 to early_validate.p4 *)
 
 let punt_to_ethernet_validate : Clause.t =
-  let open Clause in 
-  Project [
+  Clause.(Project [
     Var.make "hdr.ethernet.etherType" 16; 
     Var.make "hdr.ipv4.isValid()" 1;
     Var.make "hdr.ipv4.ttl" 8
-  ] <<| id punt
+  ] <<| id punt)
   (* MapIn
     ( Id punt,
       MatchTfx.Project
@@ -223,17 +222,16 @@ let punt_to_ethernet_validate : Clause.t =
 let punt_to_ipv4_validate : Clause.t =
   let open Clause in
   Project [
-    Var.make "hdr.ipv4.version" 4; 
+    Var.make "hdr.ipv4.version" 4;
     Var.make "hdr.ipv4.ttl" 8
   ] <<| id punt
 
 let punt_to_acl : Clause.t =
   let open Clause in 
   (WildCard (Var.make "hdr.ethernet.srcAddr" 32)
-  <<| (WildCard (Var.make "hdr.ethernet.srcAddr" 32)
+  <<| (WildCard (Var.make "hdr.ethernet.dstAddr" 32)
   <<| (Project [Var.make "hdr.ipv4.srcAddr" 32; Var.make "hdr.ipv4.dstAddr" 32]
   <<| id punt)))
-
 
   (* MapIn
     ( MapIn
