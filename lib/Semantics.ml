@@ -507,6 +507,15 @@ module MatchActionTable = struct
     in
     MatchAction.{hw; matches; action; data})
 
+  let of_domain ~hw ~matches ~action ~data =
+    List.map ~f:(fun value ->
+      MatchAction.make
+        hw
+        (Map.of_alist_exn (module String) (matches value))
+        (MagmaAction.make (action value))
+        (Map.of_alist_exn (module String) (data value))
+    )
+
   let keys (tbl : t) = 
     let sort = List.sort ~compare:(fun (s, _) (s',_) -> String.compare s s') in
     let (==) = List.equal (fun (s1, w1) (s2, w2) -> 
@@ -591,5 +600,4 @@ module MatchActionTable = struct
     let return row : t = [row]
     let empty = []
   end
-
 end

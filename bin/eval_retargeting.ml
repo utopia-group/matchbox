@@ -256,14 +256,12 @@ let ipv4_to_ipv4 : Clause.t =
 
 (* Create nexthop table with static mappings for ports 1-500 *)
 let create_nexthop : Clause.t =
-  Clause.table (List.init 500 ~f:(fun i ->
-    let port = i + 1 in
-    MatchAction.make
-      TCAM
-      (Map.of_alist_exn (module String) ["nexthop", Match.Exact (Bit.Vector.of_int port ~width:32)])
-      (MagmaAction.make "set_port")
-      (Map.of_alist_exn (module String) ["port", Bit.Vector.of_int port ~width:9])
-  ))
+  Clause.table (MatchActionTable.of_domain (List.range 1 501)
+    ~hw:TCAM
+    ~matches:(fun port -> [("nexthop", (Match.Exact (Bit.Vector.of_int ~width:32 port)))])
+    ~action:(fun _ -> "set_port")
+    ~data:(fun port -> [("port", (Bit.Vector.of_int ~width:9 port))])
+  )
 
 let punt_to_punt : Clause.t = Clause.id punt
 
