@@ -58,8 +58,9 @@ let rec eval_match_expr (matches : MatchExpression.t) (expr : Gpl.Expr.t) : Matc
     | CubeFilter cube -> 
       MatchAction.refine row cube
       |> Option.value_map ~f:return ~default:empty
-    | Filter phi -> 
-      Cover.split `TCAM row.matches phi
+    | Filter phi ->
+      let hw = MatchAction.exfil_hardware row in 
+      GuardSynthesis.split hw row.matches phi
       |> MatchAction.update_with_matches_list row
 
 let eval_action_expr data expr =

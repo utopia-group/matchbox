@@ -174,8 +174,8 @@ let suffices_query xs psi phi : SMT.program =
     ]
   ]
 
-let suffices xs prev phi : Bit.Vector.t Var.Map.t option = 
-  suffices_query xs prev phi
+let suffices xs psi phi : Bit.Vector.t Var.Map.t option = 
+  suffices_query xs psi phi
   |> solver ~f:Bit.Vector.of_string
   |> Option.map ~f:(Map.fold ~init:Var.Map.empty ~f:(fun ~key ~data -> 
     Map.set ~key:(Var.make key (Bit.Vector.length data)) ~data
@@ -195,7 +195,23 @@ let split_ hw xs (matches : MatchExpression.t) vartheta : MatchExpression.t list
   in
   loop SMT.true_ []
 
-let split hw (matches : MatchExpression.t) bexpr = 
+let check_sat xs matches expr = 
+  let mu = guard_to_smt matches in 
+  match suffices xs mu expr with 
+  | None -> [matches]
+  | Some _ -> []
+
+let coerce = function
+  | `CAM -> failwith "impossible"
+  | `TCAM -> `TCAM
+  | `LPM -> `LPM
+   
+
+let split (hw : [`CAM | `LPM | `TCAM]) (matches : MatchExpression.t) bexpr : MatchExpression.t list = 
   let expr = SMT.of_bexpr bexpr in 
   let xs = MatchExpression.keysv matches in
-  split_ hw xs matches expr
+  match hw with 
+  | `CAM -> 
+    check_sat xs matches expr
+  | `TCAM | `LPM -> 
+    split_ (coerce hw) xs matches expr

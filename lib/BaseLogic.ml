@@ -84,7 +84,6 @@ module Clause = struct
     | _ -> 
       failwith "[typeof_exn] Couldn't deduce type"
 
-
   let id f = Id (f, None)
   let join c1 c2 = Join (c1, c2, None)
   let ( * ) = join

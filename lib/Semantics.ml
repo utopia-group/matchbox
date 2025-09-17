@@ -421,6 +421,12 @@ module MatchAction = struct
     | None -> MatchExpression.find_exn row.matches name
     | Some v -> Match.Exact v
 
+  let exfil_hardware (row : t) =
+    match row.hw with 
+    | TCAM -> `TCAM
+    | CAM -> `CAM
+    | LPM -> `LPM
+
   let does_match pkt (row : t) =
     MatchExpression.does_match pkt row.matches
 
