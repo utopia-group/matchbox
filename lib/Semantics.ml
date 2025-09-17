@@ -49,7 +49,10 @@ module Match = struct
 
   let get_tv = function 
     | Exact v -> Trit.Vector.of_bv v
-    | Lpm _ -> failwith "TODO: LPM -> TV"
+    | Lpm (v, _) ->
+      (* failwith "TODO: LPM -> TV" *)
+      (* TODO: fully implement *)
+      Trit.Vector.of_bv v
     | Ternary tv -> tv
 
   let to_mask_pair m = get_tv m |> Trit.Vector.to_bitmask
