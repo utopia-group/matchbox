@@ -183,6 +183,7 @@ let bvsle = apply "bvsle"
 let bvslt = apply "bvslt"
 let bvsgt = apply "bvsgt"
 let bvsge = apply "bvsge"
+let bvlshr = apply "bvlshr"
 
 
 let rec of_expr expr : expr =
@@ -201,7 +202,7 @@ let rec of_expr expr : expr =
     | E.BOr -> bvor args
     | E.BXor -> failwith "implement xor"
     | E.BAshr -> failwith "implement >>a"
-    | E.BLshr -> failwith "implement >>l"
+    | E.BLshr -> bvlshr args
     | E.BShl -> failwith "implement <<"
     end
   | E.UnOp (op, e) ->

@@ -47,11 +47,19 @@ let maxsolve holes xs spec : Bit.Vector.t SMT.Model.t option =
   |> solver ~f:Bit.Vector.of_string
 
 type tcam_holes = {value : Var.t; mask : Var.t}
-let holes (key : Var.t) : tcam_holes = 
+let make_tcam_holes (key : Var.t) : tcam_holes = 
   let name = Var.str key in
   let width = Var.width key in
   { value = Var.make (name ^ "$value") width;
     mask = Var.make (name ^ "$mask") width
+  }
+
+type lpm_holes = {value : Var.t; shift : Var.t}
+let make_lpm_holes (key : Var.t) : lpm_holes = 
+  let name = Var.str key in 
+  let width = Var.width key in 
+  { value = Var.make (name ^ "$value") width;
+    shift = Var.make (name ^ "$shift") width;
   }
 
 let mask key mask = 
@@ -62,47 +70,84 @@ let hasvalue key v =
   let open SMT in 
   (=) [ var (Var.str key); bv' v]
    
-let make_mask_sketch key bitvector = 
+let make_mask_sketch key = 
   let open SMT in 
-  let h = holes key in
-  [h.mask; h.value],
+  let h = make_tcam_holes key in
+  [h.value; h.mask],
   [key],
-  implies [
-    hasvalue key bitvector;
-    mask key h.mask;
+  (=) [
+      mask key h.mask;
+      mask h.value h.mask;
+  ]
+  
+let shift key shift = 
+  let open SMT in 
+  bvlshr [ var (Var.str key); var (Var.str shift) ]
+
+let make_shift_sketch key = 
+  let open SMT in 
+  let h = make_lpm_holes key in 
+  [h.value; h.shift],
+  [key],
+    (=) [
+      shift key h.shift;
+      shift h.value h.shift;
   ]
 
+let make_sketch hw= 
+  match hw with
+  | `TCAM -> make_mask_sketch
+  | `LPM -> make_shift_sketch
+
 let widen_sketch hw pkt = 
-  match hw with 
-  | `TCAM -> 
-    Map.fold pkt ~init:([], [], SMT.true_) ~f:(fun ~key ~data (holes, vars, phi) ->
-      let kholes, kvars, kphi = make_mask_sketch key data in
+  Map.fold pkt ~init:([], [], SMT.true_)
+   ~f:(fun ~key ~data:_ (holes, vars, phi) ->
+      let kholes, kvars, kphi = make_sketch hw key in
       kholes @ holes,
       kvars @ vars, 
-      SMT.and_ [kphi; phi]
-    )
-  | `LPM -> 
-    failwith "sketch lpm"
+      SMT.and_ [kphi; phi])
 
-let extract_guard model xs hw : MatchExpression.t =
+let extract_match hw model x = 
+  let find_bv_exn hole = 
+    Var.str hole
+    |> Map.find_exn model
+  in
   match hw with
   | `TCAM ->
-    let find_bv_exn x = 
-      Var.str x 
-      |> Map.find_exn model
-    in
-    List.fold xs ~init:(String.Map.empty) ~f:(fun guard x -> 
-      let h = holes x in 
-      let mask = find_bv_exn h.mask in 
-      let value = find_bv_exn h.value in
-      let tv = Trit.Vector.of_bitmask value mask in
-      Map.add_exn guard ~key:(Var.str x) ~data:(Match.Ternary tv)
-    )
-  | `LPM -> failwith "handle LPM"
+    let h = make_tcam_holes x in 
+    let mask = find_bv_exn h.mask in 
+    let value = find_bv_exn h.value in
+    let tv = Trit.Vector.of_bitmask value mask in
+    Match.Ternary tv
+  | `LPM ->
+    let h = make_lpm_holes x in 
+    let shift = find_bv_exn h.shift in 
+    let value = find_bv_exn h.value in
+    Match.Lpm (shift, Bit.Vector.to_int value)
+
+
+
+let extract_guard model xs hw : MatchExpression.t =
+  List.fold xs ~init:(String.Map.empty) ~f:(fun guard x -> 
+    Map.add_exn guard ~key:(Var.str x) ~data:(extract_match hw model x)
+  )
+
+let encode_model pkt = 
+  let open SMT in 
+  Map.fold pkt ~init:[]
+   ~f:(fun ~key ~data ->
+      (=) [ var (Var.str key); bv' data] 
+      |> List.cons
+   )
+  |> and_
 
 let generalize hw prev pkt phi = 
-  let holes, vars, sketch = widen_sketch hw pkt in 
-  let spec = SMT.(implies [sketch; not prev; phi]) in 
+  let holes, vars, sketch = widen_sketch hw pkt in
+  let spec = SMT.(and_ [
+    implies [encode_model pkt; sketch];
+    implies [sketch; not prev; phi]
+    ]) 
+  in 
   match maxsolve holes vars spec with
   | None-> failwith "Query should have at least one model, the packet" 
   | Some model ->

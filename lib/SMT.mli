@@ -94,6 +94,7 @@ val bvsle : expr list -> expr
 val bvslt : expr list -> expr
 val bvsgt : expr list -> expr
 val bvsge : expr list -> expr
+val bvlshr : expr list -> expr
 
 val apply : string -> expr list -> expr
 
