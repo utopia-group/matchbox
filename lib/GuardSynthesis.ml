@@ -46,17 +46,23 @@ let maxsolve holes xs spec : Bit.Vector.t SMT.Model.t option =
   maxsolve_query holes xs spec
   |> solver ~f:Bit.Vector.of_string
 
+let get_name i key = 
+  match i with 
+  | None -> Var.str key
+  | Some idx -> 
+    Printf.sprintf "%s$%d" (Var.str key) idx
+
 type tcam_holes = {value : Var.t; mask : Var.t}
-let make_tcam_holes (key : Var.t) : tcam_holes = 
-  let name = Var.str key in
+let make_tcam_holes i (key : Var.t) : tcam_holes = 
+  let name = get_name i key in
   let width = Var.width key in
   { value = Var.make (name ^ "$value") width;
     mask = Var.make (name ^ "$mask") width
   }
 
 type lpm_holes = {value : Var.t; shift : Var.t}
-let make_lpm_holes (key : Var.t) : lpm_holes = 
-  let name = Var.str key in 
+let make_lpm_holes i (key : Var.t) : lpm_holes = 
+  let name = get_name i key in 
   let width = Var.width key in 
   { value = Var.make (name ^ "$value") width;
     shift = Var.make (name ^ "$shift") width;
@@ -70,9 +76,9 @@ let hasvalue key v =
   let open SMT in 
   (=) [ var (Var.str key); bv' v]
    
-let make_mask_sketch key = 
+let make_mask_sketch i key = 
   let open SMT in 
-  let h = make_tcam_holes key in
+  let h = make_tcam_holes i key in
   [h.value; h.mask],
   [key],
   (=) [
@@ -84,9 +90,9 @@ let shift key shift =
   let open SMT in 
   bvlshr [ var (Var.str key); var (Var.str shift) ]
 
-let make_shift_sketch key = 
+let make_shift_sketch i key = 
   let open SMT in 
-  let h = make_lpm_holes key in 
+  let h = make_lpm_holes i key in 
   [h.value; h.shift],
   [key],
     (=) [
@@ -94,33 +100,33 @@ let make_shift_sketch key =
       shift h.value h.shift;
   ]
 
-let make_sketch hw= 
+let make_sketch hw i = 
   match hw with
-  | `TCAM -> make_mask_sketch
-  | `LPM -> make_shift_sketch
+  | `TCAM -> make_mask_sketch i
+  | `LPM -> make_shift_sketch i
 
-let widen_sketch hw pkt = 
-  Map.fold pkt ~init:([], [], SMT.true_)
-   ~f:(fun ~key ~data:_ (holes, vars, phi) ->
-      let kholes, kvars, kphi = make_sketch hw key in
-      kholes @ holes,
-      kvars @ vars, 
-      SMT.and_ [kphi; phi])
+let widen_sketch ?(i = None) hw (xs : Var.t list) = 
+  List.fold xs ~init:([], [], SMT.true_)
+    ~f:(fun (holes, vars, phi) x ->
+        let kholes, kvars, kphi = make_sketch hw i x in
+        kholes @ holes,
+        kvars @ vars, 
+        SMT.and_ [kphi; phi])
 
-let extract_match hw model x = 
+let extract_match ?(i = None) hw model x = 
   let find_bv_exn hole = 
     Var.str hole
     |> Map.find_exn model
   in
   match hw with
   | `TCAM ->
-    let h = make_tcam_holes x in 
+    let h = make_tcam_holes i x in 
     let mask = find_bv_exn h.mask in 
     let value = find_bv_exn h.value in
     let tv = Trit.Vector.of_bitmask value mask in
     Match.Ternary tv
   | `LPM ->
-    let h = make_lpm_holes x in 
+    let h = make_lpm_holes i x in 
     let shift = find_bv_exn h.shift in 
     let value = find_bv_exn h.value in
     Match.Lpm (shift, Bit.Vector.to_int value)
@@ -142,7 +148,8 @@ let encode_model pkt =
   |> and_
 
 let generalize hw prev pkt phi = 
-  let holes, vars, sketch = widen_sketch hw pkt in
+  let xs = Map.keys pkt in 
+  let holes, vars, sketch = widen_sketch hw xs in
   let spec = SMT.(and_ [
     implies [encode_model pkt; sketch];
     implies [sketch; not prev; phi]
@@ -215,3 +222,46 @@ let split (hw : [`CAM | `LPM | `TCAM]) (matches : MatchExpression.t) bexpr : Mat
     check_sat xs matches expr
   | `TCAM | `LPM -> 
     split_ (coerce hw) xs matches expr
+
+let make_cover_sketch hw num_guards xs = 
+  List.init num_guards ~f:(fun i -> widen_sketch hw ~i:(Some i) xs)
+  |> List.fold ~init:([],[]) ~f:(fun (holes, sketches) (new_holes,_, new_sketch) -> 
+      new_holes @ holes,
+      new_sketch :: sketches
+    )
+  
+let find_cover_of_size_query hw xs bexpr i : SMT.program =
+  let open SMT in 
+  let holes, sketches = make_cover_sketch hw i xs in
+  List.concat [
+    consts holes;
+    [assert_ (forall (sort_ed xs) @@
+      implies [bexpr; or_ sketches];
+    );
+     check_sat;
+     get_value (strings holes)
+    ];
+  ]
+
+let exists_cover_of_size hw xs bexpr i =
+  find_cover_of_size_query hw xs bexpr i
+  |> solver ~f:Fun.id
+  |> Option.is_some
+
+
+let compute_min_guard_cover_size hw xs bexpr = 
+  let can_cover = exists_cover_of_size hw xs bexpr in 
+  let rec loop i = 
+    if can_cover i then
+      i
+    else
+      loop (i + 1)
+  in
+  loop 1
+
+
+  
+let cover_size hw bexpr =
+  let expr = SMT.of_bexpr bexpr in 
+  let xs = BExpr.free_vars bexpr |> Set.to_list in 
+  compute_min_guard_cover_size hw xs expr
