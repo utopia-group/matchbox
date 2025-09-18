@@ -19,6 +19,12 @@ let parse_match_key key field_names =
       field_name
       (Match.Lpm (Bit.Vector.of_int value ~width, prefix))
   in
+  let create_ternary field_name value =
+    Map.singleton
+      (module String)
+      field_name
+      (Match.Ternary (Trit.Vector.of_string value))
+  in
   let parse_ip_address ip_str =
     (* Convert IP address string to integer *)
     let parse_octet s = Int.of_string s |> Int.max 0 |> Int.min 255 in
@@ -62,7 +68,6 @@ let parse_match_key key field_names =
         in
         Map.set acc ~key:field_name ~data:match_value)
   else if String.contains key '/' then
-    (* Handle single field entries *)
     let field_name = List.hd_exn field_names in
     match String.split key ~on:'#' with
     | [ip_prefix; width_str] -> (
@@ -79,6 +84,9 @@ let parse_match_key key field_names =
         let v = Bit.Vector.of_string ip_str in
         create_lpm field_name (Bit.Vector.to_int v) (Int.of_string prefix_str)
           (Bit.Vector.length v)
+      | [ip_str] ->
+        let v = Bit.Vector.of_string ip_str in
+        create_exact field_name (Bit.Vector.to_int v) (Bit.Vector.length v)
       | _ -> create_exact field_name 0 32)
     | _ -> create_exact field_name 0 32
   else
@@ -88,9 +96,20 @@ let parse_match_key key field_names =
       let value = try Int.of_string value_str with _ -> 0 in
       let width = Int.of_string width_str in
       create_exact field_name value width
-    | _ ->
-      let v = Bit.Vector.of_string key in
-      create_exact field_name (Bit.Vector.to_int v) (Bit.Vector.length v)
+    | [ip] -> (
+      match String.split ip ~on:'/' with
+      | [ip_str; prefix_str] ->
+        let v = Bit.Vector.of_string ip_str in
+        create_lpm field_name (Bit.Vector.to_int v) (Int.of_string prefix_str)
+          (Bit.Vector.length v)
+      | [ip_str] -> (
+        let tv = Trit.Vector.of_string ip_str in
+        try
+          let v = Trit.Vector.to_bv_exn tv in
+          create_exact field_name (Bit.Vector.to_int v) (Bit.Vector.length v)
+        with _ -> create_ternary field_name ip_str)
+      | _ -> create_exact field_name 0 32)
+    | _ -> create_exact field_name 0 32
 
 let parse_action_params params param_names =
   let parse_param_value param_str =
@@ -389,15 +408,16 @@ let transform_logical_to_action_decompose
 (* logical.p4 to choice.p4 *)
 
 let ethernet_to_staging : Clause.t =
-  let matchexpr =
-    String.Map.of_alist_exn
-      [("standard_metadata.ingress_port", Match.Ternary (Trit.Vector.wc 9))]
-  in
-  let data = String.Map.of_alist_exn [("c", Bit.Vector.of_int 3 ~width:4)] in
-  let row =
-    MatchAction.make TCAM matchexpr (MagmaAction.make "set_choice") data
-  in
-  Clause.table [row]
+  Clause.table
+    [
+      MatchAction.make TCAM
+        (Map.singleton
+           (module String)
+           "standard_metadata.ingress_port"
+           (Match.Ternary (Trit.Vector.wc 9)))
+        (MagmaAction.make "set_choice")
+        (Map.singleton (module String) "c" (Bit.Vector.of_int 3 ~width:4));
+    ]
 
 let logical_to_choice_tfxs : (string * Clause.t) list =
   [
@@ -499,14 +519,71 @@ let link_agg_tfxs : (string * Clause.t) list =
     ("punt", Clause.id punt);
   ]
 
-let transform_to_link_agg (input_tables : (string * MatchActionTable.t) list) :
+let transform_logical_to_link_agg
+    (input_tables : (string * MatchActionTable.t) list) :
     (string * MatchActionTable.t) list =
   transform_mats link_agg_tfxs input_tables
 
-(* action_decompose.p4 to early_validate.p4 *)
+(* action_decompose.p4 to logical.p4 *)
 
 let ipv4_fib = Symbol.make "ipv4_fib" [] 0
 let ipv4_rewrite = Symbol.make "ipv4_rewrite" [] 0
+
+let ipv4_fib_rewrite_to_ipv4 : Clause.t =
+  Clause.(
+    id ipv4_fib * id ipv4_rewrite
+    |>> Rename
+          ( MagmaAction.(make "ipv4_forward" @ make "rewrite"),
+            MagmaAction.make "ipv4_forward" ))
+
+let action_decompose_to_logical_tfxs : (string * Clause.t) list =
+  [
+    ("punt", Clause.id punt);
+    ("ethernet", Clause.id ethernet);
+    ("ipv4", ipv4_fib_rewrite_to_ipv4);
+  ]
+
+let transform_action_decompose_to_logical
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats action_decompose_to_logical_tfxs input_tables
+
+(* action_decompose.p4 to choice.p4 *)
+
+let action_decompose_to_choice_tfxs : (string * Clause.t) list =
+  [
+    ("staging", ethernet_to_staging);
+    ("ethernet", Clause.id ethernet);
+    ("ethernet2", Clause.id ethernet);
+    ("ipv4", ipv4_fib_rewrite_to_ipv4);
+    ("ipv42", ipv4_fib_rewrite_to_ipv4);
+    ("punt", Clause.id punt);
+    ("punt2", Clause.id punt);
+  ]
+
+let transform_action_decompose_to_choice
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats action_decompose_to_choice_tfxs input_tables
+
+(* action_decompose.p4 to double.p4 *)
+
+let action_decompose_to_double_tfxs : (string * Clause.t) list =
+  [
+    ("ethernet", Clause.id ethernet);
+    ("ethernet2", Clause.id ethernet);
+    ("ipv4", ipv4_fib_rewrite_to_ipv4);
+    ("ipv42", ipv4_fib_rewrite_to_ipv4);
+    ("punt", Clause.id punt);
+    ("punt2", Clause.id punt);
+  ]
+
+let transform_action_decompose_to_double
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats action_decompose_to_double_tfxs input_tables
+
+(* action_decompose.p4 to early_validate.p4 *)
 
 let punt_to_ipv4_validate : Clause.t =
   Clause.(
@@ -527,13 +604,6 @@ let punt_to_ethernet_validate : Clause.t =
     |>> Rename (MagmaAction.make "drop", MagmaAction.make "malformed")
     |>> Rename (MagmaAction.make "nop", MagmaAction.make "ok"))
 
-let ipv4_fib_rewrite_to_ipv4 : Clause.t =
-  Clause.(
-    id ipv4_fib * id ipv4_rewrite
-    |>> Rename
-          ( MagmaAction.(make "ipv4_forward" @ make "rewrite"),
-            MagmaAction.make "ipv4_forward" ))
-
 let punt_to_acl : Clause.t =
   Clause.(
     WildCard (Var.make "hdr.ethernet.srcAddr" 32)
@@ -545,9 +615,9 @@ let punt_to_acl : Clause.t =
 let action_decompose_to_early_validate_tfxs : (string * Clause.t) list =
   [
     ("ethernet_validate", punt_to_ethernet_validate);
+    ("ethernet", Clause.id ethernet);
     ("ipv4_validate", punt_to_ipv4_validate);
     ("ipv4", ipv4_fib_rewrite_to_ipv4);
-    ("ethernet", Clause.id ethernet);
     ("acl", punt_to_acl);
   ]
 
@@ -556,7 +626,136 @@ let transform_action_decompose_to_early_validate
     (string * MatchActionTable.t) list =
   transform_mats action_decompose_to_early_validate_tfxs input_tables
 
-(* early_validate.p4 to action_decompose.p4 *)
+(* choice.p4 to logical.p4 *)
+
+let choice_to_logical_tfxs : (string * Clause.t) list =
+  [
+    ("punt", Clause.id punt);
+    ("ethernet", Clause.id ethernet);
+    ("ipv4", Clause.id ipv4);
+  ]
+
+let transform_choice_to_logical
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats choice_to_logical_tfxs input_tables
+
+(* choice.p4 to action_decompose.p4 *)
+
+let choice_to_action_decompose_tfxs : (string * Clause.t) list =
+  [
+    ("ipv4_fib", ipv4_to_ipv4_fib);
+    ("ipv4_rewrite", ipv4_to_ipv4_rewrite);
+    ("ethernet", Clause.id ethernet);
+    ("punt", Clause.id punt);
+  ]
+
+let transform_choice_to_action_decompose
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats choice_to_action_decompose_tfxs input_tables
+
+(* choice.p4 to double.p4 *)
+
+let ethernet2 = Symbol.make "ethernet2" [] 0
+let ipv42 = Symbol.make "ipv42" [] 0
+let punt2 = Symbol.make "punt2" [] 0
+
+let choice_to_double_tfxs : (string * Clause.t) list =
+  [
+    ("ethernet", Clause.id ethernet);
+    ("ethernet2", Clause.id ethernet2);
+    ("ipv4", Clause.id ipv4);
+    ("ipv42", Clause.id ipv42);
+    ("punt", Clause.id punt);
+    ("punt2", Clause.id punt2);
+  ]
+
+let transform_choice_to_double
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats choice_to_double_tfxs input_tables
+
+(* choice.p4 to early_validate.p4 *)
+
+let choice_to_early_validate_tfxs : (string * Clause.t) list =
+  [
+    ("ethernet_validate", punt_to_ethernet_validate);
+    ("ethernet", Clause.id ethernet);
+    ("ipv4_validate", punt_to_ipv4_validate);
+    ("ipv4", Clause.id ipv4);
+    ("acl", punt_to_acl);
+  ]
+
+let transform_choice_to_early_validate
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats choice_to_early_validate_tfxs input_tables
+
+(* double.p4 to logical.p4 *)
+
+let double_to_logical_tfxs : (string * Clause.t) list =
+  [
+    ("punt", Clause.id punt);
+    ("ethernet", Clause.id ethernet);
+    ("ipv4", Clause.id ipv4);
+  ]
+
+let transform_double_to_logical
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats double_to_logical_tfxs input_tables
+
+(* double.p4 to action_decompose.p4 *)
+
+let double_to_action_decompose_tfxs : (string * Clause.t) list =
+  [
+    ("ipv4_fib", ipv4_to_ipv4_fib);
+    ("ipv4_rewrite", ipv4_to_ipv4_rewrite);
+    ("ethernet", Clause.id ethernet);
+    ("punt", Clause.id punt);
+  ]
+
+let transform_double_to_action_decompose
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats double_to_action_decompose_tfxs input_tables
+
+(* double.p4 to choice.p4 *)
+
+let double_to_choice_tfxs : (string * Clause.t) list =
+  [
+    ("staging", ethernet_to_staging);
+    ("ethernet", Clause.id ethernet);
+    ("ethernet2", Clause.id ethernet2);
+    ("ipv4", Clause.id ipv4);
+    ("ipv42", Clause.id ipv42);
+    ("punt", Clause.id punt);
+    ("punt2", Clause.id punt2);
+  ]
+
+let transform_double_to_choice
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats double_to_choice_tfxs input_tables
+
+(* double.p4 to early_validate.p4 *)
+
+let double_to_early_validate_tfxs : (string * Clause.t) list =
+  [
+    ("ethernet_validate", punt_to_ethernet_validate);
+    ("ethernet", Clause.id ethernet);
+    ("ipv4_validate", punt_to_ipv4_validate);
+    ("ipv4", Clause.id ipv4);
+    ("acl", punt_to_acl);
+  ]
+
+let transform_double_to_early_validate
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats double_to_early_validate_tfxs input_tables
+
+(* early_validate.p4 to logical.p4 *)
 
 let ethernet_validate = Symbol.make "ethernet_validate" [] 0
 let ipv4_validate = Symbol.make "ipv4_validate" [] 0
@@ -576,6 +775,20 @@ let validate_acl_to_punt : Clause.t =
     <<| id ethernet_validate * id ipv4_validate * id acl
     (* TODO: Drop superfluous nested action pairs to keep only `drop` (is this even necessary?) *))
 
+let early_validate_to_logical_tfxs : (string * Clause.t) list =
+  [
+    ("punt", validate_acl_to_punt);
+    ("ethernet", Clause.id ethernet);
+    ("ipv4", Clause.id ipv4);
+  ]
+
+let transform_early_validate_to_logical
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats early_validate_to_logical_tfxs input_tables
+
+(* early_validate.p4 to action_decompose.p4 *)
+
 let ipv4_to_ipv4_fib : Clause.t =
   Clause.(id ipv4 |>> Project [Var.make "port" 9])
 
@@ -594,6 +807,41 @@ let transform_early_validate_to_action_decompose
     (input_tables : (string * MatchActionTable.t) list) :
     (string * MatchActionTable.t) list =
   transform_mats early_validate_to_action_decompose_tfxs input_tables
+
+(* early_validate.p4 to choice.p4 *)
+
+let early_validate_to_choice_tfxs : (string * Clause.t) list =
+  [
+    ("staging", ethernet_to_staging);
+    ("ethernet", Clause.id ethernet);
+    ("ethernet2", Clause.id ethernet);
+    ("ipv4", Clause.id ipv4);
+    ("ipv42", Clause.id ipv4);
+    ("punt", validate_acl_to_punt);
+    ("punt2", validate_acl_to_punt);
+  ]
+
+let transform_early_validate_to_choice
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats early_validate_to_choice_tfxs input_tables
+
+(* early_validate.p4 to double.p4 *)
+
+let early_validate_to_double_tfxs : (string * Clause.t) list =
+  [
+    ("ethernet", Clause.id ethernet);
+    ("ethernet2", Clause.id ethernet);
+    ("ipv4", Clause.id ipv4);
+    ("ipv42", Clause.id ipv4);
+    ("punt", validate_acl_to_punt);
+    ("punt2", validate_acl_to_punt);
+  ]
+
+let transform_early_validate_to_double
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats early_validate_to_double_tfxs input_tables
 
 let () =
   let output_dir = "Pipelines/retargeting" in
@@ -625,17 +873,87 @@ let () =
         "logical_inserts_1001.csv",
         logical_schema,
         link_agg_schema,
-        transform_to_link_agg );
+        transform_logical_to_link_agg );
+      ( "action_decompose_to_logical",
+        "logical_to_action_decompose.csv",
+        action_decompose_schema,
+        logical_schema,
+        transform_action_decompose_to_logical );
+      ( "action_decompose_to_choice",
+        "logical_to_action_decompose.csv",
+        action_decompose_schema,
+        choice_schema,
+        transform_action_decompose_to_choice );
+      ( "action_decompose_to_double",
+        "logical_to_action_decompose.csv",
+        action_decompose_schema,
+        double_schema,
+        transform_action_decompose_to_double );
       ( "action_decompose_to_early_validate",
         "logical_to_action_decompose.csv",
         action_decompose_schema,
         early_validate_schema,
         transform_action_decompose_to_early_validate );
+      ( "choice_to_logical",
+        "logical_to_choice.csv",
+        choice_schema,
+        logical_schema,
+        transform_choice_to_logical );
+      ( "choice_to_action_decompose",
+        "logical_to_choice.csv",
+        choice_schema,
+        action_decompose_schema,
+        transform_choice_to_action_decompose );
+      ( "choice_to_double",
+        "logical_to_choice.csv",
+        choice_schema,
+        double_schema,
+        transform_choice_to_double );
+      ( "choice_to_early_validate",
+        "logical_to_choice.csv",
+        choice_schema,
+        early_validate_schema,
+        transform_choice_to_early_validate );
+      ( "double_to_logical",
+        "logical_to_double.csv",
+        double_schema,
+        logical_schema,
+        transform_double_to_logical );
+      ( "double_to_action_decompose",
+        "logical_to_double.csv",
+        double_schema,
+        action_decompose_schema,
+        transform_double_to_action_decompose );
+      ( "double_to_choice",
+        "logical_to_double.csv",
+        double_schema,
+        choice_schema,
+        transform_double_to_choice );
+      ( "double_to_early_validate",
+        "logical_to_double.csv",
+        double_schema,
+        early_validate_schema,
+        transform_double_to_early_validate );
+      ( "early_validate_to_logical",
+        "logical_to_early_validate.csv",
+        early_validate_schema,
+        logical_schema,
+        transform_early_validate_to_logical );
       ( "early_validate_to_action_decompose",
         "logical_to_early_validate.csv",
         early_validate_schema,
         action_decompose_schema,
         transform_early_validate_to_action_decompose );
+      ( "early_validate_to_choice",
+        "logical_to_early_validate.csv",
+        early_validate_schema,
+        choice_schema,
+        transform_early_validate_to_choice );
+      ( "early_validate_to_double",
+        "logical_to_early_validate.csv",
+        early_validate_schema,
+        double_schema,
+        transform_early_validate_to_double );
     ]
   in
 
