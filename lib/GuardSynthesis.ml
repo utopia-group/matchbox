@@ -236,7 +236,7 @@ let find_cover_of_size_query hw xs bexpr i : SMT.program =
   List.concat [
     consts holes;
     [assert_ (forall (sort_ed xs) @@
-      implies [bexpr; or_ sketches];
+      (=) [bexpr; or_ sketches];
     );
      check_sat;
      get_value (strings holes)

@@ -2,6 +2,44 @@ open Core
 open BaseLogic
 open Semantics
 
+module Noncer = struct 
+  type t = { 
+    next : Bit.Vector.t;
+  }
+
+  let empty width = {next = Bit.Vector.zero width}
+
+  let next noncer = 
+      let nonce = noncer.next in 
+      let next = Bit.Vector.incr noncer.next in
+      let noncer = {next} in 
+      noncer, nonce
+end
+
+module NonceState = struct 
+  type t = Noncer.t Var.Map.t
+
+  let empty = Var.Map.empty
+
+  let set_noncer (state : t) (x : Var.t) noncer : t =
+    Map.set state ~key:x ~data:noncer 
+
+
+  let find_noncer (state : t) (x : Var.t) = 
+    match Map.find state x  with 
+    | Some noncer -> state, noncer
+    | None -> 
+      let noncer = Noncer.empty (Var.width x) in
+      let state = Map.set state ~key:x ~data:noncer in 
+      state, noncer
+
+  let get state x : t * Bit.Vector.t = 
+    let state, noncer = find_noncer state x in
+    let noncer = noncer.next in
+    state, noncer
+    
+end
+
 let unvar = Map.fold ~init:String.Map.empty ~f:(fun ~key ~data ->
   Map.add_exn ~key:(Var.str key) ~data
 )
@@ -69,54 +107,80 @@ let eval_action_expr data expr =
   let v, w = eval model expr |> Result.ok_or_failwith in
   Bit.Vector.of_int (Bigint.to_int_exn v) ~width:w
 
-let apply_out_tfx row tfx =
+let apply_out_tfx state row tfx =
   let action = MatchAction.get_action row in 
   let data = MatchAction.get_data row in 
-  let action, data =
+  let state, action, data =
     let open OutTfx in 
     match tfx with
+    | Nonce x -> 
+      let state, v = NonceState.get state x in
+      state, action, Data.updatev data x v
     | Project vars ->
       (* Keep only the specified action parameters *)
+      state, 
       action, 
       Data.projectv data vars
     | SetTo (x, expr) ->
       (* Set a parameter to the result of evaluating an expression *)
       let value = eval_action_expr data expr in
+      state,
       action, 
       Data.updatev data x value
     | Del x -> 
+      state,
       action, 
       Data.removev data x
     | Rename (old_action,new_action) when MagmaAction.equal old_action action -> 
+      state,
       new_action,
       data
     | Rename _ -> 
+      state,
       action,
       data
     in
-    {row with action; data}
+    state, {row with action; data}
 
-let rec eval (clause : Clause.t) (config : Config.t) : MatchActionTable.t =
+let rec eval_inner (clause : Clause.t) (config : Config.t) (state : NonceState.t) : NonceState.t * MatchActionTable.t =
   let open MatchActionTable.MonadicSyntax in 
   match clause with
-  | Id (f,_) -> get_mat config f
-  | Table (t, _) -> t
+  | Id (f,_) -> 
+    state, get_mat config f
+  | Table (t, _) -> 
+    state, t
   | Join (f, g, _) ->
-    let* f_row = eval f config in
-    let* g_row = eval g config in
+    let state, f_mat = eval_inner f config state in
+    let state, g_mat = eval_inner g config state in
+    state, 
+    let* f_row = f_mat in 
+    let* g_row = g_mat in
     MatchAction.pair f_row g_row
     |> Option.value_map ~default:empty ~f:return
   | Compose (f, g, _) ->
-    let g_mat = eval g config in 
-    let+ f_row = eval f config in
+    let state, g_mat = eval_inner g config state in 
+    let state, f_mat = eval_inner f config state in
+    state, 
+    let+ f_row = f_mat in
     let (action, data) = MatchActionTable.run g_mat f_row.data in 
     MatchAction.{f_row with action;data}
   | MapOut (f, tfx, _) ->
-    let+ row = eval f config in
-    apply_out_tfx row tfx 
+    let state, mat = eval_inner f config state in
+    List.fold mat ~init:(state, []) 
+      ~f:(fun (state, mat) row -> 
+        let state, rows = apply_out_tfx state row tfx in
+        (state, mat @ [rows])
+      )
   | MapIn (f, tfx, _) ->
-    let* row = eval f config in
-    apply_in_tfx row tfx
+    let state, f_mat = eval_inner f config state in 
+    state,
+    let* f_row = f_mat in
+    apply_in_tfx f_row tfx
+
+let eval clause config = 
+  NonceState.empty
+  |> eval_inner clause config
+  |> snd
 
 (* Execute a list of BaseLogic Clauses step by step *)
 let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :

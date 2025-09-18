@@ -57,6 +57,7 @@ module OutTfx = struct
   open Gpl
   open Semantics
   type t = 
+    | Nonce of Var.t
     | Del of Var.t
     | Project of Var.t list
     | SetTo of Var.t * Expr.t

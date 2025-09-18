@@ -96,6 +96,15 @@ module DepFunDep = struct
   | MapOut(c, Project xs, _) ->
     assert (Map.(equal (=) (map_of_varlist xs) goal.target));
     check ctx c goal
+  | MapOut(c, Nonce x, _) -> 
+    if Map.mem goal.target (Var.str x) then 
+      let w = Map.find_exn goal.target (Var.str x) in 
+      let target = 
+        Map.set (Map.remove goal.target (Var.str x)) ~key:(Var.str x) ~data:w
+      in
+      check ctx c {goal with target}
+    else
+      check ctx c goal    
   | MapOut(c, SetTo (x, e), _) ->
     if Map.mem goal.target (Var.str x) then 
       let w = Map.find_exn goal.target (Var.str x) in 

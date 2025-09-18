@@ -41,7 +41,9 @@ let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : int String.Map.t) : int Stri
 
 let data_tfx_type tfx (actions : Type.ActionSet.t) (datatypes : int String.Map.t) : Type.ActionSet.t * int String.Map.t = 
   let open OutTfx in 
-  match tfx with 
+  match tfx with
+  | Nonce x -> 
+    actions, Map.set datatypes ~key:(Var.str x) ~data:(Var.width x)
   | Del x -> 
     actions, Map.remove datatypes (Var.str x)
   | Project vars -> 
