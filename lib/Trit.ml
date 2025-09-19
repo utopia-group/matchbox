@@ -72,6 +72,13 @@ module Trit = struct
       | T, T | F, F -> F
       | _, _ -> U
 
+  let intersect a b = 
+    match a, b with 
+    | F, T | T, F -> None
+    | T, T -> Some T
+    | F, F -> Some F
+    | U, c | c, U -> Some c
+
   let adder c a b =
     match c, a, b with
     | F, F, F -> [F,F]
@@ -247,14 +254,13 @@ module Vector = struct
     |> Bit.VectorSet.equal values
 
   let rec intersect cube1 cube2 =
-    let open Trit in 
     match cube1,cube2 with 
     | [], [] -> Some []
-    | T::_, F::_ | F::_, T::_ -> None 
+    | Trit.T::_, Trit.F::_ | F::_, T::_ -> None 
     | t1::cube1', t2::cube2' -> 
       begin match intersect cube1' cube2' with 
       | None -> None 
-      | Some rst -> Some (Trit.(t1 && t2)::rst)
+      | Some rst -> Option.map (Trit.intersect t1 t2) ~f:(Fn.flip List.cons rst)
     end 
     | _, _ -> failwithf "uneven intersection widths %d <> %d " (List.length cube1) (List.length cube2) ()
 

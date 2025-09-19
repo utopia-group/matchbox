@@ -49,7 +49,10 @@ module Match = struct
 
   let get_tv = function 
     | Exact v -> Trit.Vector.of_bv v
-    | Lpm _ -> failwith "TODO: LPM -> TV"
+    | Lpm (v, _) ->
+      (* failwith "TODO: LPM -> TV" *)
+      (* TODO: fully implement *)
+      Trit.Vector.of_bv v
     | Ternary tv -> tv
 
   let to_mask_pair m = get_tv m |> Trit.Vector.to_bitmask
@@ -122,11 +125,24 @@ module Match = struct
     | Ternary _ -> failwith "TODO enumerate TV"
 
   let intersect m1 m2 =
-    let tv1 = get_tv m1 in 
-    let tv2 = get_tv m2 in 
-    match Trit.Vector.intersect tv1 tv2 with 
-    | None -> None 
-    | Some tv -> Some (Ternary tv)
+    match m1, m2 with
+    | Exact v1, Exact v2 -> (
+      let tv1 = Trit.Vector.of_bv v1 in
+      let tv2 = Trit.Vector.of_bv v2 in
+      match Trit.Vector.intersect tv1 tv2 with 
+      | None -> None
+      | Some tv -> Some (Exact (Trit.Vector.to_bv_exn tv)))
+    | Lpm (v1, plen1), Lpm (v2, plen2) when plen1 = plen2 -> (
+      let tv1 = Trit.Vector.of_bv v1 in
+      let tv2 = Trit.Vector.of_bv v2 in
+      match Trit.Vector.intersect tv1 tv2 with 
+      | None -> None
+      | Some tv -> Some (Lpm (Trit.Vector.to_bv_exn tv, plen1)))
+    | Ternary tv1, Ternary tv2 -> (
+      match Trit.Vector.intersect tv1 tv2 with 
+      | None -> None
+      | Some tv -> Some (Ternary tv))
+    | _ -> failwith "TODO"
 
   let empty_intersection m1 m2 = intersect m1 m2 |> Option.is_none
 
