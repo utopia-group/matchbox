@@ -77,29 +77,29 @@ let rec eval_match_expr (matches : MatchExpression.t) (expr : Gpl.Expr.t) : Matc
     |> tv_eval1 op
   | Apply _ -> failwith "apply??????"
 
-  let apply_in_tfx (row : MatchAction.t) tfx : MatchActionTable.t =
-    let open MatchActionTable.MonadicSyntax in 
-    let open MatchTfx in
-    match tfx with
-    | Del x -> 
-      return (MatchAction.remove_keyv row x)
-    | WildCard x ->
-      let wild = Match.Ternary(Trit.Vector.wc (Var.width x)) in
-      return (MatchAction.set_matchv row x wild)
-    | Project vars ->
-      (* Keep only the specified variables *)
-      return (MatchAction.match_projectv row vars)
-    | SetTo (x, expr) ->
-      (* Set a variable to the result of evaluating an expression *)
-      let new_match = eval_match_expr row.matches expr in
-      return (MatchAction.set_matchv row x new_match)
-    | CubeFilter cube -> 
-      MatchAction.refine row cube
-      |> Option.value_map ~f:return ~default:empty
-    | Filter phi ->
-      let hw = MatchAction.exfil_hardware row in 
-      GuardSynthesis.split hw row.matches phi
-      |> MatchAction.update_with_matches_list row
+let apply_in_tfx (row : MatchAction.t) tfx : MatchActionTable.t =
+  let open MatchActionTable.MonadicSyntax in 
+  let open MatchTfx in
+  match tfx with
+  | Del x -> 
+    return (MatchAction.remove_keyv row x)
+  | WildCard x ->
+    let wild = Match.Ternary(Trit.Vector.wc (Var.width x)) in
+    return (MatchAction.set_matchv row x wild)
+  | Project vars ->
+    (* Keep only the specified variables *)
+    return (MatchAction.match_projectv row vars)
+  | SetTo (x, expr) ->
+    (* Set a variable to the result of evaluating an expression *)
+    let new_match = eval_match_expr row.matches expr in
+    return (MatchAction.set_matchv row x new_match)
+  | CubeFilter cube -> 
+    MatchAction.refine row cube
+    |> Option.value_map ~f:return ~default:empty
+  | Filter phi ->
+    let hw = MatchAction.exfil_hardware row in 
+    GuardSynthesis.split hw row.matches phi
+    |> MatchAction.update_with_matches_list row
 
 let eval_action_expr data expr =
   let open Gpl.Expr in 

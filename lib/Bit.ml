@@ -74,6 +74,20 @@ module Vector = struct
 
   let to_int bs = String.concat["0b"; to_string bs] |> Int.of_string
 
+  let enumerate width =
+    let rec loop w =
+      if w <= 0 then
+        [[]]
+      else
+        let smaller = loop (w - 1) in
+        List.bind smaller ~f:(fun bits ->
+          [false :: bits; true :: bits]
+        )
+    in
+    loop width
+
+  let random width =
+    List.init width ~f:(fun _ -> Random.bool ())
 
   let compare = List.compare Bool.compare
   let equal = List.equal Bool.equal

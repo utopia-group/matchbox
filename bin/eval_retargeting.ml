@@ -240,8 +240,12 @@ let transform_mats (tfxs : (string * Clause.t) list)
     Config.{symbols; cfg = cfg_map}
   in
   let config = create_config mats in
-  List.map tfxs ~f:(fun (output_name, clause) ->
-      (output_name, BaseInterpreter.eval clause config))
+  snd
+    (List.fold tfxs ~init:(config, [])
+       ~f:(fun (acc_config, acc_mats) (output_name, clause) ->
+         let tmp = (output_name, BaseInterpreter.eval clause acc_config) in
+         ( Config.set acc_config (Symbol.make output_name [] 0) (snd tmp),
+           acc_mats @ [tmp] )))
 
 let transform_csv_file (input_file : string)
     (input_schema : (string * string list * string list) list)
@@ -365,8 +369,10 @@ let double_schema =
 
 let link_agg_schema =
   [
-    ("ipv4", ["hdr.ipv4.dstAddr"], ["dstAddr"; "port"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["port"]);
+    (* ("lookup", ["port"; "meta.nexthop"], ["nexthop"; "port"]); *)
+    ("nexthop", ["meta.nexthop"], ["port"]);
+    ("ethernet", ["hdr.ethernet.dstAddr"], ["nexthop"]);
+    ("ipv4", ["hdr.ipv4.dstAddr"], ["dstAddr"; "nexthop"]);
     ( "punt",
       [
         "hdr.ethernet.etherType";
@@ -377,7 +383,6 @@ let link_agg_schema =
         "hdr.ipv4.ttl";
       ],
       [] );
-    ("nexthop", ["hdr.ipv4.dstAddr"], ["nhop_idx"]);
   ]
 
 let ethernet = Symbol.make "ethernet" [] 0
@@ -493,7 +498,73 @@ let transform_logical_to_early_validate
 
 (* logical.p4 to link_agg.p4 *)
 
-let ethernet_to_ethernet : Clause.t =
+(* let lookup = Symbol.make "lookup" [] 0 *)
+
+let create_lookup : Clause.t =
+  let rec gen_unique_nexthop seen_nexthops =
+    let nexthop = Bit.Vector.random 32 in
+    if Set.mem seen_nexthops (Bit.Vector.to_int nexthop) then
+      gen_unique_nexthop seen_nexthops
+    else nexthop
+  in
+  Clause.Table
+    ( Bit.Vector.enumerate 9
+      |> List.fold
+           ~init:([], Set.empty (module Int))
+           ~f:(fun (mas, seen_nexthops) port ->
+             let nexthop = gen_unique_nexthop seen_nexthops in
+             ( MatchAction.make TCAM
+                 (Map.of_alist_exn
+                    (module String)
+                    [
+                      ("port", Match.Exact port);
+                      ("meta.nexthop", Match.Exact nexthop);
+                    ])
+                 (MagmaAction.make "_")
+                 (Map.of_alist_exn
+                    (module String)
+                    [("port", port); ("nexthop", nexthop)])
+               :: mas,
+               Set.add seen_nexthops (Bit.Vector.to_int nexthop) ))
+      |> fst,
+      None )
+
+let lookup_to_nexthop : Clause.t =
+  Clause.(
+    Project [Var.make "meta.nexthop" 32]
+    <<| create_lookup
+    |>> Project [Var.make "port" 9])
+
+let lookup_to_ethernet : Clause.t =
+  Clause.(
+    id ethernet
+    >>> (Project [Var.make "port" 9]
+        <<| create_lookup
+        |>> Project [Var.make "nexthop" 32]))
+
+let lookup_to_ipv4 : Clause.t =
+  Clause.(
+    id ipv4
+    >>> (Project [Var.make "port" 9]
+        <<| create_lookup
+        |>> Project [Var.make "nexthop" 32]))
+
+let link_agg_tfxs_generalized : (string * Clause.t) list =
+  [
+    (* ("lookup", create_lookup); *)
+    ("nexthop", lookup_to_nexthop);
+    ("ethernet", lookup_to_ethernet);
+    ("ipv4", lookup_to_ipv4);
+    ("punt", Clause.id punt);
+  ]
+
+let transform_logical_to_link_agg
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats link_agg_tfxs_generalized input_tables
+
+(* Original hardcoded transformation *)
+(* let ethernet_to_ethernet : Clause.t =
   Clause.(
     id ethernet
     |>> SetTo (Var.make "nexthop" 32, Gpl.Expr.var (Var.make "port" 9)))
@@ -502,7 +573,6 @@ let ipv4_to_ipv4 : Clause.t =
   Clause.(
     id ipv4 |>> SetTo (Var.make "nexthop" 32, Gpl.Expr.var (Var.make "port" 9)))
 
-(* Create nexthop table with static mappings for ports 1-500 *)
 let create_nexthop : Clause.t =
   Clause.table
     (MatchActionTable.of_domain (List.range 1 501) ~hw:TCAM
@@ -522,7 +592,7 @@ let link_agg_tfxs : (string * Clause.t) list =
 let transform_logical_to_link_agg
     (input_tables : (string * MatchActionTable.t) list) :
     (string * MatchActionTable.t) list =
-  transform_mats link_agg_tfxs input_tables
+  transform_mats link_agg_tfxs input_tables *)
 
 (* action_decompose.p4 to logical.p4 *)
 
