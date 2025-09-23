@@ -243,7 +243,8 @@ let transform_mats (tfxs : (string * Clause.t) list)
   snd
     (List.fold tfxs ~init:(config, [])
        ~f:(fun (acc_config, acc_mats) (output_name, clause) ->
-         let tmp = (output_name, BaseInterpreter.eval clause acc_config) in
+         (* eval using acc_config if you want to be able to reference tables defined earlier *)
+         let tmp = (output_name, BaseInterpreter.eval clause config) in
          ( Config.set acc_config (Symbol.make output_name [] 0) (snd tmp),
            acc_mats @ [tmp] )))
 
@@ -412,7 +413,7 @@ let transform_logical_to_action_decompose
 
 (* logical.p4 to choice.p4 *)
 
-let ethernet_to_staging : Clause.t =
+let create_staging : Clause.t =
   Clause.table
     [
       MatchAction.make TCAM
@@ -426,7 +427,7 @@ let ethernet_to_staging : Clause.t =
 
 let logical_to_choice_tfxs : (string * Clause.t) list =
   [
-    ("staging", ethernet_to_staging);
+    ("staging", create_staging);
     ("ethernet", Clause.id ethernet);
     ("ethernet2", Clause.id ethernet);
     ("ipv4", Clause.id ipv4);
@@ -535,33 +536,34 @@ let lookup_to_nexthop : Clause.t =
     <<| create_lookup
     |>> Project [Var.make "port" 9])
 
-let lookup_to_ethernet : Clause.t =
+let ethernet_lookup_to_ethernet : Clause.t =
   Clause.(
     id ethernet
     >>> (Project [Var.make "port" 9]
         <<| create_lookup
         |>> Project [Var.make "nexthop" 32]))
 
-let lookup_to_ipv4 : Clause.t =
+let ipv4_lookup_to_ipv4 : Clause.t =
   Clause.(
-    id ipv4
+    (id ipv4
     >>> (Project [Var.make "port" 9]
         <<| create_lookup
         |>> Project [Var.make "nexthop" 32]))
+    * (id ipv4 |>> Project [Var.make "dstAddr" 48]))
 
-let link_agg_tfxs_generalized : (string * Clause.t) list =
+let logical_to_link_agg_tfxs : (string * Clause.t) list =
   [
     (* ("lookup", create_lookup); *)
     ("nexthop", lookup_to_nexthop);
-    ("ethernet", lookup_to_ethernet);
-    ("ipv4", lookup_to_ipv4);
+    ("ethernet", ethernet_lookup_to_ethernet);
+    ("ipv4", ipv4_lookup_to_ipv4);
     ("punt", Clause.id punt);
   ]
 
 let transform_logical_to_link_agg
     (input_tables : (string * MatchActionTable.t) list) :
     (string * MatchActionTable.t) list =
-  transform_mats link_agg_tfxs_generalized input_tables
+  transform_mats logical_to_link_agg_tfxs input_tables
 
 (* Original hardcoded transformation *)
 (* let ethernet_to_ethernet : Clause.t =
@@ -622,7 +624,7 @@ let transform_action_decompose_to_logical
 
 let action_decompose_to_choice_tfxs : (string * Clause.t) list =
   [
-    ("staging", ethernet_to_staging);
+    ("staging", create_staging);
     ("ethernet", Clause.id ethernet);
     ("ethernet2", Clause.id ethernet);
     ("ipv4", ipv4_fib_rewrite_to_ipv4);
@@ -696,6 +698,28 @@ let transform_action_decompose_to_early_validate
     (string * MatchActionTable.t) list =
   transform_mats action_decompose_to_early_validate_tfxs input_tables
 
+(* action_decompose.p4 to link_agg.p4 *)
+
+let fib_rewrite_lookup_to_ipv4 : Clause.t =
+  Clause.(
+    ipv4_fib_rewrite_to_ipv4
+    >>> (Project [Var.make "port" 9]
+        <<| create_lookup
+        |>> Project [Var.make "nexthop" 32]))
+
+let action_decompose_to_link_agg_tfxs : (string * Clause.t) list =
+  [
+    ("nexthop", lookup_to_nexthop);
+    ("ethernet", ethernet_lookup_to_ethernet);
+    ("ipv4", fib_rewrite_lookup_to_ipv4);
+    ("punt", Clause.id punt);
+  ]
+
+let transform_action_decompose_to_link_agg
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats action_decompose_to_link_agg_tfxs input_tables
+
 (* choice.p4 to logical.p4 *)
 
 let choice_to_logical_tfxs : (string * Clause.t) list =
@@ -762,6 +786,21 @@ let transform_choice_to_early_validate
     (string * MatchActionTable.t) list =
   transform_mats choice_to_early_validate_tfxs input_tables
 
+(* choice.p4 to link_agg.p4 *)
+
+let choice_to_link_agg_tfxs : (string * Clause.t) list =
+  [
+    ("nexthop", lookup_to_nexthop);
+    ("ethernet", ethernet_lookup_to_ethernet);
+    ("ipv4", ipv4_lookup_to_ipv4);
+    ("punt", Clause.id punt);
+  ]
+
+let transform_choice_to_link_agg
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats choice_to_link_agg_tfxs input_tables
+
 (* double.p4 to logical.p4 *)
 
 let double_to_logical_tfxs : (string * Clause.t) list =
@@ -795,7 +834,7 @@ let transform_double_to_action_decompose
 
 let double_to_choice_tfxs : (string * Clause.t) list =
   [
-    ("staging", ethernet_to_staging);
+    ("staging", create_staging);
     ("ethernet", Clause.id ethernet);
     ("ethernet2", Clause.id ethernet2);
     ("ipv4", Clause.id ipv4);
@@ -824,6 +863,21 @@ let transform_double_to_early_validate
     (input_tables : (string * MatchActionTable.t) list) :
     (string * MatchActionTable.t) list =
   transform_mats double_to_early_validate_tfxs input_tables
+
+(* double.p4 to link_agg.p4 *)
+
+let double_to_link_agg_tfxs : (string * Clause.t) list =
+  [
+    ("nexthop", lookup_to_nexthop);
+    ("ethernet", ethernet_lookup_to_ethernet);
+    ("ipv4", ipv4_lookup_to_ipv4);
+    ("punt", Clause.id punt);
+  ]
+
+let transform_double_to_link_agg
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats double_to_link_agg_tfxs input_tables
 
 (* early_validate.p4 to logical.p4 *)
 
@@ -882,7 +936,7 @@ let transform_early_validate_to_action_decompose
 
 let early_validate_to_choice_tfxs : (string * Clause.t) list =
   [
-    ("staging", ethernet_to_staging);
+    ("staging", create_staging);
     ("ethernet", Clause.id ethernet);
     ("ethernet2", Clause.id ethernet);
     ("ipv4", Clause.id ipv4);
@@ -912,6 +966,123 @@ let transform_early_validate_to_double
     (input_tables : (string * MatchActionTable.t) list) :
     (string * MatchActionTable.t) list =
   transform_mats early_validate_to_double_tfxs input_tables
+
+(* early_validate.p4 to link_agg.p4 *)
+
+let early_validate_to_link_agg_tfxs : (string * Clause.t) list =
+  [
+    ("nexthop", lookup_to_nexthop);
+    ("ethernet", ethernet_lookup_to_ethernet);
+    ("ipv4", ipv4_lookup_to_ipv4);
+    ("punt", validate_acl_to_punt);
+  ]
+
+let transform_early_validate_to_link_agg
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats early_validate_to_link_agg_tfxs input_tables
+
+(* link_agg.p4 to logical.p4 *)
+
+let nexthop = Symbol.make "nexthop" [] 0
+
+let rename_nexthop : Clause.t =
+  Clause.(
+    Del (Var.make "meta.nexthop" 32)
+    <<| (SetTo (Var.make "nexthop" 32, Gpl.Expr.Var (Var.make "meta.nexthop" 32))
+        <<| id nexthop))
+
+let ethernet_nexthop_to_ethernet : Clause.t =
+  Clause.(id ethernet >>> rename_nexthop)
+
+let ipv4_nexthop_to_ipv4 : Clause.t =
+  Clause.(
+    (id ipv4 |>> Project [Var.make "nexthop" 32] >>> rename_nexthop)
+    * (id ipv4 |>> Project [Var.make "dstAddr" 48]))
+
+let link_agg_to_logical_tfxs : (string * Clause.t) list =
+  [
+    ("punt", Clause.id punt);
+    ("ethernet", ethernet_nexthop_to_ethernet);
+    ("ipv4", ipv4_nexthop_to_ipv4);
+  ]
+
+let transform_link_agg_to_logical
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats link_agg_to_logical_tfxs input_tables
+
+(* link_agg.p4 to action_decompose.p4 *)
+
+let ipv4_nexthop_to_ipv4_fib : Clause.t =
+  Clause.(id ipv4 |>> Project [Var.make "nexthop" 32] >>> rename_nexthop)
+
+let ipv4_nexthop_to_ipv4_rewrite : Clause.t =
+  Clause.(id ipv4 |>> Project [Var.make "dstAddr" 48])
+
+let link_agg_to_action_decompose_tfxs : (string * Clause.t) list =
+  [
+    ("ipv4_fib", ipv4_nexthop_to_ipv4_fib);
+    ("ipv4_rewrite", ipv4_nexthop_to_ipv4_rewrite);
+    ("ethernet", ethernet_nexthop_to_ethernet);
+    ("punt", Clause.id punt);
+  ]
+
+let transform_link_agg_to_action_decompose
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats link_agg_to_action_decompose_tfxs input_tables
+
+(* link_agg.p4 to choice.p4 *)
+
+let link_agg_to_choice_tfxs : (string * Clause.t) list =
+  [
+    ("staging", create_staging);
+    ("ethernet", ethernet_nexthop_to_ethernet);
+    ("ethernet2", ethernet_nexthop_to_ethernet);
+    ("ipv4", ipv4_nexthop_to_ipv4);
+    ("ipv42", ipv4_nexthop_to_ipv4);
+    ("punt", Clause.id punt);
+    ("punt2", Clause.id punt);
+  ]
+
+let transform_link_agg_to_choice
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats link_agg_to_choice_tfxs input_tables
+
+(* link_agg.p4 to double.p4 *)
+
+let link_agg_to_double_tfxs : (string * Clause.t) list =
+  [
+    ("ethernet", ethernet_nexthop_to_ethernet);
+    ("ethernet2", ethernet_nexthop_to_ethernet);
+    ("ipv4", ipv4_nexthop_to_ipv4);
+    ("ipv42", ipv4_nexthop_to_ipv4);
+    ("punt", Clause.id punt);
+    ("punt2", Clause.id punt);
+  ]
+
+let transform_link_agg_to_double
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats link_agg_to_double_tfxs input_tables
+
+(* link_agg.p4 to early_validate.p4 *)
+
+let link_agg_to_early_validate_tfxs : (string * Clause.t) list =
+  [
+    ("ethernet_validate", punt_to_ethernet_validate);
+    ("ethernet", ethernet_nexthop_to_ethernet);
+    ("ipv4_validate", punt_to_ipv4_validate);
+    ("ipv4", ipv4_nexthop_to_ipv4);
+    ("acl", punt_to_acl);
+  ]
+
+let transform_link_agg_to_early_validate
+    (input_tables : (string * MatchActionTable.t) list) :
+    (string * MatchActionTable.t) list =
+  transform_mats link_agg_to_early_validate_tfxs input_tables
 
 let () =
   let output_dir = "Pipelines/retargeting" in
@@ -964,6 +1135,11 @@ let () =
         action_decompose_schema,
         early_validate_schema,
         transform_action_decompose_to_early_validate );
+      ( "action_decompose_to_link_agg",
+        "logical_to_action_decompose.csv",
+        action_decompose_schema,
+        link_agg_schema,
+        transform_action_decompose_to_link_agg );
       ( "choice_to_logical",
         "logical_to_choice.csv",
         choice_schema,
@@ -984,6 +1160,11 @@ let () =
         choice_schema,
         early_validate_schema,
         transform_choice_to_early_validate );
+      ( "choice_to_link_agg",
+        "logical_to_choice.csv",
+        choice_schema,
+        link_agg_schema,
+        transform_choice_to_link_agg );
       ( "double_to_logical",
         "logical_to_double.csv",
         double_schema,
@@ -1004,6 +1185,11 @@ let () =
         double_schema,
         early_validate_schema,
         transform_double_to_early_validate );
+      ( "double_to_link_agg",
+        "logical_to_double.csv",
+        double_schema,
+        link_agg_schema,
+        transform_double_to_link_agg );
       ( "early_validate_to_logical",
         "logical_to_early_validate.csv",
         early_validate_schema,
@@ -1024,6 +1210,36 @@ let () =
         early_validate_schema,
         double_schema,
         transform_early_validate_to_double );
+      ( "early_validate_to_link_agg",
+        "logical_to_early_validate.csv",
+        early_validate_schema,
+        link_agg_schema,
+        transform_early_validate_to_link_agg );
+      ( "link_agg_to_logical",
+        "logical_to_link_agg.csv",
+        link_agg_schema,
+        logical_schema,
+        transform_link_agg_to_logical );
+      ( "link_agg_to_action_decompose",
+        "logical_to_link_agg.csv",
+        link_agg_schema,
+        action_decompose_schema,
+        transform_link_agg_to_action_decompose );
+      ( "link_agg_to_choice",
+        "logical_to_link_agg.csv",
+        link_agg_schema,
+        choice_schema,
+        transform_link_agg_to_choice );
+      ( "link_agg_to_double",
+        "logical_to_link_agg.csv",
+        link_agg_schema,
+        double_schema,
+        transform_link_agg_to_double );
+      ( "link_agg_to_early_validate",
+        "logical_to_link_agg.csv",
+        link_agg_schema,
+        early_validate_schema,
+        transform_link_agg_to_early_validate );
     ]
   in
 
