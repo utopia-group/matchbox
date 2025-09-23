@@ -1,7 +1,8 @@
+.DS_Store
 _build
 .ocamlformat
 .ocamlformat-ignore
-venv/
+.venv
 *.png
 *.tmp
 *.patch

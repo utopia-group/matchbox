@@ -250,12 +250,11 @@ let transform_mats (tfxs : (string * Clause.t) list)
 
 let transform_csv_file (input_file : string)
     (input_schema : (string * string list * string list) list)
-    (transformer :
-      (string * MatchActionTable.t) list -> (string * MatchActionTable.t) list)
+    (tfxs : (string * Clause.t) list)
     ?(output_schema : (string * string list * string list) list option = None)
     (output_file : string) : unit =
   read_csv_by_table input_file input_schema
-  |> transformer
+  |> transform_mats tfxs
   |> List.concat_map ~f:(fun (table_name, table) ->
          table_to_csv_lines ~schema:output_schema table_name table)
   |> Out_channel.write_lines output_file
@@ -406,11 +405,6 @@ let logical_to_action_decompose_tfxs : (string * Clause.t) list =
     ("punt", Clause.id punt);
   ]
 
-let transform_logical_to_action_decompose
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats logical_to_action_decompose_tfxs input_tables
-
 (* logical.p4 to choice.p4 *)
 
 let create_staging : Clause.t =
@@ -436,11 +430,6 @@ let logical_to_choice_tfxs : (string * Clause.t) list =
     ("punt2", Clause.id punt);
   ]
 
-let transform_logical_to_choice
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats logical_to_choice_tfxs input_tables
-
 (* logical.p4 to double.p4 *)
 
 let logical_to_double_tfxs : (string * Clause.t) list =
@@ -452,11 +441,6 @@ let logical_to_double_tfxs : (string * Clause.t) list =
     ("punt", Clause.id punt);
     ("punt2", Clause.id punt);
   ]
-
-let transform_logical_to_double
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats logical_to_double_tfxs input_tables
 
 (* logical.p4 to early_validate.p4 *)
 
@@ -492,20 +476,14 @@ let logical_to_early_validate_tfxs : (string * Clause.t) list =
     ("acl", punt_to_acl);
   ]
 
-let transform_logical_to_early_validate
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats logical_to_early_validate_tfxs input_tables
-
 (* logical.p4 to link_agg.p4 *)
 
 (* let lookup = Symbol.make "lookup" [] 0 *)
 
 let create_lookup : Clause.t =
-  let rec gen_unique_nexthop seen_nexthops =
-    let nexthop = Bit.Vector.random 32 in
+  let rec make_unique seen_nexthops nexthop =
     if Set.mem seen_nexthops (Bit.Vector.to_int nexthop) then
-      gen_unique_nexthop seen_nexthops
+      make_unique seen_nexthops (Bit.Vector.incr nexthop)
     else nexthop
   in
   Clause.Table
@@ -513,7 +491,7 @@ let create_lookup : Clause.t =
       |> List.fold
            ~init:([], Set.empty (module Int))
            ~f:(fun (mas, seen_nexthops) port ->
-             let nexthop = gen_unique_nexthop seen_nexthops in
+             let nexthop = make_unique seen_nexthops (Bit.Vector.random 32) in
              ( MatchAction.make TCAM
                  (Map.of_alist_exn
                     (module String)
@@ -560,11 +538,6 @@ let logical_to_link_agg_tfxs : (string * Clause.t) list =
     ("punt", Clause.id punt);
   ]
 
-let transform_logical_to_link_agg
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats logical_to_link_agg_tfxs input_tables
-
 (* Original hardcoded transformation *)
 (* let ethernet_to_ethernet : Clause.t =
   Clause.(
@@ -589,12 +562,7 @@ let link_agg_tfxs : (string * Clause.t) list =
     ("ipv4", ipv4_to_ipv4);
     ("nexthop", create_nexthop);
     ("punt", Clause.id punt);
-  ]
-
-let transform_logical_to_link_agg
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats link_agg_tfxs input_tables *)
+  ] *)
 
 (* action_decompose.p4 to logical.p4 *)
 
@@ -615,11 +583,6 @@ let action_decompose_to_logical_tfxs : (string * Clause.t) list =
     ("ipv4", ipv4_fib_rewrite_to_ipv4);
   ]
 
-let transform_action_decompose_to_logical
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats action_decompose_to_logical_tfxs input_tables
-
 (* action_decompose.p4 to choice.p4 *)
 
 let action_decompose_to_choice_tfxs : (string * Clause.t) list =
@@ -633,11 +596,6 @@ let action_decompose_to_choice_tfxs : (string * Clause.t) list =
     ("punt2", Clause.id punt);
   ]
 
-let transform_action_decompose_to_choice
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats action_decompose_to_choice_tfxs input_tables
-
 (* action_decompose.p4 to double.p4 *)
 
 let action_decompose_to_double_tfxs : (string * Clause.t) list =
@@ -649,11 +607,6 @@ let action_decompose_to_double_tfxs : (string * Clause.t) list =
     ("punt", Clause.id punt);
     ("punt2", Clause.id punt);
   ]
-
-let transform_action_decompose_to_double
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats action_decompose_to_double_tfxs input_tables
 
 (* action_decompose.p4 to early_validate.p4 *)
 
@@ -693,11 +646,6 @@ let action_decompose_to_early_validate_tfxs : (string * Clause.t) list =
     ("acl", punt_to_acl);
   ]
 
-let transform_action_decompose_to_early_validate
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats action_decompose_to_early_validate_tfxs input_tables
-
 (* action_decompose.p4 to link_agg.p4 *)
 
 let fib_rewrite_lookup_to_ipv4 : Clause.t =
@@ -715,11 +663,6 @@ let action_decompose_to_link_agg_tfxs : (string * Clause.t) list =
     ("punt", Clause.id punt);
   ]
 
-let transform_action_decompose_to_link_agg
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats action_decompose_to_link_agg_tfxs input_tables
-
 (* choice.p4 to logical.p4 *)
 
 let choice_to_logical_tfxs : (string * Clause.t) list =
@@ -728,11 +671,6 @@ let choice_to_logical_tfxs : (string * Clause.t) list =
     ("ethernet", Clause.id ethernet);
     ("ipv4", Clause.id ipv4);
   ]
-
-let transform_choice_to_logical
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats choice_to_logical_tfxs input_tables
 
 (* choice.p4 to action_decompose.p4 *)
 
@@ -743,11 +681,6 @@ let choice_to_action_decompose_tfxs : (string * Clause.t) list =
     ("ethernet", Clause.id ethernet);
     ("punt", Clause.id punt);
   ]
-
-let transform_choice_to_action_decompose
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats choice_to_action_decompose_tfxs input_tables
 
 (* choice.p4 to double.p4 *)
 
@@ -765,11 +698,6 @@ let choice_to_double_tfxs : (string * Clause.t) list =
     ("punt2", Clause.id punt2);
   ]
 
-let transform_choice_to_double
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats choice_to_double_tfxs input_tables
-
 (* choice.p4 to early_validate.p4 *)
 
 let choice_to_early_validate_tfxs : (string * Clause.t) list =
@@ -781,11 +709,6 @@ let choice_to_early_validate_tfxs : (string * Clause.t) list =
     ("acl", punt_to_acl);
   ]
 
-let transform_choice_to_early_validate
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats choice_to_early_validate_tfxs input_tables
-
 (* choice.p4 to link_agg.p4 *)
 
 let choice_to_link_agg_tfxs : (string * Clause.t) list =
@@ -796,11 +719,6 @@ let choice_to_link_agg_tfxs : (string * Clause.t) list =
     ("punt", Clause.id punt);
   ]
 
-let transform_choice_to_link_agg
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats choice_to_link_agg_tfxs input_tables
-
 (* double.p4 to logical.p4 *)
 
 let double_to_logical_tfxs : (string * Clause.t) list =
@@ -809,11 +727,6 @@ let double_to_logical_tfxs : (string * Clause.t) list =
     ("ethernet", Clause.id ethernet);
     ("ipv4", Clause.id ipv4);
   ]
-
-let transform_double_to_logical
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats double_to_logical_tfxs input_tables
 
 (* double.p4 to action_decompose.p4 *)
 
@@ -824,11 +737,6 @@ let double_to_action_decompose_tfxs : (string * Clause.t) list =
     ("ethernet", Clause.id ethernet);
     ("punt", Clause.id punt);
   ]
-
-let transform_double_to_action_decompose
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats double_to_action_decompose_tfxs input_tables
 
 (* double.p4 to choice.p4 *)
 
@@ -843,11 +751,6 @@ let double_to_choice_tfxs : (string * Clause.t) list =
     ("punt2", Clause.id punt2);
   ]
 
-let transform_double_to_choice
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats double_to_choice_tfxs input_tables
-
 (* double.p4 to early_validate.p4 *)
 
 let double_to_early_validate_tfxs : (string * Clause.t) list =
@@ -859,11 +762,6 @@ let double_to_early_validate_tfxs : (string * Clause.t) list =
     ("acl", punt_to_acl);
   ]
 
-let transform_double_to_early_validate
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats double_to_early_validate_tfxs input_tables
-
 (* double.p4 to link_agg.p4 *)
 
 let double_to_link_agg_tfxs : (string * Clause.t) list =
@@ -873,11 +771,6 @@ let double_to_link_agg_tfxs : (string * Clause.t) list =
     ("ipv4", ipv4_lookup_to_ipv4);
     ("punt", Clause.id punt);
   ]
-
-let transform_double_to_link_agg
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats double_to_link_agg_tfxs input_tables
 
 (* early_validate.p4 to logical.p4 *)
 
@@ -906,11 +799,6 @@ let early_validate_to_logical_tfxs : (string * Clause.t) list =
     ("ipv4", Clause.id ipv4);
   ]
 
-let transform_early_validate_to_logical
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats early_validate_to_logical_tfxs input_tables
-
 (* early_validate.p4 to action_decompose.p4 *)
 
 let ipv4_to_ipv4_fib : Clause.t =
@@ -927,11 +815,6 @@ let early_validate_to_action_decompose_tfxs : (string * Clause.t) list =
     ("punt", validate_acl_to_punt);
   ]
 
-let transform_early_validate_to_action_decompose
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats early_validate_to_action_decompose_tfxs input_tables
-
 (* early_validate.p4 to choice.p4 *)
 
 let early_validate_to_choice_tfxs : (string * Clause.t) list =
@@ -945,11 +828,6 @@ let early_validate_to_choice_tfxs : (string * Clause.t) list =
     ("punt2", validate_acl_to_punt);
   ]
 
-let transform_early_validate_to_choice
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats early_validate_to_choice_tfxs input_tables
-
 (* early_validate.p4 to double.p4 *)
 
 let early_validate_to_double_tfxs : (string * Clause.t) list =
@@ -962,11 +840,6 @@ let early_validate_to_double_tfxs : (string * Clause.t) list =
     ("punt2", validate_acl_to_punt);
   ]
 
-let transform_early_validate_to_double
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats early_validate_to_double_tfxs input_tables
-
 (* early_validate.p4 to link_agg.p4 *)
 
 let early_validate_to_link_agg_tfxs : (string * Clause.t) list =
@@ -976,11 +849,6 @@ let early_validate_to_link_agg_tfxs : (string * Clause.t) list =
     ("ipv4", ipv4_lookup_to_ipv4);
     ("punt", validate_acl_to_punt);
   ]
-
-let transform_early_validate_to_link_agg
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats early_validate_to_link_agg_tfxs input_tables
 
 (* link_agg.p4 to logical.p4 *)
 
@@ -1007,11 +875,6 @@ let link_agg_to_logical_tfxs : (string * Clause.t) list =
     ("ipv4", ipv4_nexthop_to_ipv4);
   ]
 
-let transform_link_agg_to_logical
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats link_agg_to_logical_tfxs input_tables
-
 (* link_agg.p4 to action_decompose.p4 *)
 
 let ipv4_nexthop_to_ipv4_fib : Clause.t =
@@ -1028,11 +891,6 @@ let link_agg_to_action_decompose_tfxs : (string * Clause.t) list =
     ("punt", Clause.id punt);
   ]
 
-let transform_link_agg_to_action_decompose
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats link_agg_to_action_decompose_tfxs input_tables
-
 (* link_agg.p4 to choice.p4 *)
 
 let link_agg_to_choice_tfxs : (string * Clause.t) list =
@@ -1046,11 +904,6 @@ let link_agg_to_choice_tfxs : (string * Clause.t) list =
     ("punt2", Clause.id punt);
   ]
 
-let transform_link_agg_to_choice
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats link_agg_to_choice_tfxs input_tables
-
 (* link_agg.p4 to double.p4 *)
 
 let link_agg_to_double_tfxs : (string * Clause.t) list =
@@ -1063,11 +916,6 @@ let link_agg_to_double_tfxs : (string * Clause.t) list =
     ("punt2", Clause.id punt);
   ]
 
-let transform_link_agg_to_double
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats link_agg_to_double_tfxs input_tables
-
 (* link_agg.p4 to early_validate.p4 *)
 
 let link_agg_to_early_validate_tfxs : (string * Clause.t) list =
@@ -1079,174 +927,207 @@ let link_agg_to_early_validate_tfxs : (string * Clause.t) list =
     ("acl", punt_to_acl);
   ]
 
-let transform_link_agg_to_early_validate
-    (input_tables : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
-  transform_mats link_agg_to_early_validate_tfxs input_tables
-
 let () =
   let output_dir = "Pipelines/retargeting" in
-
-  (* (output_name, input_file, input_schema, output_schema, translation) *)
-  let tfxs =
+  (* (id, output_name, input_file, input_schema, output_schema, translation) *)
+  let all_tfxs =
     [
-      ( "logical_to_action_decompose",
+      ( "lo_ad",
+        "logical_to_action_decompose",
         "logical_inserts_1001.csv",
         logical_schema,
         action_decompose_schema,
-        transform_logical_to_action_decompose );
-      ( "logical_to_choice",
+        logical_to_action_decompose_tfxs );
+      ( "lo_ch",
+        "logical_to_choice",
         "logical_inserts_1001.csv",
         logical_schema,
         choice_schema,
-        transform_logical_to_choice );
-      ( "logical_to_double",
+        logical_to_choice_tfxs );
+      ( "lo_db",
+        "logical_to_double",
         "logical_inserts_1001.csv",
         logical_schema,
         double_schema,
-        transform_logical_to_double );
-      ( "logical_to_early_validate",
+        logical_to_double_tfxs );
+      ( "lo_ev",
+        "logical_to_early_validate",
         "logical_inserts_1001.csv",
         logical_schema,
         early_validate_schema,
-        transform_logical_to_early_validate );
-      ( "logical_to_link_agg",
+        logical_to_early_validate_tfxs );
+      ( "lo_la",
+        "logical_to_link_agg",
         "logical_inserts_1001.csv",
         logical_schema,
         link_agg_schema,
-        transform_logical_to_link_agg );
-      ( "action_decompose_to_logical",
+        logical_to_link_agg_tfxs );
+      ( "ad_lo",
+        "action_decompose_to_logical",
         "logical_to_action_decompose.csv",
         action_decompose_schema,
         logical_schema,
-        transform_action_decompose_to_logical );
-      ( "action_decompose_to_choice",
+        action_decompose_to_logical_tfxs );
+      ( "ad_ch",
+        "action_decompose_to_choice",
         "logical_to_action_decompose.csv",
         action_decompose_schema,
         choice_schema,
-        transform_action_decompose_to_choice );
-      ( "action_decompose_to_double",
+        action_decompose_to_choice_tfxs );
+      ( "ad_db",
+        "action_decompose_to_double",
         "logical_to_action_decompose.csv",
         action_decompose_schema,
         double_schema,
-        transform_action_decompose_to_double );
-      ( "action_decompose_to_early_validate",
+        action_decompose_to_double_tfxs );
+      ( "ad_ev",
+        "action_decompose_to_early_validate",
         "logical_to_action_decompose.csv",
         action_decompose_schema,
         early_validate_schema,
-        transform_action_decompose_to_early_validate );
-      ( "action_decompose_to_link_agg",
+        action_decompose_to_early_validate_tfxs );
+      ( "ad_la",
+        "action_decompose_to_link_agg",
         "logical_to_action_decompose.csv",
         action_decompose_schema,
         link_agg_schema,
-        transform_action_decompose_to_link_agg );
-      ( "choice_to_logical",
+        action_decompose_to_link_agg_tfxs );
+      ( "ch_lo",
+        "choice_to_logical",
         "logical_to_choice.csv",
         choice_schema,
         logical_schema,
-        transform_choice_to_logical );
-      ( "choice_to_action_decompose",
+        choice_to_logical_tfxs );
+      ( "ch_ad",
+        "choice_to_action_decompose",
         "logical_to_choice.csv",
         choice_schema,
         action_decompose_schema,
-        transform_choice_to_action_decompose );
-      ( "choice_to_double",
+        choice_to_action_decompose_tfxs );
+      ( "ch_db",
+        "choice_to_double",
         "logical_to_choice.csv",
         choice_schema,
         double_schema,
-        transform_choice_to_double );
-      ( "choice_to_early_validate",
+        choice_to_double_tfxs );
+      ( "ch_ev",
+        "choice_to_early_validate",
         "logical_to_choice.csv",
         choice_schema,
         early_validate_schema,
-        transform_choice_to_early_validate );
-      ( "choice_to_link_agg",
+        choice_to_early_validate_tfxs );
+      ( "ch_la",
+        "choice_to_link_agg",
         "logical_to_choice.csv",
         choice_schema,
         link_agg_schema,
-        transform_choice_to_link_agg );
-      ( "double_to_logical",
+        choice_to_link_agg_tfxs );
+      ( "db_lo",
+        "double_to_logical",
         "logical_to_double.csv",
         double_schema,
         logical_schema,
-        transform_double_to_logical );
-      ( "double_to_action_decompose",
+        double_to_logical_tfxs );
+      ( "db_ad",
+        "double_to_action_decompose",
         "logical_to_double.csv",
         double_schema,
         action_decompose_schema,
-        transform_double_to_action_decompose );
-      ( "double_to_choice",
+        double_to_action_decompose_tfxs );
+      ( "db_ch",
+        "double_to_choice",
         "logical_to_double.csv",
         double_schema,
         choice_schema,
-        transform_double_to_choice );
-      ( "double_to_early_validate",
+        double_to_choice_tfxs );
+      ( "db_ev",
+        "double_to_early_validate",
         "logical_to_double.csv",
         double_schema,
         early_validate_schema,
-        transform_double_to_early_validate );
-      ( "double_to_link_agg",
+        double_to_early_validate_tfxs );
+      ( "db_la",
+        "double_to_link_agg",
         "logical_to_double.csv",
         double_schema,
         link_agg_schema,
-        transform_double_to_link_agg );
-      ( "early_validate_to_logical",
+        double_to_link_agg_tfxs );
+      ( "ev_lo",
+        "early_validate_to_logical",
         "logical_to_early_validate.csv",
         early_validate_schema,
         logical_schema,
-        transform_early_validate_to_logical );
-      ( "early_validate_to_action_decompose",
+        early_validate_to_logical_tfxs );
+      ( "ev_ad",
+        "early_validate_to_action_decompose",
         "logical_to_early_validate.csv",
         early_validate_schema,
         action_decompose_schema,
-        transform_early_validate_to_action_decompose );
-      ( "early_validate_to_choice",
+        early_validate_to_action_decompose_tfxs );
+      ( "ev_ch",
+        "early_validate_to_choice",
         "logical_to_early_validate.csv",
         early_validate_schema,
         choice_schema,
-        transform_early_validate_to_choice );
-      ( "early_validate_to_double",
+        early_validate_to_choice_tfxs );
+      ( "ev_db",
+        "early_validate_to_double",
         "logical_to_early_validate.csv",
         early_validate_schema,
         double_schema,
-        transform_early_validate_to_double );
-      ( "early_validate_to_link_agg",
+        early_validate_to_double_tfxs );
+      ( "ev_la",
+        "early_validate_to_link_agg",
         "logical_to_early_validate.csv",
         early_validate_schema,
         link_agg_schema,
-        transform_early_validate_to_link_agg );
-      ( "link_agg_to_logical",
+        early_validate_to_link_agg_tfxs );
+      ( "la_lo",
+        "link_agg_to_logical",
         "logical_to_link_agg.csv",
         link_agg_schema,
         logical_schema,
-        transform_link_agg_to_logical );
-      ( "link_agg_to_action_decompose",
+        link_agg_to_logical_tfxs );
+      ( "la_ad",
+        "link_agg_to_action_decompose",
         "logical_to_link_agg.csv",
         link_agg_schema,
         action_decompose_schema,
-        transform_link_agg_to_action_decompose );
-      ( "link_agg_to_choice",
+        link_agg_to_action_decompose_tfxs );
+      ( "la_ch",
+        "link_agg_to_choice",
         "logical_to_link_agg.csv",
         link_agg_schema,
         choice_schema,
-        transform_link_agg_to_choice );
-      ( "link_agg_to_double",
+        link_agg_to_choice_tfxs );
+      ( "la_db",
+        "link_agg_to_double",
         "logical_to_link_agg.csv",
         link_agg_schema,
         double_schema,
-        transform_link_agg_to_double );
-      ( "link_agg_to_early_validate",
+        link_agg_to_double_tfxs );
+      ( "la_ev",
+        "link_agg_to_early_validate",
         "logical_to_link_agg.csv",
         link_agg_schema,
         early_validate_schema,
-        transform_link_agg_to_early_validate );
+        link_agg_to_early_validate_tfxs );
     ]
   in
-
-  List.iter tfxs
-    ~f:(fun (name, input_file, input_schema, output_schema, transform) ->
+  (* Map.iteri
+    ~f:(fun ~key:op ~data:cnt -> printf "$%s$ & %d \\\\\n" op cnt)
+    (List.fold all_tfxs
+       ~init:(Map.empty (module String))
+       ~f:(fun acc (_, _, _, _, _, tfxs) ->
+         List.fold tfxs ~init:acc ~f:(fun acc (_, t) ->
+             Clause.count_components acc t))); *)
+  List.iteri all_tfxs
+    ~f:(fun _i (_id, name, input_file, input_schema, output_schema, tfxs) ->
       printf "Translating %s...\n" name;
+      (* printf "(%d, %d, \"%s\"),\n" (i + 1)
+        (List.fold tfxs ~init:0 ~f:(fun acc (_, t) -> acc + Clause.size t))
+        id; *)
       let input_file = sprintf "%s/%s" output_dir input_file in
       let output_file = sprintf "%s/%s.csv" output_dir name in
-      transform_csv_file input_file input_schema transform
+      transform_csv_file input_file input_schema tfxs
         ~output_schema:(Some output_schema) output_file)
