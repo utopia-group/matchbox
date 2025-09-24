@@ -98,6 +98,67 @@ module Clause = struct
 
   let table mat = Table(mat, None)
 
+  let rec size c =
+    (match c with
+    | Id _ | Table _ -> 0
+    | Join (f, g, _) -> size f + size g
+    | Compose (f, g, _) -> size f + size g
+    | MapOut (c, _, _) -> size c
+    | MapIn (c, _, _) -> size c)
+    + 1
+
+  let rec count_components cnts = function
+    | Id _ ->
+      Map.update cnts "t" ~f:(Option.value_map ~default:1 ~f:((+) 1))
+    | Table _ ->
+      Map.update cnts "T" ~f:(Option.value_map ~default:1 ~f:((+) 1))
+    | Join (f, g, _) ->
+      Map.update
+        (count_components (count_components cnts f) g)
+        "\\cdot \\boxtimes \\cdot"
+        ~f:(Option.value_map ~default:1 ~f:((+) 1))
+    | Compose (f, g, _) ->
+      Map.update
+        (count_components (count_components cnts f) g)
+        "\\cdot \\circ \\cdot"
+        ~f:(Option.value_map ~default:1 ~f:((+) 1))
+    | MapOut (f, tfx, _) -> (
+      let f_components = count_components cnts f in
+      match tfx with
+        | Project _ | Del _ -> 
+          Map.update
+            f_components
+            "\\rangeop{\\cdot}{\\Del{x}}"
+            ~f:(Option.value_map ~default:1 ~f:((+) 1))
+        | SetTo _ -> 
+          Map.update
+            f_components
+            "\\rangeop{\\cdot}{\\Write{x}{e}}"
+            ~f:(Option.value_map ~default:1 ~f:((+) 1))
+        | Rename _ ->
+          Map.update
+            f_components
+            "\\rangeop{\\cdot}{[a \\mapsto a']}"
+            ~f:(Option.value_map ~default:1 ~f:((+) 1))
+        | Nonce _ -> failwith "TODO")
+    | MapIn (f, tfx, _) -> (
+      let f_components = count_components cnts f in
+      match tfx with
+        | Project _ | Del _ -> 
+          Map.update
+            f_components
+            "\\domop{\\Del{x}}{\\cdot}"
+            ~f:(Option.value_map ~default:1 ~f:((+) 1))
+        | SetTo _ | WildCard _ -> 
+          Map.update
+            f_components
+            "\\domop{\\Write{x}{e}}{\\cdot}"
+            ~f:(Option.value_map ~default:1 ~f:((+) 1))
+        | CubeFilter _ | Filter _ ->
+          Map.update
+            f_components
+            "\\textsf{filter}_\\vartheta(\\cdot)"
+            ~f:(Option.value_map ~default:1 ~f:((+) 1)))
 end
 
 type t = {defined : Symbol.t; definition : Clause.t }
