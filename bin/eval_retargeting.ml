@@ -1123,11 +1123,21 @@ let () =
              Clause.count_components acc t))); *)
   List.iteri all_tfxs
     ~f:(fun _i (_id, name, input_file, input_schema, output_schema, tfxs) ->
-      printf "Translating %s...\n" name;
       (* printf "(%d, %d, \"%s\"),\n" (i + 1)
         (List.fold tfxs ~init:0 ~f:(fun acc (_, t) -> acc + Clause.size t))
         id; *)
       let input_file = sprintf "%s/%s" output_dir input_file in
       let output_file = sprintf "%s/%s.csv" output_dir name in
-      transform_csv_file input_file input_schema tfxs
-        ~output_schema:(Some output_schema) output_file)
+      let parsed_tables = read_csv_by_table input_file input_schema in
+      let start_time = Time_ns.now () in
+      let translated_tables = transform_mats tfxs parsed_tables in
+      let end_time = Time_ns.now () in
+      let elapsed_time_us =
+        Time_ns.Span.to_ns (Time_ns.diff end_time start_time) /. 1000.0
+      in
+      translated_tables
+      |> List.concat_map ~f:(fun (table_name, table) ->
+             table_to_csv_lines ~schema:(Some output_schema) table_name table)
+      |> Out_channel.write_lines output_file;
+      (* printf "Translating %s completed in %.1f μs\n" name elapsed_time_us) *)
+      printf "(\"%s\", %.1f),\n" _id elapsed_time_us)

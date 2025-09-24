@@ -4,5 +4,6 @@ _build
 .ocamlformat-ignore
 .venv
 *.png
+*.pdf
 *.tmp
 *.patch

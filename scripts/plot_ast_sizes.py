@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-ITEMS = [
+BARS = [
     (1, 6, "lo_ad"),                      
     (2, 7, "lo_ch"),
     (3, 6, "lo_db"),
@@ -37,14 +37,14 @@ ITEMS = [
 ]
 
 def main(save_path: str | None = None) -> None:
-    x = [i for (i, _, _) in ITEMS]
-    h = [v for (_, v, _) in ITEMS]
-    labels = [lbl for (_, _, lbl) in ITEMS]
+    x = [i for (i, _, _) in BARS]
+    h = [v for (_, v, _) in BARS]
+    labels = [lbl for (_, _, lbl) in BARS]
 
     _, ax = plt.subplots(figsize=(8, 3.5))
     ax.bar(x, h, width=0.7)
 
-    # Add values above bars
+    # Show values above bars
     for xi, yi in zip(x, h):
         ax.text(xi, yi + 0.6, f"{yi}", ha="center", va="bottom", fontsize=8)
 
@@ -69,7 +69,7 @@ def main(save_path: str | None = None) -> None:
     else:
         save_path = Path(save_path)
 
-    plt.savefig(save_path, dpi=200, bbox_inches="tight")
+    plt.savefig(save_path, dpi=2400, bbox_inches='tight')
     print(f"Saved chart to {save_path}")
 
     try:
@@ -79,4 +79,4 @@ def main(save_path: str | None = None) -> None:
         pass
 
 if __name__ == "__main__":
-    main("ast-sizes.png")
+    main("ast-sizes.pdf")
