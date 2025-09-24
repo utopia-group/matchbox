@@ -227,9 +227,8 @@ let table_to_csv_lines
   in
   List.map table ~f:format_row
 
-let transform_mats (tfxs : (string * Clause.t) list)
-    (mats : (string * MatchActionTable.t) list) :
-    (string * MatchActionTable.t) list =
+let transform_mats (tfxs : t list) (mats : (string * MatchActionTable.t) list) :
+    (Symbol.t * MatchActionTable.t) list =
   let create_config mats =
     let symbols = List.map mats ~f:(fun (name, _) -> Symbol.make name [] 0) in
     let cfg_map =
@@ -242,22 +241,10 @@ let transform_mats (tfxs : (string * Clause.t) list)
   let config = create_config mats in
   snd
     (List.fold tfxs ~init:(config, [])
-       ~f:(fun (acc_config, acc_mats) (output_name, clause) ->
+       ~f:(fun (acc_config, acc_mats) {defined; definition} ->
          (* eval using acc_config if you want to be able to reference tables defined earlier *)
-         let tmp = (output_name, BaseInterpreter.eval clause config) in
-         ( Config.set acc_config (Symbol.make output_name [] 0) (snd tmp),
-           acc_mats @ [tmp] )))
-
-let transform_csv_file (input_file : string)
-    (input_schema : (string * string list * string list) list)
-    (tfxs : (string * Clause.t) list)
-    ?(output_schema : (string * string list * string list) list option = None)
-    (output_file : string) : unit =
-  read_csv_by_table input_file input_schema
-  |> transform_mats tfxs
-  |> List.concat_map ~f:(fun (table_name, table) ->
-         table_to_csv_lines ~schema:output_schema table_name table)
-  |> Out_channel.write_lines output_file
+         let tmp = (defined, BaseInterpreter.eval definition config) in
+         (Config.set acc_config defined (snd tmp), acc_mats @ [tmp])))
 
 let logical_schema =
   [
@@ -388,6 +375,8 @@ let link_agg_schema =
 let ethernet = Symbol.make "ethernet" [] 0
 let ipv4 = Symbol.make "ipv4" [] 0
 let punt = Symbol.make "punt" [] 0
+let ipv4_fib = Symbol.make "ipv4_fib" [] 0
+let ipv4_rewrite = Symbol.make "ipv4_rewrite" [] 0
 
 (* logical.p4 to action_decompose.p4 *)
 
@@ -397,15 +386,20 @@ let ipv4_to_ipv4_fib : Clause.t =
 let ipv4_to_ipv4_rewrite : Clause.t =
   Clause.(id ipv4 |>> Project [Var.make "dstAddr" 48])
 
-let logical_to_action_decompose_tfxs : (string * Clause.t) list =
+let logical_to_action_decompose_tfxs : t list =
   [
-    ("ipv4_fib", ipv4_to_ipv4_fib);
-    ("ipv4_rewrite", ipv4_to_ipv4_rewrite);
-    ("ethernet", Clause.id ethernet);
-    ("punt", Clause.id punt);
+    {defined = ipv4_fib; definition = ipv4_to_ipv4_fib};
+    {defined = ipv4_rewrite; definition = ipv4_to_ipv4_rewrite};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = punt; definition = Clause.id punt};
   ]
 
 (* logical.p4 to choice.p4 *)
+
+let staging = Symbol.make "staging" [] 0
+let ethernet2 = Symbol.make "ethernet2" [] 0
+let ipv42 = Symbol.make "ipv42" [] 0
+let punt2 = Symbol.make "punt2" [] 0
 
 let create_staging : Clause.t =
   Clause.table
@@ -419,30 +413,34 @@ let create_staging : Clause.t =
         (Map.singleton (module String) "c" (Bit.Vector.of_int 3 ~width:4));
     ]
 
-let logical_to_choice_tfxs : (string * Clause.t) list =
+let logical_to_choice_tfxs : t list =
   [
-    ("staging", create_staging);
-    ("ethernet", Clause.id ethernet);
-    ("ethernet2", Clause.id ethernet);
-    ("ipv4", Clause.id ipv4);
-    ("ipv42", Clause.id ipv4);
-    ("punt", Clause.id punt);
-    ("punt2", Clause.id punt);
+    {defined = staging; definition = create_staging};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ethernet2; definition = Clause.id ethernet};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = ipv42; definition = Clause.id ipv4};
+    {defined = punt; definition = Clause.id punt};
+    {defined = punt2; definition = Clause.id punt};
   ]
 
 (* logical.p4 to double.p4 *)
 
-let logical_to_double_tfxs : (string * Clause.t) list =
+let logical_to_double_tfxs : t list =
   [
-    ("ethernet", Clause.id ethernet);
-    ("ethernet2", Clause.id ethernet);
-    ("ipv4", Clause.id ipv4);
-    ("ipv42", Clause.id ipv4);
-    ("punt", Clause.id punt);
-    ("punt2", Clause.id punt);
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ethernet2; definition = Clause.id ethernet};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = ipv42; definition = Clause.id ipv4};
+    {defined = punt; definition = Clause.id punt};
+    {defined = punt2; definition = Clause.id punt};
   ]
 
 (* logical.p4 to early_validate.p4 *)
+
+let ethernet_validate = Symbol.make "ethernet_validate" [] 0
+let ipv4_validate = Symbol.make "ipv4_validate" [] 0
+let acl = Symbol.make "acl" [] 0
 
 let punt_to_ethernet_validate : Clause.t =
   Clause.(
@@ -467,16 +465,18 @@ let punt_to_acl : Clause.t =
                [Var.make "hdr.ipv4.srcAddr" 32; Var.make "hdr.ipv4.dstAddr" 32]
             <<| id punt)))
 
-let logical_to_early_validate_tfxs : (string * Clause.t) list =
+let logical_to_early_validate_tfxs : t list =
   [
-    ("ethernet_validate", punt_to_ethernet_validate);
-    ("ethernet", Clause.id ethernet);
-    ("ipv4_validate", punt_to_ipv4_validate);
-    ("ipv4", Clause.id ipv4);
-    ("acl", punt_to_acl);
+    {defined = ethernet_validate; definition = punt_to_ethernet_validate};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ipv4_validate; definition = punt_to_ipv4_validate};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = acl; definition = punt_to_acl};
   ]
 
 (* logical.p4 to link_agg.p4 *)
+
+let nexthop = Symbol.make "nexthop" [] 0
 
 (* let lookup = Symbol.make "lookup" [] 0 *)
 
@@ -529,13 +529,13 @@ let ipv4_lookup_to_ipv4 : Clause.t =
         |>> Project [Var.make "nexthop" 32]))
     * (id ipv4 |>> Project [Var.make "dstAddr" 48]))
 
-let logical_to_link_agg_tfxs : (string * Clause.t) list =
+let logical_to_link_agg_tfxs : t list =
   [
-    (* ("lookup", create_lookup); *)
-    ("nexthop", lookup_to_nexthop);
-    ("ethernet", ethernet_lookup_to_ethernet);
-    ("ipv4", ipv4_lookup_to_ipv4);
-    ("punt", Clause.id punt);
+    (* {defined = lookup; definition = create_lookup}; *)
+    {defined = nexthop; definition = lookup_to_nexthop};
+    {defined = ethernet; definition = ethernet_lookup_to_ethernet};
+    {defined = ipv4; definition = ipv4_lookup_to_ipv4};
+    {defined = punt; definition = Clause.id punt};
   ]
 
 (* Original hardcoded transformation *)
@@ -576,36 +576,36 @@ let ipv4_fib_rewrite_to_ipv4 : Clause.t =
           ( MagmaAction.(make "ipv4_forward" @ make "rewrite"),
             MagmaAction.make "ipv4_forward" ))
 
-let action_decompose_to_logical_tfxs : (string * Clause.t) list =
+let action_decompose_to_logical_tfxs : t list =
   [
-    ("punt", Clause.id punt);
-    ("ethernet", Clause.id ethernet);
-    ("ipv4", ipv4_fib_rewrite_to_ipv4);
+    {defined = punt; definition = Clause.id punt};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ipv4; definition = ipv4_fib_rewrite_to_ipv4};
   ]
 
 (* action_decompose.p4 to choice.p4 *)
 
-let action_decompose_to_choice_tfxs : (string * Clause.t) list =
+let action_decompose_to_choice_tfxs : t list =
   [
-    ("staging", create_staging);
-    ("ethernet", Clause.id ethernet);
-    ("ethernet2", Clause.id ethernet);
-    ("ipv4", ipv4_fib_rewrite_to_ipv4);
-    ("ipv42", ipv4_fib_rewrite_to_ipv4);
-    ("punt", Clause.id punt);
-    ("punt2", Clause.id punt);
+    {defined = staging; definition = create_staging};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ethernet2; definition = Clause.id ethernet};
+    {defined = ipv4; definition = ipv4_fib_rewrite_to_ipv4};
+    {defined = ipv42; definition = ipv4_fib_rewrite_to_ipv4};
+    {defined = punt; definition = Clause.id punt};
+    {defined = punt2; definition = Clause.id punt};
   ]
 
 (* action_decompose.p4 to double.p4 *)
 
-let action_decompose_to_double_tfxs : (string * Clause.t) list =
+let action_decompose_to_double_tfxs : t list =
   [
-    ("ethernet", Clause.id ethernet);
-    ("ethernet2", Clause.id ethernet);
-    ("ipv4", ipv4_fib_rewrite_to_ipv4);
-    ("ipv42", ipv4_fib_rewrite_to_ipv4);
-    ("punt", Clause.id punt);
-    ("punt2", Clause.id punt);
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ethernet2; definition = Clause.id ethernet};
+    {defined = ipv4; definition = ipv4_fib_rewrite_to_ipv4};
+    {defined = ipv42; definition = ipv4_fib_rewrite_to_ipv4};
+    {defined = punt; definition = Clause.id punt};
+    {defined = punt2; definition = Clause.id punt};
   ]
 
 (* action_decompose.p4 to early_validate.p4 *)
@@ -637,13 +637,13 @@ let punt_to_acl : Clause.t =
                [Var.make "hdr.ipv4.srcAddr" 32; Var.make "hdr.ipv4.dstAddr" 32]
             <<| id punt)))
 
-let action_decompose_to_early_validate_tfxs : (string * Clause.t) list =
+let action_decompose_to_early_validate_tfxs : t list =
   [
-    ("ethernet_validate", punt_to_ethernet_validate);
-    ("ethernet", Clause.id ethernet);
-    ("ipv4_validate", punt_to_ipv4_validate);
-    ("ipv4", ipv4_fib_rewrite_to_ipv4);
-    ("acl", punt_to_acl);
+    {defined = ethernet_validate; definition = punt_to_ethernet_validate};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ipv4_validate; definition = punt_to_ipv4_validate};
+    {defined = ipv4; definition = ipv4_fib_rewrite_to_ipv4};
+    {defined = acl; definition = punt_to_acl};
   ]
 
 (* action_decompose.p4 to link_agg.p4 *)
@@ -655,31 +655,31 @@ let fib_rewrite_lookup_to_ipv4 : Clause.t =
         <<| create_lookup
         |>> Project [Var.make "nexthop" 32]))
 
-let action_decompose_to_link_agg_tfxs : (string * Clause.t) list =
+let action_decompose_to_link_agg_tfxs : t list =
   [
-    ("nexthop", lookup_to_nexthop);
-    ("ethernet", ethernet_lookup_to_ethernet);
-    ("ipv4", fib_rewrite_lookup_to_ipv4);
-    ("punt", Clause.id punt);
+    {defined = nexthop; definition = lookup_to_nexthop};
+    {defined = ethernet; definition = ethernet_lookup_to_ethernet};
+    {defined = ipv4; definition = fib_rewrite_lookup_to_ipv4};
+    {defined = punt; definition = Clause.id punt};
   ]
 
 (* choice.p4 to logical.p4 *)
 
-let choice_to_logical_tfxs : (string * Clause.t) list =
+let choice_to_logical_tfxs : t list =
   [
-    ("punt", Clause.id punt);
-    ("ethernet", Clause.id ethernet);
-    ("ipv4", Clause.id ipv4);
+    {defined = punt; definition = Clause.id punt};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ipv4; definition = Clause.id ipv4};
   ]
 
 (* choice.p4 to action_decompose.p4 *)
 
-let choice_to_action_decompose_tfxs : (string * Clause.t) list =
+let choice_to_action_decompose_tfxs : t list =
   [
-    ("ipv4_fib", ipv4_to_ipv4_fib);
-    ("ipv4_rewrite", ipv4_to_ipv4_rewrite);
-    ("ethernet", Clause.id ethernet);
-    ("punt", Clause.id punt);
+    {defined = ipv4_fib; definition = ipv4_to_ipv4_fib};
+    {defined = ipv4_rewrite; definition = ipv4_to_ipv4_rewrite};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = punt; definition = Clause.id punt};
   ]
 
 (* choice.p4 to double.p4 *)
@@ -688,88 +688,88 @@ let ethernet2 = Symbol.make "ethernet2" [] 0
 let ipv42 = Symbol.make "ipv42" [] 0
 let punt2 = Symbol.make "punt2" [] 0
 
-let choice_to_double_tfxs : (string * Clause.t) list =
+let choice_to_double_tfxs : t list =
   [
-    ("ethernet", Clause.id ethernet);
-    ("ethernet2", Clause.id ethernet2);
-    ("ipv4", Clause.id ipv4);
-    ("ipv42", Clause.id ipv42);
-    ("punt", Clause.id punt);
-    ("punt2", Clause.id punt2);
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ethernet2; definition = Clause.id ethernet2};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = ipv42; definition = Clause.id ipv42};
+    {defined = punt; definition = Clause.id punt};
+    {defined = punt2; definition = Clause.id punt2};
   ]
 
 (* choice.p4 to early_validate.p4 *)
 
-let choice_to_early_validate_tfxs : (string * Clause.t) list =
+let choice_to_early_validate_tfxs : t list =
   [
-    ("ethernet_validate", punt_to_ethernet_validate);
-    ("ethernet", Clause.id ethernet);
-    ("ipv4_validate", punt_to_ipv4_validate);
-    ("ipv4", Clause.id ipv4);
-    ("acl", punt_to_acl);
+    {defined = ethernet_validate; definition = punt_to_ethernet_validate};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ipv4_validate; definition = punt_to_ipv4_validate};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = acl; definition = punt_to_acl};
   ]
 
 (* choice.p4 to link_agg.p4 *)
 
-let choice_to_link_agg_tfxs : (string * Clause.t) list =
+let choice_to_link_agg_tfxs : t list =
   [
-    ("nexthop", lookup_to_nexthop);
-    ("ethernet", ethernet_lookup_to_ethernet);
-    ("ipv4", ipv4_lookup_to_ipv4);
-    ("punt", Clause.id punt);
+    {defined = nexthop; definition = lookup_to_nexthop};
+    {defined = ethernet; definition = ethernet_lookup_to_ethernet};
+    {defined = ipv4; definition = ipv4_lookup_to_ipv4};
+    {defined = punt; definition = Clause.id punt};
   ]
 
 (* double.p4 to logical.p4 *)
 
-let double_to_logical_tfxs : (string * Clause.t) list =
+let double_to_logical_tfxs : t list =
   [
-    ("punt", Clause.id punt);
-    ("ethernet", Clause.id ethernet);
-    ("ipv4", Clause.id ipv4);
+    {defined = punt; definition = Clause.id punt};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ipv4; definition = Clause.id ipv4};
   ]
 
 (* double.p4 to action_decompose.p4 *)
 
-let double_to_action_decompose_tfxs : (string * Clause.t) list =
+let double_to_action_decompose_tfxs : t list =
   [
-    ("ipv4_fib", ipv4_to_ipv4_fib);
-    ("ipv4_rewrite", ipv4_to_ipv4_rewrite);
-    ("ethernet", Clause.id ethernet);
-    ("punt", Clause.id punt);
+    {defined = ipv4_fib; definition = ipv4_to_ipv4_fib};
+    {defined = ipv4_rewrite; definition = ipv4_to_ipv4_rewrite};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = punt; definition = Clause.id punt};
   ]
 
 (* double.p4 to choice.p4 *)
 
-let double_to_choice_tfxs : (string * Clause.t) list =
+let double_to_choice_tfxs : t list =
   [
-    ("staging", create_staging);
-    ("ethernet", Clause.id ethernet);
-    ("ethernet2", Clause.id ethernet2);
-    ("ipv4", Clause.id ipv4);
-    ("ipv42", Clause.id ipv42);
-    ("punt", Clause.id punt);
-    ("punt2", Clause.id punt2);
+    {defined = staging; definition = create_staging};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ethernet2; definition = Clause.id ethernet2};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = ipv42; definition = Clause.id ipv42};
+    {defined = punt; definition = Clause.id punt};
+    {defined = punt2; definition = Clause.id punt2};
   ]
 
 (* double.p4 to early_validate.p4 *)
 
-let double_to_early_validate_tfxs : (string * Clause.t) list =
+let double_to_early_validate_tfxs : t list =
   [
-    ("ethernet_validate", punt_to_ethernet_validate);
-    ("ethernet", Clause.id ethernet);
-    ("ipv4_validate", punt_to_ipv4_validate);
-    ("ipv4", Clause.id ipv4);
-    ("acl", punt_to_acl);
+    {defined = ethernet_validate; definition = punt_to_ethernet_validate};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ipv4_validate; definition = punt_to_ipv4_validate};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = acl; definition = punt_to_acl};
   ]
 
 (* double.p4 to link_agg.p4 *)
 
-let double_to_link_agg_tfxs : (string * Clause.t) list =
+let double_to_link_agg_tfxs : t list =
   [
-    ("nexthop", lookup_to_nexthop);
-    ("ethernet", ethernet_lookup_to_ethernet);
-    ("ipv4", ipv4_lookup_to_ipv4);
-    ("punt", Clause.id punt);
+    {defined = nexthop; definition = lookup_to_nexthop};
+    {defined = ethernet; definition = ethernet_lookup_to_ethernet};
+    {defined = ipv4; definition = ipv4_lookup_to_ipv4};
+    {defined = punt; definition = Clause.id punt};
   ]
 
 (* early_validate.p4 to logical.p4 *)
@@ -792,11 +792,11 @@ let validate_acl_to_punt : Clause.t =
     <<| id ethernet_validate * id ipv4_validate * id acl
     (* TODO: Drop superfluous nested action pairs to keep only `drop` (is this even necessary?) *))
 
-let early_validate_to_logical_tfxs : (string * Clause.t) list =
+let early_validate_to_logical_tfxs : t list =
   [
-    ("punt", validate_acl_to_punt);
-    ("ethernet", Clause.id ethernet);
-    ("ipv4", Clause.id ipv4);
+    {defined = punt; definition = validate_acl_to_punt};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ipv4; definition = Clause.id ipv4};
   ]
 
 (* early_validate.p4 to action_decompose.p4 *)
@@ -807,47 +807,47 @@ let ipv4_to_ipv4_fib : Clause.t =
 let ipv4_to_ipv4_rewrite : Clause.t =
   Clause.(id ipv4 |>> Project [Var.make "dstAddr" 48])
 
-let early_validate_to_action_decompose_tfxs : (string * Clause.t) list =
+let early_validate_to_action_decompose_tfxs : t list =
   [
-    ("ipv4_fib", ipv4_to_ipv4_fib);
-    ("ipv4_rewrite", ipv4_to_ipv4_rewrite);
-    ("ethernet", Clause.id ethernet);
-    ("punt", validate_acl_to_punt);
+    {defined = ipv4_fib; definition = ipv4_to_ipv4_fib};
+    {defined = ipv4_rewrite; definition = ipv4_to_ipv4_rewrite};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = punt; definition = validate_acl_to_punt};
   ]
 
 (* early_validate.p4 to choice.p4 *)
 
-let early_validate_to_choice_tfxs : (string * Clause.t) list =
+let early_validate_to_choice_tfxs : t list =
   [
-    ("staging", create_staging);
-    ("ethernet", Clause.id ethernet);
-    ("ethernet2", Clause.id ethernet);
-    ("ipv4", Clause.id ipv4);
-    ("ipv42", Clause.id ipv4);
-    ("punt", validate_acl_to_punt);
-    ("punt2", validate_acl_to_punt);
+    {defined = staging; definition = create_staging};
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ethernet2; definition = Clause.id ethernet};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = ipv42; definition = Clause.id ipv4};
+    {defined = punt; definition = validate_acl_to_punt};
+    {defined = punt2; definition = validate_acl_to_punt};
   ]
 
 (* early_validate.p4 to double.p4 *)
 
-let early_validate_to_double_tfxs : (string * Clause.t) list =
+let early_validate_to_double_tfxs : t list =
   [
-    ("ethernet", Clause.id ethernet);
-    ("ethernet2", Clause.id ethernet);
-    ("ipv4", Clause.id ipv4);
-    ("ipv42", Clause.id ipv4);
-    ("punt", validate_acl_to_punt);
-    ("punt2", validate_acl_to_punt);
+    {defined = ethernet; definition = Clause.id ethernet};
+    {defined = ethernet2; definition = Clause.id ethernet};
+    {defined = ipv4; definition = Clause.id ipv4};
+    {defined = ipv42; definition = Clause.id ipv4};
+    {defined = punt; definition = validate_acl_to_punt};
+    {defined = punt2; definition = validate_acl_to_punt};
   ]
 
 (* early_validate.p4 to link_agg.p4 *)
 
-let early_validate_to_link_agg_tfxs : (string * Clause.t) list =
+let early_validate_to_link_agg_tfxs : t list =
   [
-    ("nexthop", lookup_to_nexthop);
-    ("ethernet", ethernet_lookup_to_ethernet);
-    ("ipv4", ipv4_lookup_to_ipv4);
-    ("punt", validate_acl_to_punt);
+    {defined = nexthop; definition = lookup_to_nexthop};
+    {defined = ethernet; definition = ethernet_lookup_to_ethernet};
+    {defined = ipv4; definition = ipv4_lookup_to_ipv4};
+    {defined = punt; definition = validate_acl_to_punt};
   ]
 
 (* link_agg.p4 to logical.p4 *)
@@ -868,11 +868,11 @@ let ipv4_nexthop_to_ipv4 : Clause.t =
     (id ipv4 |>> Project [Var.make "nexthop" 32] >>> rename_nexthop)
     * (id ipv4 |>> Project [Var.make "dstAddr" 48]))
 
-let link_agg_to_logical_tfxs : (string * Clause.t) list =
+let link_agg_to_logical_tfxs : t list =
   [
-    ("punt", Clause.id punt);
-    ("ethernet", ethernet_nexthop_to_ethernet);
-    ("ipv4", ipv4_nexthop_to_ipv4);
+    {defined = punt; definition = Clause.id punt};
+    {defined = ethernet; definition = ethernet_nexthop_to_ethernet};
+    {defined = ipv4; definition = ipv4_nexthop_to_ipv4};
   ]
 
 (* link_agg.p4 to action_decompose.p4 *)
@@ -883,48 +883,48 @@ let ipv4_nexthop_to_ipv4_fib : Clause.t =
 let ipv4_nexthop_to_ipv4_rewrite : Clause.t =
   Clause.(id ipv4 |>> Project [Var.make "dstAddr" 48])
 
-let link_agg_to_action_decompose_tfxs : (string * Clause.t) list =
+let link_agg_to_action_decompose_tfxs : t list =
   [
-    ("ipv4_fib", ipv4_nexthop_to_ipv4_fib);
-    ("ipv4_rewrite", ipv4_nexthop_to_ipv4_rewrite);
-    ("ethernet", ethernet_nexthop_to_ethernet);
-    ("punt", Clause.id punt);
+    {defined = ipv4_fib; definition = ipv4_nexthop_to_ipv4_fib};
+    {defined = ipv4_rewrite; definition = ipv4_nexthop_to_ipv4_rewrite};
+    {defined = ethernet; definition = ethernet_nexthop_to_ethernet};
+    {defined = punt; definition = Clause.id punt};
   ]
 
 (* link_agg.p4 to choice.p4 *)
 
-let link_agg_to_choice_tfxs : (string * Clause.t) list =
+let link_agg_to_choice_tfxs : t list =
   [
-    ("staging", create_staging);
-    ("ethernet", ethernet_nexthop_to_ethernet);
-    ("ethernet2", ethernet_nexthop_to_ethernet);
-    ("ipv4", ipv4_nexthop_to_ipv4);
-    ("ipv42", ipv4_nexthop_to_ipv4);
-    ("punt", Clause.id punt);
-    ("punt2", Clause.id punt);
+    {defined = staging; definition = create_staging};
+    {defined = ethernet; definition = ethernet_nexthop_to_ethernet};
+    {defined = ethernet2; definition = ethernet_nexthop_to_ethernet};
+    {defined = ipv4; definition = ipv4_nexthop_to_ipv4};
+    {defined = ipv42; definition = ipv4_nexthop_to_ipv4};
+    {defined = punt; definition = Clause.id punt};
+    {defined = punt2; definition = Clause.id punt};
   ]
 
 (* link_agg.p4 to double.p4 *)
 
-let link_agg_to_double_tfxs : (string * Clause.t) list =
+let link_agg_to_double_tfxs : t list =
   [
-    ("ethernet", ethernet_nexthop_to_ethernet);
-    ("ethernet2", ethernet_nexthop_to_ethernet);
-    ("ipv4", ipv4_nexthop_to_ipv4);
-    ("ipv42", ipv4_nexthop_to_ipv4);
-    ("punt", Clause.id punt);
-    ("punt2", Clause.id punt);
+    {defined = ethernet; definition = ethernet_nexthop_to_ethernet};
+    {defined = ethernet2; definition = ethernet_nexthop_to_ethernet};
+    {defined = ipv4; definition = ipv4_nexthop_to_ipv4};
+    {defined = ipv42; definition = ipv4_nexthop_to_ipv4};
+    {defined = punt; definition = Clause.id punt};
+    {defined = punt2; definition = Clause.id punt};
   ]
 
 (* link_agg.p4 to early_validate.p4 *)
 
-let link_agg_to_early_validate_tfxs : (string * Clause.t) list =
+let link_agg_to_early_validate_tfxs : t list =
   [
-    ("ethernet_validate", punt_to_ethernet_validate);
-    ("ethernet", ethernet_nexthop_to_ethernet);
-    ("ipv4_validate", punt_to_ipv4_validate);
-    ("ipv4", ipv4_nexthop_to_ipv4);
-    ("acl", punt_to_acl);
+    {defined = ethernet_validate; definition = punt_to_ethernet_validate};
+    {defined = ethernet; definition = ethernet_nexthop_to_ethernet};
+    {defined = ipv4_validate; definition = punt_to_ipv4_validate};
+    {defined = ipv4; definition = ipv4_nexthop_to_ipv4};
+    {defined = acl; definition = punt_to_acl};
   ]
 
 let () =
@@ -1136,8 +1136,9 @@ let () =
         Time_ns.Span.to_ns (Time_ns.diff end_time start_time) /. 1000.0
       in
       translated_tables
-      |> List.concat_map ~f:(fun (table_name, table) ->
-             table_to_csv_lines ~schema:(Some output_schema) table_name table)
+      |> List.concat_map ~f:(fun (table_sym, table) ->
+             table_to_csv_lines ~schema:(Some output_schema)
+               table_sym.Symbol.name table)
       |> Out_channel.write_lines output_file;
       (* printf "Translating %s completed in %.1f μs\n" name elapsed_time_us) *)
       printf "(\"%s\", %.1f),\n" _id elapsed_time_us)
