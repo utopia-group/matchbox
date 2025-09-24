@@ -933,182 +933,144 @@ let () =
   let all_tfxs =
     [
       ( "lo_ad",
-        "logical_to_action_decompose",
         "logical_inserts_1001.csv",
         logical_schema,
         action_decompose_schema,
         logical_to_action_decompose_tfxs );
       ( "lo_ch",
-        "logical_to_choice",
         "logical_inserts_1001.csv",
         logical_schema,
         choice_schema,
         logical_to_choice_tfxs );
       ( "lo_db",
-        "logical_to_double",
         "logical_inserts_1001.csv",
         logical_schema,
         double_schema,
         logical_to_double_tfxs );
       ( "lo_ev",
-        "logical_to_early_validate",
         "logical_inserts_1001.csv",
         logical_schema,
         early_validate_schema,
         logical_to_early_validate_tfxs );
       ( "lo_la",
-        "logical_to_link_agg",
         "logical_inserts_1001.csv",
         logical_schema,
         link_agg_schema,
         logical_to_link_agg_tfxs );
       ( "ad_lo",
-        "action_decompose_to_logical",
-        "logical_to_action_decompose.csv",
+        "lo_ad.csv",
         action_decompose_schema,
         logical_schema,
         action_decompose_to_logical_tfxs );
       ( "ad_ch",
-        "action_decompose_to_choice",
-        "logical_to_action_decompose.csv",
+        "lo_ad.csv",
         action_decompose_schema,
         choice_schema,
         action_decompose_to_choice_tfxs );
       ( "ad_db",
-        "action_decompose_to_double",
-        "logical_to_action_decompose.csv",
+        "lo_ad.csv",
         action_decompose_schema,
         double_schema,
         action_decompose_to_double_tfxs );
       ( "ad_ev",
-        "action_decompose_to_early_validate",
-        "logical_to_action_decompose.csv",
+        "lo_ad.csv",
         action_decompose_schema,
         early_validate_schema,
         action_decompose_to_early_validate_tfxs );
       ( "ad_la",
-        "action_decompose_to_link_agg",
-        "logical_to_action_decompose.csv",
+        "lo_ad.csv",
         action_decompose_schema,
         link_agg_schema,
         action_decompose_to_link_agg_tfxs );
       ( "ch_lo",
-        "choice_to_logical",
-        "logical_to_choice.csv",
+        "lo_ch.csv",
         choice_schema,
         logical_schema,
         choice_to_logical_tfxs );
       ( "ch_ad",
-        "choice_to_action_decompose",
-        "logical_to_choice.csv",
+        "lo_ch.csv",
         choice_schema,
         action_decompose_schema,
         choice_to_action_decompose_tfxs );
-      ( "ch_db",
-        "choice_to_double",
-        "logical_to_choice.csv",
-        choice_schema,
-        double_schema,
-        choice_to_double_tfxs );
+      ("ch_db", "lo_ch.csv", choice_schema, double_schema, choice_to_double_tfxs);
       ( "ch_ev",
-        "choice_to_early_validate",
-        "logical_to_choice.csv",
+        "lo_ch.csv",
         choice_schema,
         early_validate_schema,
         choice_to_early_validate_tfxs );
       ( "ch_la",
-        "choice_to_link_agg",
-        "logical_to_choice.csv",
+        "lo_ch.csv",
         choice_schema,
         link_agg_schema,
         choice_to_link_agg_tfxs );
       ( "db_lo",
-        "double_to_logical",
-        "logical_to_double.csv",
+        "lo_db.csv",
         double_schema,
         logical_schema,
         double_to_logical_tfxs );
       ( "db_ad",
-        "double_to_action_decompose",
-        "logical_to_double.csv",
+        "lo_db.csv",
         double_schema,
         action_decompose_schema,
         double_to_action_decompose_tfxs );
-      ( "db_ch",
-        "double_to_choice",
-        "logical_to_double.csv",
-        double_schema,
-        choice_schema,
-        double_to_choice_tfxs );
+      ("db_ch", "lo_db.csv", double_schema, choice_schema, double_to_choice_tfxs);
       ( "db_ev",
-        "double_to_early_validate",
-        "logical_to_double.csv",
+        "lo_db.csv",
         double_schema,
         early_validate_schema,
         double_to_early_validate_tfxs );
       ( "db_la",
-        "double_to_link_agg",
-        "logical_to_double.csv",
+        "lo_db.csv",
         double_schema,
         link_agg_schema,
         double_to_link_agg_tfxs );
       ( "ev_lo",
-        "early_validate_to_logical",
-        "logical_to_early_validate.csv",
+        "lo_ev.csv",
         early_validate_schema,
         logical_schema,
         early_validate_to_logical_tfxs );
       ( "ev_ad",
-        "early_validate_to_action_decompose",
-        "logical_to_early_validate.csv",
+        "lo_ev.csv",
         early_validate_schema,
         action_decompose_schema,
         early_validate_to_action_decompose_tfxs );
       ( "ev_ch",
-        "early_validate_to_choice",
-        "logical_to_early_validate.csv",
+        "lo_ev.csv",
         early_validate_schema,
         choice_schema,
         early_validate_to_choice_tfxs );
       ( "ev_db",
-        "early_validate_to_double",
-        "logical_to_early_validate.csv",
+        "lo_ev.csv",
         early_validate_schema,
         double_schema,
         early_validate_to_double_tfxs );
       ( "ev_la",
-        "early_validate_to_link_agg",
-        "logical_to_early_validate.csv",
+        "lo_ev.csv",
         early_validate_schema,
         link_agg_schema,
         early_validate_to_link_agg_tfxs );
       ( "la_lo",
-        "link_agg_to_logical",
-        "logical_to_link_agg.csv",
+        "lo_la.csv",
         link_agg_schema,
         logical_schema,
         link_agg_to_logical_tfxs );
       ( "la_ad",
-        "link_agg_to_action_decompose",
-        "logical_to_link_agg.csv",
+        "lo_la.csv",
         link_agg_schema,
         action_decompose_schema,
         link_agg_to_action_decompose_tfxs );
       ( "la_ch",
-        "link_agg_to_choice",
-        "logical_to_link_agg.csv",
+        "lo_la.csv",
         link_agg_schema,
         choice_schema,
         link_agg_to_choice_tfxs );
       ( "la_db",
-        "link_agg_to_double",
-        "logical_to_link_agg.csv",
+        "lo_la.csv",
         link_agg_schema,
         double_schema,
         link_agg_to_double_tfxs );
       ( "la_ev",
-        "link_agg_to_early_validate",
-        "logical_to_link_agg.csv",
+        "lo_la.csv",
         link_agg_schema,
         early_validate_schema,
         link_agg_to_early_validate_tfxs );
@@ -1122,12 +1084,12 @@ let () =
          List.fold tfxs ~init:acc ~f:(fun acc (_, t) ->
              Clause.count_components acc t))); *)
   List.iteri all_tfxs
-    ~f:(fun _i (_id, name, input_file, input_schema, output_schema, tfxs) ->
+    ~f:(fun _i (_id, input_file, input_schema, output_schema, tfxs) ->
       (* printf "(%d, %d, \"%s\"),\n" (i + 1)
         (List.fold tfxs ~init:0 ~f:(fun acc (_, t) -> acc + Clause.size t))
         id; *)
       let input_file = sprintf "%s/%s" output_dir input_file in
-      let output_file = sprintf "%s/%s.csv" output_dir name in
+      let output_file = sprintf "%s/%s.csv" output_dir _id in
       let parsed_tables = read_csv_by_table input_file input_schema in
       let start_time = Time_ns.now () in
       let translated_tables = transform_mats tfxs parsed_tables in
