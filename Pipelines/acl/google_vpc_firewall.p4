@@ -28,11 +28,11 @@ private table direction {
 private table ipv4_state {
     key = {
         meta.is_inbound : exact;
-        meta.ip_srcAddr : exact;
-        meta.ip_dstAddr : exact;
+        hdr.ipv4.srcAddr : exact;
+        hdr.ipv4.dstAddr : exact;
         hdr.ipv4.proto : exact;
-        meta.l4_sport : ternary;
-        meta.l4_dport : ternary
+        l4.sport : ternary;
+        l4.dport : ternary
     }
     action = {seen; not_seen}
     default_action = not_seen()
@@ -44,15 +44,15 @@ public table acl {
       hdr.ipv4.proto : exact;
       hdr.ipv4.srcAddr : lpm;
       hdr.ipv4.dstAddr : lpm;
-      meta.l4_sport : ternary;
-      meta.l4_dport : ternary;
+      l4.sPort : ternary;
+      l4.dPort : ternary;
     }
     actions = {
         allow; 
         deny
     }
     default_action = allow();
-
+    max_entries = ???;
 }
 
 apply { // assume meta is zero-initialized
@@ -67,23 +67,15 @@ apply { // assume meta is zero-initialized
         acl.apply();
         if (meta.allow){
             ipv4_state.add({!meta.is_inbound, 
-                            hdr.ipv4.srcAddr, 
                             hdr.ipv4.dstAddr, 
+                            hdr.ipv4.srcAddr, 
                             hdr.ipv4.proto, 
-                            l4.sPort,
-                            l4.dPort}, 10s);
+                            l4.dPort,
+                            l4.sPort}, 10s);
         } else {
             // swap header
-            meta.is_inbound = true;
-            meta.ip_dstAddr = hdr.ipv4.srcAddr;
-            meta.ip_srcAddr = hdr.ipv4.dstAddr;
-            meta.l4_sport = l4.dPort;
-            meta.l4_dport = l4.sPort;
             ipv4_state.apply()
-            bool seen = meta.seen;
-            meta.is_inbound = false;
-            seen = seen || meta.seen;
-            if (seen) {
+            if (meta.seen) {
                 meta.allow = true;
             }
         }
