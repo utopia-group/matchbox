@@ -1,16 +1,24 @@
+(library
+ (name utils)
+ (modules utils)
+ (libraries core stijl))
+
 (executable
  (public_name stijl)
  (name main)
+ (modules main)
  (libraries stijl core_unix.command_unix)
- (preprocess (pps ppx_jane))
-)
-
-(executable
- (public_name eval_acl)
- (name eval_acl)
- (libraries stijl core))
+ (preprocess
+  (pps ppx_jane)))
 
 (executable
  (public_name eval_retargeting)
  (name eval_retargeting)
- (libraries stijl core))
+ (modules eval_retargeting)
+ (libraries stijl core utils))
+
+(executable
+ (public_name eval_acl)
+ (name eval_acl)
+ (modules eval_acl)
+ (libraries stijl core utils))
