@@ -1,7 +1,9 @@
 (executable
  (public_name stijl)
  (name main)
- (libraries stijl))
+ (libraries stijl core_unix.command_unix)
+ (preprocess (pps ppx_jane))
+)
 
 (executable
  (public_name eval_acl)

@@ -1,0 +1,12 @@
+lpm lag (sw_dst : 32, sw_dst : 32) : {group_id : 32} [set_gid].
+
+cam next_hop (group_id : 32) : {dmac : 48, port : 9} [drop fwd]. 
+
+tcam ipv4
+    (sw_dst : 32, sw_dst : 32) : 
+    {port : 9, dst : 48} 
+    [drop fwd]
+o--
+    (lag >> nexthop) >>
+    rename set_gid;drop to drop >>
+    rename set_gid;fwd to fwd.
