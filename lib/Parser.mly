@@ -1,6 +1,7 @@
 %{
     open Core
     open Gpl
+    open Semantics
     open BaseLogic
 %}
 
@@ -50,38 +51,38 @@
 %nonassoc AND
 
 
-%start <(unit, t) Either.t list> matchstix
+%start <ParserContext.t> matchstix
 %%
 
 matchstix :
-| ms = list(tmatchstick); EOF { ms }
+| ms = list(tmatchstick); EOF { ParserContext.concat ms }
 
 tmatchstick : m = terminated(matchstick, DOT) { m }
 
 matchstick :
-| hardware; table = ID; 
+| hw = hardware; table = ID; 
     keys = delimited(LPAREN, typed_vars, RPAREN);
     COLON;
-    delimited(LBRACE, typed_vars, RBRACE);
-    delimited(LSQUARE, nonempty_list(action), RSQUARE);
+    data = delimited(LBRACE, typed_vars, RBRACE);
+    action_list = delimited(LSQUARE, nonempty_list(action), RSQUARE);
     clause = option(preceded(MATCHSTICK, algebra));
-    {   
-        let defined = Symbol.make table (List.map ~f:snd keys) (-1) in
-        match clause with 
-        | None -> 
-            Base.Either.First ()
-        | Some clause -> 
-            Base.Either.Second { defined; definition = clause} 
-}
+    {   let open ParserContext in
+        let defined = Symbol.make table [] (-1) in
+        let actions = Type.ActionSet.of_list action_list in
+        let typ = Type.(Table {hw; keys; actions; data}) in
+        empty
+        |> add_type table typ
+        |> opt_add_def defined clause
+    }
 
 hardware :
-| LPM { } 
-| TCAM { }
-| CAM { }
+| LPM { Hardware.LPM } 
+| TCAM { Hardware.TCAM }
+| CAM { Hardware.CAM }
 
 typed_vars :
 | xs = separated_nonempty_list(COMMA, typed_var)
-  { xs }
+  { String.Map.of_alist_exn xs }
 
 typed_var :
 | x = ID; COLON; w = INT 

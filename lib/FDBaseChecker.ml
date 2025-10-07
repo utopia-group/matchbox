@@ -15,6 +15,12 @@ module DepFunDep = struct
 
   type itfc_spec = t list String.Map.t 
 
+  let (@) (phi : itfc_spec) (psi : itfc_spec) : itfc_spec =
+    Map.merge phi psi ~f:(fun ~key:_ -> function
+      | `Left fds | `Right fds -> Some fds 
+      | `Both (fds1, fds2) -> 
+        Some (fds1 @ fds2)
+    )
 
   let fd_of_table_type table_type =
     let data_types = Type.get_data table_type in 

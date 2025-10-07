@@ -37,8 +37,14 @@ let main =
   [%map_open
     let path = anon ("program" %: string) in
     fun () ->
-      let _ = Parser.parse_program path in
-      assert true
+      try 
+        Parser.parse_program path
+        |> Result.ok_or_failwith
+        |> ParserContext.typecheck
+      with
+      | Failure msg -> 
+        Printf.printf "%s\n" msg;
+        exit 1
   ]
 
 let () = Command_unix.run main

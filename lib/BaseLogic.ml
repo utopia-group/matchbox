@@ -70,7 +70,7 @@ module Clause = struct
     | Id of f * Type.t option
     | Table of Semantics.MatchActionTable.t * Type.t option
     | Join of t * t * Type.t option
-    | Compose of t * t * Type.t option
+    | Compose of t * t * Type.t option (* diagram order *)
     | MapOut of t * OutTfx.t * Type.t option
     | MapIn of t * MatchTfx.t * Type.t option
 
@@ -89,7 +89,7 @@ module Clause = struct
   let join c1 c2 = Join (c1, c2, None)
   let ( * ) = join
 
-  let compose c1 c2 = Compose (c1, c2, None)
+  let compose first second = Compose (first, second, None)
   let (>>>) = compose
   let mapout c tfx = MapOut (c, tfx, None)
   let (|>>) = mapout

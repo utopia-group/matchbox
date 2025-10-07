@@ -4,9 +4,10 @@ module ActionSet = Set.Make (Semantics.MagmaAction)
 
 type varwidth = int [@@deriving sexp, compare]
 type match_kind = Exact | LPM | Ternary | Range | Optional [@@deriving sexp, compare]
-type table = {keys : varwidth String.Map.t;
-              actions : ActionSet.t; 
-              data : varwidth String.Map.t} [@@deriving sexp, compare]
+type table = { hw : Semantics.Hardware.t;
+               keys : varwidth String.Map.t;
+               actions : ActionSet.t; 
+               data : varwidth String.Map.t} [@@deriving sexp, compare]
 
 type t = 
   | Table of table
@@ -14,7 +15,24 @@ type t =
   | Match of (varwidth * match_kind)
   [@@deriving sexp, compare]
 
-type ctx = t String.Map.t
+let to_string (tau : t) = 
+  sexp_of_t tau
+  |> Sexp.to_string
+
+let equal (tau1 : t) (tau2 : t) : bool = 
+  compare tau1 tau2 = 0
+
+type ctx = t String.Map.t [@@deriving sexp, compare]
+
+let (@) (ctx1 : ctx) (ctx2 : ctx) = 
+  Map.merge ctx1 ctx2 ~f:(fun ~key -> function
+    | `Left tau | `Right tau -> Some tau
+    | `Both (tau1, tau2) when equal tau1 tau2 ->
+      Some tau1
+    | `Both (tau1, tau2) -> 
+      failwithf "type mismatch when merging contexts %s has type %s and %s"
+        key (to_string tau1) (to_string tau2) ()
+  )
 
 
 let mkeq mk mk' = 
@@ -91,9 +109,8 @@ let get_data (t : table) : varwidth String.Map.t =
   t.data
 
 let invert_table ( t : table ) : table = 
-  {
+  { t with 
     keys = get_data t |> String.Map.map ~f:(fun w -> w);
-    actions = t.actions;
     data = t.keys
   }
 

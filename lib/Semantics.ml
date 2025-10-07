@@ -242,17 +242,21 @@ module DependentAction = struct
 end
 
 module Hardware = struct 
-  type t = TCAM | CAM | LPM
+  type t = TCAM | CAM | LPM [@@deriving sexp, compare]
   let to_string = function 
   | TCAM -> "TCAM"
   | CAM -> "CAM"
   | LPM -> "LPM"
 
-  let meet h1 h2 = 
-    match h1, h2 with 
-    | _, TCAM | TCAM,_ -> TCAM
-    | CAM, h | h, CAM -> h
-    | LPM, LPM -> LPM
+  let join h1 h2 = 
+    let lub = 
+      match h1, h2 with 
+      | _, TCAM | TCAM,_ -> TCAM
+      | CAM, h | h, CAM -> h
+      | LPM, LPM -> LPM
+    in
+    Printf.printf "%s U %s = %s\n%!" (to_string h1) (to_string h2) ( to_string lub);
+    lub
 end
 
 module MatchExpression = struct
@@ -456,7 +460,7 @@ module MatchAction = struct
   let pair (row1 : t) (row2 : t) = 
     let (let+) o f = Option.map o ~f in 
     let (let*) o f = Option.bind o ~f in
-    let hw = Hardware.meet row1.hw row2.hw in
+    let hw = Hardware.join row1.hw row2.hw in
     let match_keys = Map.(
       keys row1.matches @ keys row2.matches 
       |> List.dedup_and_sort ~compare:String.compare)
@@ -575,6 +579,11 @@ module MatchActionTable = struct
     |> List.fold ~init:String.Map.empty ~f:(fun acc data ->
       union acc data
     )
+  
+    let hw (rows : t) = 
+      List.fold rows ~init:Hardware.CAM ~f:(fun hw row -> 
+        Hardware.join hw row.hw  
+      )
 
   let equal = List.equal MatchAction.equal
 

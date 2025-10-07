@@ -1,12 +1,12 @@
 open Core
 open BaseLogic
 
-let actions_compat_keys table_type table_type' =
+let actions_compat_keys ~first ~second =
   let open Type in  
-  let action_data = get_data table_type in
-  let arguments = table_type'.keys in
-  arguments
-  |> String.Map.equal Int.equal action_data 
+  let arguments = get_data first in
+  let parameters = second.keys in
+  String.Map.equal Int.equal 
+    arguments parameters
 
 let rec match_expr_type ctx e : int =
   let open Gpl.Expr in
@@ -23,7 +23,24 @@ let rec match_expr_type ctx e : int =
     match_expr_type ctx e
   | Apply _ -> failwith "[typeof] apply"
 
-let action_expr_type e = Gpl.Expr.width e
+let rec action_expr_infer datatypes e : Gpl.Expr.t * int =
+  let open Gpl.Expr in 
+  match e with 
+  | Var x -> 
+    let name = Var.str x in 
+    let w = Map.find_exn datatypes name in 
+    Var (Var.make name w), w
+  | BV (_, w) -> e, w
+  | UnOp (op, e) ->
+    let e,w = action_expr_infer datatypes e in 
+    UnOp (op, e), w
+  | BinOp (bop, e1, e2) -> 
+    let e1, w1 = action_expr_infer datatypes e1 in 
+    let e2, w2 = action_expr_infer datatypes e2 in
+    assert (w1 = w2);
+    BinOp (bop, e1, e2), w1
+  | Apply _ -> failwith "[action_expr_infer] apply"
+
 
 let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : int String.Map.t) : int String.Map.t =
   let open MatchTfx in
@@ -39,21 +56,36 @@ let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : int String.Map.t) : int Stri
   | Filter _ -> rowtype
   | CubeFilter _ -> rowtype
 
-let data_tfx_type tfx (actions : Type.ActionSet.t) (datatypes : int String.Map.t) : Type.ActionSet.t * int String.Map.t = 
+let data_tfx_type tfx (actions : Type.ActionSet.t) (datatypes : int String.Map.t) : OutTfx.t * Type.ActionSet.t * int String.Map.t = 
   let open OutTfx in 
   match tfx with
   | Nonce x -> 
-    actions, Map.set datatypes ~key:(Var.str x) ~data:(Var.width x)
-  | Del x -> 
-    actions, Map.remove datatypes (Var.str x)
+    assert (Var.width x > 0);
+    Nonce x, actions, Map.set datatypes ~key:(Var.str x) ~data:(Var.width x)
+  | Del x ->
+    let name = Var.str x in 
+    let w = Map.find_exn datatypes name in 
+    Del (Var.make name w), actions, Map.remove datatypes name
   | Project vars -> 
     let datatypes' = 
       Map.filter_keys datatypes ~f:(fun k -> List.exists vars ~f:(fun x -> String.equal k (Var.str x)))
     in
-    actions, datatypes'
+    let vars' = 
+      List.map vars ~f:(fun x -> 
+        let name = Var.str x in 
+        let w = Map.find_exn datatypes name in 
+        Var.make name w
+      )
+    in
+    Project vars', actions, datatypes'
   | SetTo(x, e) ->
-    actions, Map.set datatypes ~key:(Var.str x) ~data:(action_expr_type e)
-  | Rename (a1,a2) -> 
+    let name = Var.str x in 
+    let e,w = action_expr_infer datatypes e in 
+    SetTo(Var.make name w, e),
+    actions, 
+    Map.set datatypes ~key:name ~data:w
+  | Rename (a1,a2) ->
+    Rename (a1,a2),
     Set.(add (remove actions a1) a2), 
     datatypes
 
@@ -69,7 +101,8 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
     let keys = String.Map.of_alist_exn (MatchActionTable.keys t) in 
     let actions = Type.ActionSet.of_list (MatchActionTable.action_names t) in 
     let data = MatchActionTable.data t in 
-    let typ = Type.Table {keys; actions; data} in
+    let hw = MatchActionTable.hw t in 
+    let typ = Type.Table {hw; keys; actions; data} in
     Table (t, Some typ)
   | Join (f, g, None) ->
     let f = infer ctx f in 
@@ -78,6 +111,7 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
     let gtype = typeof_exn g in
     let typ = let open Type in 
       Table {
+        hw = Hardware.join ftype.hw gtype.hw;
         keys = merge_keys_exn ftype.keys gtype.keys;
         actions = 
           Type.action_product ftype.actions gtype.actions
@@ -85,20 +119,25 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
         data = union_data_exn ftype.data gtype.data;
       } in
     Join (f, g, Some typ)
-  | Compose (f,g, None) -> 
-    let f = infer ctx f in 
-    let g = infer ctx g in 
-    let ftype = typeof_exn f in
-    let gtype = typeof_exn g in
-    assert (actions_compat_keys ftype gtype);
-    let typ = Type.(Table {gtype with keys = ftype.keys}) in
-    Join (f, g, Some typ)
+  | Compose (first, second, None) ->  (* diagram order, i.e second o first*)
+    let first = infer ctx first in 
+    let second = infer ctx second in 
+    let type1 = typeof_exn first in
+    let type2 = typeof_exn second in
+    assert (actions_compat_keys ~first:type1 ~second:type2);
+    let typ = Type.(Table {
+      hw = type1.hw;
+      keys = type1.keys;
+      actions = type2.actions;
+      data = type2.data;
+    }) in
+    Compose (first, second, Some typ)
   | MapOut (f, tfx, None) ->
     let f = infer ctx f in 
     let ftype = typeof_exn f in
     let data_types = Type.get_data ftype in  
     let actions = Type.get_actions ftype in 
-    let actions, data_types' = data_tfx_type tfx actions data_types in 
+    let tfx, actions, data_types' = data_tfx_type tfx actions data_types in 
     let typ = let open Type in 
       Table {ftype with actions; data = data_types'}
     in
