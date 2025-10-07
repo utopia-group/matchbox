@@ -1,6 +1,10 @@
 lpm lag (sw_src : 32, sw_dst : 32) : {group_id : 32} [set_gid].
+limit lag to 32 rows.
+
 
 cam nexthop (group_id : 32) : {dmac : 48, port : 9} [drop fwd]. 
+limit nexthop to 2048 rows.
+
 
 lpm ipv4
     (sw_src : 32, sw_dst : 32) : 
@@ -12,3 +16,5 @@ o--
     rename set_gid;fwd to fwd >>
     data dst := dmac >>
     delete data dmac.
+
+limit ipv4 to 32 rows.

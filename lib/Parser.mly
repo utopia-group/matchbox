@@ -41,6 +41,8 @@
 %token TCAM
 %token LPM
 %token CAM
+%token LIMIT
+%token ROWS
 
 %left COMPOSE SEMICOLON
 
@@ -60,6 +62,8 @@ matchstix :
 tmatchstick : m = terminated(matchstick, DOT) { m }
 
 matchstick :
+| LIMIT; table = ID; TO; n = INT; option(ROWS);
+    { ParserContext.(empty |> add_resource_limit table n) }
 | hw = hardware; table = ID; 
     keys = delimited(LPAREN, typed_vars, RPAREN);
     COLON;

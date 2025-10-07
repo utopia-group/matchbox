@@ -16,6 +16,8 @@ rule tokens = parse
 | "key" { KEY }
 | "data" { DATA }
 | "to" { TO }
+| "limit" { LIMIT }
+| "rows" { ROWS }
 | "o--" { MATCHSTICK }
 | ">>" { COMPOSE }
 | ":=" { ASSIGN }

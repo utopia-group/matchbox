@@ -8,6 +8,20 @@ module DepFunDep = struct
     target : int String.Map.t;
   }
 
+  let to_string {refine; source; target} =
+    let aux xs = 
+      Map.to_alist xs
+      |> List.map ~f:(fun (name, width) -> 
+        Printf.sprintf "%s : %i" name width  
+      )
+      |> String.concat ~sep:","
+    in
+    Printf.sprintf 
+      "{%s | %s } ---> {%s}"
+      (aux source)
+      (BExpr.to_smtlib refine)
+      (aux target)
+
   let fd_eq fd1 fd2 = 
     BExpr.equal fd1.refine fd2.refine
     && Map.equal (=) fd1.source fd2.source
@@ -40,11 +54,13 @@ module DepFunDep = struct
     |> fd_of_typ
 
 
-  let find_fd (spec : itfc_spec) (symbol : Symbol.t) = 
-    Map.find spec (Symbol.to_string symbol)
+  let find_fd (spec : itfc_spec) (table : string) = 
+    Map.find spec table
 
-  let implies (spec : itfc_spec) (symbol : Symbol.t) (fd : t) = 
-    Option.filter (find_fd spec symbol) ~f:(List.exists ~f:(fd_eq fd))
+  let implies (spec : itfc_spec) (table : string) (fd : t) = 
+    Option.value_map (find_fd spec table) 
+      ~f:(List.exists ~f:(fd_eq fd))
+      ~default:false
 
   let union = Map.merge ~f:(fun ~key -> function 
     | `Left w | `Right w -> Some w
@@ -55,10 +71,17 @@ module DepFunDep = struct
       failwithf "union failed on key %s" key ()
   ) 
 
-  let diff m1 m2 = 
+  let diff (m1 : itfc_spec) (m2 : itfc_spec) : itfc_spec = 
     Map.filter_keys m1 ~f:(fun k -> 
       not (Map.mem m2 k)  
     )
+
+  let remaining_obligations (known : itfc_spec) (required : itfc_spec) : itfc_spec = 
+    Map.mapi required ~f:(fun ~key ~data -> 
+      List.filter data ~f:(Fn.non (implies known key))
+    )
+
+
 
   let var_set (m : int String.Map.t) : Var.Set.t = 
     Map.fold m ~init:Var.Set.empty ~f:(fun ~key ~data acc -> 

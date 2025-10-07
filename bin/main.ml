@@ -18,13 +18,9 @@ let parse_program filepath =
   Printf.printf "Closed!... parsing\n%!";
   let program = 
     try Ok (Parser.matchstix Lexer.tokens lexbuf) with
-    (* catch exception and turn into Error *)
-    (* | SyntaxError msg ->
-      let error_msg = Fmt.str "%s: %s@." (print_error_position lexbuf) msg in
-      Error (Error.of_string error_msg) *)
-      | Parser.Error ->
-        let error_msg = Fmt.str "%s: syntax error@." (print_error_position lexbuf) in
-        failwith error_msg
+    | Parser.Error ->
+      let error_msg = Fmt.str "%s: syntax error@." (print_error_position lexbuf) in
+      failwith error_msg
   in
   In_channel.close channel;
   program
@@ -37,14 +33,9 @@ let main =
   [%map_open
     let path = anon ("program" %: string) in
     fun () ->
-      try 
-        Parser.parse_program path
-        |> Result.ok_or_failwith
-        |> ParserContext.typecheck
-      with
-      | Failure msg -> 
-        Printf.printf "%s\n" msg;
-        exit 1
+      Parser.parse_program path
+      |> Result.ok_or_failwith
+      |> ParserContext.typecheck
   ]
 
 let () = Command_unix.run main
