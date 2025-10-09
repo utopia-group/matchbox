@@ -190,7 +190,7 @@ let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :
     let new_config =
       BaseLogic.Config.
         {
-          symbols = step.defined :: current_config.symbols;
+          symbols = Symbol.to_string step.defined :: current_config.symbols;
           cfg =
             Map.set current_config.cfg ~key:step.defined.name ~data:result_table;
         }

@@ -2,6 +2,24 @@ open Gpl
 open Core
 let (let+) r f = Result.map r ~f
 
+module Hardware = struct 
+  type t = TCAM | CAM | LPM [@@deriving sexp, compare]
+  let to_string = function 
+  | TCAM -> "TCAM"
+  | CAM -> "CAM"
+  | LPM -> "LPM"
+
+  let join h1 h2 = 
+    let lub = 
+      match h1, h2 with 
+      | _, TCAM | TCAM,_ -> TCAM
+      | CAM, h | h, CAM -> h
+      | LPM, LPM -> LPM
+    in
+    Printf.printf "%s U %s = %s\n%!" (to_string h1) (to_string h2) ( to_string lub);
+    lub
+end
+
 
 module Match = struct 
   type t = 
@@ -33,6 +51,17 @@ module Match = struct
     | Exact v -> Bit.Vector.to_string v
     | Lpm (v, bits) -> Printf.sprintf "%s/%d" (Bit.Vector.to_string v) bits
     | Ternary tv -> Printf.sprintf "%s" (Trit.Vector.to_string tv)
+
+  let of_string str = 
+    if String.contains str '*' then 
+      Ternary (Trit.Vector.of_string str)
+    else match String.lsplit2 str ~on:'/' with 
+    | None ->  Exact (Bit.Vector.of_string str)
+    | Some (pref, length) -> 
+      let n = Int.of_string length in 
+      let v = Bit.Vector.of_string pref in 
+      Lpm (v,n)
+
 
   let get_exact = function 
     | Exact v -> v
@@ -81,6 +110,15 @@ module Match = struct
     | Ternary tv -> 
       Intify.realize_operation "x" tv (Intify.Exp.xdecr "x")
       |> List.map ~f:(fun tv -> Ternary tv)
+
+  let ensure_hw_compat m hw =
+    let open Hardware in
+    match m, hw with
+    | Exact _, _ -> true
+    | Lpm _, LPM | Lpm _, TCAM -> true
+    | Ternary _, TCAM -> true
+    | _,_ -> false
+
 
   let (||) m1 m2 = 
     match m1, m2 with 
@@ -241,26 +279,10 @@ module DependentAction = struct
 
 end
 
-module Hardware = struct 
-  type t = TCAM | CAM | LPM [@@deriving sexp, compare]
-  let to_string = function 
-  | TCAM -> "TCAM"
-  | CAM -> "CAM"
-  | LPM -> "LPM"
-
-  let join h1 h2 = 
-    let lub = 
-      match h1, h2 with 
-      | _, TCAM | TCAM,_ -> TCAM
-      | CAM, h | h, CAM -> h
-      | LPM, LPM -> LPM
-    in
-    Printf.printf "%s U %s = %s\n%!" (to_string h1) (to_string h2) ( to_string lub);
-    lub
-end
-
 module MatchExpression = struct
   type t = Match.t String.Map.t
+
+  let empty = String.Map.empty
 
   let find : t -> string -> Match.t option = Map.find
 

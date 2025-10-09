@@ -29,13 +29,25 @@ end
 
 let main = 
   let open Command.Let_syntax in 
-  Command.basic ~summary:"Typecheck a matchstix program"
+  Command.basic ~summary:"Typecheck (and run) a matchstix program"
   [%map_open
-    let path = anon ("program" %: string) in
-    fun () ->
-      Parser.parse_program path
-      |> Result.ok_or_failwith
-      |> ParserContext.typecheck
+    let path = anon ("program" %: string) 
+    and input_file = flag "--config" (optional string) ~doc:"E configuration rules"
+    in fun () ->
+      let ctx = 
+        Parser.parse_program path
+        |> Result.ok_or_failwith
+        |> ParserContext.typecheck
+      in
+      match input_file with 
+      | None -> ()
+      | Some rules ->
+        let config = RuntimeInterface.parse_trace_file ctx.typs rules in 
+        BaseInterpreter.eval_program config ctx.prog
+        |> snd
+        |> BaseLogic.Config.to_string
+        |> Printf.printf "%s%!"
+      
   ]
 
 let () = Command_unix.run main

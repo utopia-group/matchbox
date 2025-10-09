@@ -31,11 +31,11 @@ let rules_to_mat rule_strings =
 
 (* Initial configuration populating the ACL table *)
 let create_initial_config acl_rules =
-  let acl_symbol = AclTranslation.acl in
+  let acl_symbol = AclTranslation.acl.name in
   BaseLogic.Config.
     {
       symbols = [acl_symbol];
-      cfg = Map.singleton (module String) acl_symbol.name acl_rules;
+      cfg = Map.singleton (module String) acl_symbol acl_rules;
     }
 
 let timed_translate acl_rules =

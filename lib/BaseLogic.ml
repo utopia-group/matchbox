@@ -15,26 +15,40 @@ module Config = struct
   open Semantics
   module Table = MatchActionTable
   type t = {
-    symbols : Symbol.t list;
+    symbols : string list;
     cfg : Table.t String.Map.t;
   }
+
+  let empty = {symbols = []; cfg = String.Map.empty}
 
   let _find_raw_exn cfg x = Map.find_exn cfg.cfg x
 
   let find_exn cfg (symbol : Symbol.t) : Table.t =
     _find_raw_exn cfg symbol.name
 
-  let set config (symbol : Symbol.t) table = 
+  let to_string (cfg : t) : string = 
+    List.fold cfg.symbols ~init:"" ~f:(fun str symbol ->
+      let table = _find_raw_exn cfg symbol in
+      Printf.sprintf "%s\n%s\n-------------------------\n%s\n---------------------------\n%!" 
+        str (symbol)
+        (Table.to_string table)
+    )
+
+  let set config (symbol : string) table = 
     let add_if_not_exists f gs = 
-      if List.mem gs f ~equal:Symbol.(=) then
+      if List.mem gs f ~equal:String.(=) then
         gs
       else
         f::gs
     in
     {
       symbols = add_if_not_exists symbol config.symbols;
-      cfg = Map.set config.cfg ~key:symbol.name ~data:table;
+      cfg = Map.set config.cfg ~key:symbol ~data:table;
     }
+
+  let sets config (symbol : Symbol.t) table =
+    set config (Symbol.to_string symbol) table
+
   let get_tables config = config.symbols
 
 end

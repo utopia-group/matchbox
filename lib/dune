@@ -6,6 +6,6 @@
 (library
  (name stijl)
  (public_name stijl)
- (libraries core core_unix gpl ke)
+ (libraries core core_unix gpl ke yojson)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane ppx_deriving_yojson)))
