@@ -10,14 +10,10 @@ module Hardware = struct
   | LPM -> "LPM"
 
   let join h1 h2 = 
-    let lub = 
-      match h1, h2 with 
-      | _, TCAM | TCAM,_ -> TCAM
-      | CAM, h | h, CAM -> h
-      | LPM, LPM -> LPM
-    in
-    Printf.printf "%s U %s = %s\n%!" (to_string h1) (to_string h2) ( to_string lub);
-    lub
+    match h1, h2 with 
+    | _, TCAM | TCAM,_ -> TCAM
+    | CAM, h | h, CAM -> h
+    | LPM, LPM -> LPM
 end
 
 

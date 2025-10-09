@@ -14,6 +14,7 @@ let main =
       | None -> ()
       | Some rules ->
         let config = RuntimeInterface.parse_trace_file ctx.typs rules in 
+        Printf.printf "START:\n%s*********************************\n" (BaseLogic.Config.to_string config);
         BaseInterpreter.eval_program config ctx.prog
         |> snd
         |> BaseLogic.Config.to_string

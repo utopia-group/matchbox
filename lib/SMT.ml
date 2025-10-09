@@ -294,7 +294,7 @@ module Model = struct
 end
 
 let check (resp : response) : string Model.t option =
-  Printf.printf "%s\n%!" (List.map resp ~f:(Sexp.to_string) |> String.concat ~sep:"\n");
+  if !Runner.debug then Printf.printf "%s\n%!" (List.map resp ~f:(Sexp.to_string) |> String.concat ~sep:"\n");
   match resp with 
   | [] -> failwith "Received empty response from solver"
   | (Atom "sat") :: rst -> 

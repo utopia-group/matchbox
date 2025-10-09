@@ -109,12 +109,15 @@ let convert_trace schema (json : Yojson.Safe.t) : BaseLogic.Config.t =
   match json with 
   | `List raw_rows ->
     let rows = List.map raw_rows ~f:(Insertion.convert_row schema) in
-    Type.get_tables schema
-    |> List.fold ~init:Config.empty ~f:(fun config table ->
+    let tables = 
+      List.map rows ~f:fst3
+      |> List.dedup_and_sort ~compare:String.compare
+    in
+    List.fold tables ~init:Config.empty ~f:(fun config table ->
       let rows = List.filter rows ~f:(fun (tbl, _, _) -> String.(table = tbl)) in
       let sorted_rows = List.sort rows ~compare:(fun (_, _,p1) (_,_,p2) -> Int.compare p1 p2) in
       let mat = List.map sorted_rows ~f:(fun (_, row, _) -> row) in
-      Config.set config table mat    
+      Config.set config table mat
     )
   | _ -> failwithf "expected trace to be a toplevel list, got %s" (Safe.to_string json) ()
 

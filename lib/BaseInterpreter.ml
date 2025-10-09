@@ -177,7 +177,7 @@ let rec eval_inner (clause : Clause.t) (config : Config.t) (state : NonceState.t
     let* f_row = f_mat in
     apply_in_tfx f_row tfx
 
-let eval clause config = 
+let eval_ clause config = 
   NonceState.empty
   |> eval_inner clause config
   |> snd
@@ -186,11 +186,11 @@ let eval clause config =
 let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :
     (string * MatchActionTable.t) list * Config.t =
   let execute_step (current_config, accumulated_results) step =
-    let result_table = eval step.definition current_config in
+    let result_table = eval_ step.definition current_config in
     let new_config =
       BaseLogic.Config.
         {
-          symbols = Symbol.to_string step.defined :: current_config.symbols;
+          symbols = Set.add current_config.symbols (Symbol.to_string step.defined);
           cfg =
             Map.set current_config.cfg ~key:step.defined.name ~data:result_table;
         }
@@ -201,3 +201,7 @@ let eval_program (initial_config : Config.t) (program : BaseLogic.t list) :
     List.fold program ~init:(initial_config, []) ~f:execute_step
   in
   (List.rev step_results, final_config)
+
+let eval init prog = 
+  let _, out = eval_program init prog in
+  Config.diff out init

@@ -34,7 +34,7 @@ let create_initial_config acl_rules =
   let acl_symbol = AclTranslation.acl.name in
   BaseLogic.Config.
     {
-      symbols = [acl_symbol];
+      symbols = String.Set.of_list [acl_symbol];
       cfg = Map.singleton (module String) acl_symbol acl_rules;
     }
 

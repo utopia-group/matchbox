@@ -68,6 +68,15 @@ let make_lpm_holes i (key : Var.t) : lpm_holes =
     shift = Var.make (name ^ "$shift") width;
   }
 
+type exact_holes = {value : Var.t}
+let make_exact_holes i (x : Var.t) : exact_holes =
+  let name = get_name i x in 
+  let width = Var.width x in 
+  {
+    value = Var.make (name ^ "$value") width;
+  }
+
+
 let mask key mask = 
   let open SMT in 
   bvand [ var (Var.str key); var (Var.str mask) ]
@@ -95,15 +104,27 @@ let make_shift_sketch i key =
   let h = make_lpm_holes i key in 
   [h.value; h.shift],
   [key],
-    (=) [
+  (=) [
       shift key h.shift;
       shift h.value h.shift;
   ]
+
+let make_exact_sketch i x = 
+  let open SMT in 
+  let h = make_exact_holes i x in 
+  [h.value],
+  [x],
+  (=) [var (Var.str x); var (Var.str h.value)]
+
+let make_action_sketch i tablename actions = 
+  let action = Var.make (tablename ^ "$action") (List.length actions) in
+  make_exact_sketch i action
 
 let make_sketch hw i = 
   match hw with
   | `TCAM -> make_mask_sketch i
   | `LPM -> make_shift_sketch i
+  | `CAM -> make_exact_sketch i
 
 let widen_sketch ?(i = None) hw (xs : Var.t list) = 
   List.fold xs ~init:([], [], SMT.true_)
@@ -112,6 +133,27 @@ let widen_sketch ?(i = None) hw (xs : Var.t list) =
         kholes @ holes,
         kvars @ vars, 
         SMT.and_ [kphi; phi])
+
+let row_sketch hw keys actionvar data prec i =
+  let kholes, kvars, keys_sketch = widen_sketch hw keys ~i:(Some i) in
+  let dholes, dvars, data_sketch = widen_sketch `CAM data ~i:(Some i) in 
+  let aholes, avars, action_sketch = widen_sketch `CAM [actionvar] ~i:(Some i) in
+  let guard = let open SMT in 
+    and_ [
+      not prec; keys_sketch
+    ]
+  in
+  let consq = let open SMT in
+    and_ [
+      action_sketch; data_sketch
+    ]
+  in
+  keys_sketch,
+  List.concat [kholes; dholes; aholes],
+  List.concat [kvars; dvars; avars],
+  SMT.implies [guard; consq]
+
+
 
 let extract_match ?(i = None) hw model x = 
   let find_bv_exn hole = 
@@ -169,6 +211,15 @@ let guard_to_smt guard : SMT.expr =
       (=) [bvand [var (key); bv' mask]; bvand [bv' value; bv' mask]];
       acc
     ]
+  )
+
+let val_to_smt valuation : SMT.expr = 
+  let open SMT in 
+  Map.fold valuation ~init:true_ ~f:(fun ~key ~data acc ->
+    SMT.and_[
+      (=) [var key; bv' data];
+      acc
+    ] 
   )
 
 let suffices_query xs psi phi : SMT.program = 
@@ -258,10 +309,85 @@ let compute_min_guard_cover_size hw xs bexpr =
       loop (i + 1)
   in
   loop 1
-
-
   
 let cover_size hw bexpr =
   let expr = SMT.of_bexpr bexpr in 
   let xs = BExpr.free_vars bexpr |> Set.to_list in 
   compute_min_guard_cover_size hw xs expr
+
+let equivalent_of_size_query k hw keys avar data phi =
+  Printf.eprintf "trying size %d\n%!" k;
+  let psi, holes, xs, _ = 
+    List.init k ~f:Fn.id
+    |> List.fold ~init:(SMT.true_, [],[], SMT.false_) ~f:(fun (psi, holes, vars, prec) i -> 
+      let guard, holes', vars', psi' = row_sketch hw keys avar data prec i in
+      Printf.eprintf "Row Sketch %s\n%!" (SMT.e_to_string psi');
+      SMT.and_ [psi; psi'],
+      holes @ holes',
+      vars @ vars',
+      SMT.or_ [guard; prec]
+    ) 
+  in
+  let open SMT in 
+  consts holes @ [
+    assert_ (forall (sort_ed xs) @@ (=) [psi; phi] );
+    check_sat;
+    get_value (strings holes)
+  ]
+
+
+let find_equivalent_of_size k hw keys avar data phi =
+  equivalent_of_size_query k hw keys avar data phi
+  |> solver ~f:Fun.id
+
+
+let tickify =
+  let open Hardware in function 
+  | TCAM -> `TCAM
+  | CAM -> `CAM
+  | LPM -> `LPM
+
+
+let encode_table table = 
+  let varify = List.map ~f:(fun (x,w) -> Var.make x w) in
+  let hw = tickify (MatchActionTable.hw table) in
+  let keys = MatchActionTable.keys table |> varify in
+  let data = MatchActionTable.data table |> Map.to_alist |> varify in
+  let actions = MatchActionTable.actions table in
+  let avar = Var.make "action" (List.length actions) in
+  let aid action = 
+    let i, _ = List.findi_exn actions ~f:(fun _ -> MagmaAction.equal action) in
+    SMT.bv i (List.length actions)
+  in
+  let (_, phi) = 
+    List.fold table ~init:(SMT.false_, SMT.true_) ~f:(fun (prec, phi) row -> 
+      let open SMT in 
+      let guard = guard_to_smt row.matches in
+      let data = val_to_smt row.data in
+      let action = (=) [var (Var.str avar); aid row.action] in 
+      or_ [prec; guard],
+      and_ [
+        phi; 
+        implies [
+          and_ [not prec; guard];
+          and_ [action; data]
+        ]
+      ]
+    )
+  in
+  hw, keys, avar, data, phi
+
+let minimum_size_table (table : MatchActionTable.t) = 
+  let hw, keys, avar, data, phi = encode_table table in
+  let rec loop k = 
+    match find_equivalent_of_size k hw keys avar data phi with 
+    | None -> loop (k + 1)
+    | Some _ -> k
+  in
+  loop 1
+
+let minimize (config : BaseLogic.Config.t) = 
+  BaseLogic.Config.fold config ~init:0 ~f:(fun ~key ~data acc -> 
+    Printf.eprintf "minimizing table %s\n%!" key;
+    acc + minimum_size_table data  
+  )

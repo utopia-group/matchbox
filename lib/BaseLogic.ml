@@ -15,11 +15,11 @@ module Config = struct
   open Semantics
   module Table = MatchActionTable
   type t = {
-    symbols : string list;
+    symbols : String.Set.t;
     cfg : Table.t String.Map.t;
   }
 
-  let empty = {symbols = []; cfg = String.Map.empty}
+  let empty = {symbols = String.Set.empty; cfg = String.Map.empty}
 
   let _find_raw_exn cfg x = Map.find_exn cfg.cfg x
 
@@ -27,7 +27,8 @@ module Config = struct
     _find_raw_exn cfg symbol.name
 
   let to_string (cfg : t) : string = 
-    List.fold cfg.symbols ~init:"" ~f:(fun str symbol ->
+    Set.to_list cfg.symbols
+    |> List.fold ~init:"" ~f:(fun str symbol ->
       let table = _find_raw_exn cfg symbol in
       Printf.sprintf "%s\n%s\n-------------------------\n%s\n---------------------------\n%!" 
         str (symbol)
@@ -35,14 +36,8 @@ module Config = struct
     )
 
   let set config (symbol : string) table = 
-    let add_if_not_exists f gs = 
-      if List.mem gs f ~equal:String.(=) then
-        gs
-      else
-        f::gs
-    in
     {
-      symbols = add_if_not_exists symbol config.symbols;
+      symbols = Set.add config.symbols symbol;
       cfg = Map.set config.cfg ~key:symbol ~data:table;
     }
 
@@ -52,10 +47,19 @@ module Config = struct
   let get_tables config = config.symbols
 
   let size (cfg : t) : int = 
-    List.sum (module Int) cfg.symbols ~f:(fun tablename ->
+    Set.to_list cfg.symbols 
+    |> List.sum (module Int) ~f:(fun tablename ->
       let table = Map.find_exn cfg.cfg tablename in
       Table.length table  
     )
+
+  let diff (cfg1 : t) (cfg2 : t) : t = 
+    { symbols = Set.diff cfg1.symbols cfg2.symbols;
+      cfg = Map.filter_keys cfg1.cfg ~f:(Fn.non (Map.mem cfg2.cfg))
+    }
+
+  let fold cfg ~init ~f = 
+    Map.fold cfg.cfg ~init ~f
 
 end
 

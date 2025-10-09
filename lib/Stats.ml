@@ -18,6 +18,8 @@ type t = {
   eval_time : float;
   eval_in_size : int;
   eval_out_size : int;
+  min_eval_time : float;
+  min_eval_size : int;
 }[@@deriving yojson]
 
 let empty = 
@@ -41,6 +43,8 @@ let empty =
     eval_time = 0.;
     eval_in_size = 0;
     eval_out_size = 0;
+    min_eval_time = 0.;
+    min_eval_size = 0;
   }
 
 let (+) s1 s2 = 
@@ -64,6 +68,8 @@ let (+) s1 s2 =
     eval_time = s1.eval_time +. s2.eval_time;
     eval_in_size = s1.eval_in_size + s2.eval_in_size;
     eval_out_size = s1.eval_out_size + s2.eval_out_size;
+    min_eval_time = s1.min_eval_time +. s2.min_eval_time;
+    min_eval_size = s1.min_eval_size + s2.min_eval_size;
   }
 
 let incr_size s = 
@@ -123,11 +129,11 @@ let rec analyze (c : BaseLogic.Clause.t) =
 
 
 let print_header () = 
-  Printf.printf "name,typetime,num_fds,size_fds,size,num_joins,num_compose,num_override,num_filters,num_tblvars,num_literals,num_key_adds,num_key_dels,num_data_adds,num_data_dels,num_action_renames,eval_time,eval_in_size,eval_out_size\n%!"
+  Printf.printf "name,typetime,num_fds,size_fds,size,num_joins,num_compose,num_override,num_filters,num_tblvars,num_literals,num_key_adds,num_key_dels,num_data_adds,num_data_dels,num_action_renames,eval_time,eval_in_size,eval_out_size,min_eval_size,min_eval_time\n%!"
 
-let println name (stats : t) =
+let println name (stats : t) : unit =
   let stats = {stats with name} in
-  Printf.printf "%s,%f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d\n%!"
+  Printf.printf "%s,%f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%f,%d\n%!"
     stats.name
     stats.typetime
     stats.num_fds
@@ -147,3 +153,5 @@ let println name (stats : t) =
     stats.eval_time
     stats.eval_in_size
     stats.eval_out_size
+    stats.min_eval_time
+    stats.min_eval_size

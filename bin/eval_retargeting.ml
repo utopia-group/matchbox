@@ -230,7 +230,7 @@ let table_to_csv_lines
 let transform_mats (tfxs : t list) (mats : (string * MatchActionTable.t) list) :
     (Symbol.t * MatchActionTable.t) list =
   let create_config mats =
-    let symbols = List.map mats ~f:fst in
+    let symbols = List.map mats ~f:fst |> String.Set.of_list in
     let cfg_map =
       List.fold mats
         ~init:(Map.empty (module String))
@@ -243,7 +243,7 @@ let transform_mats (tfxs : t list) (mats : (string * MatchActionTable.t) list) :
     (List.fold tfxs ~init:(config, [])
        ~f:(fun (acc_config, acc_mats) {defined; definition} ->
          (* eval using acc_config if you want to be able to reference tables defined earlier *)
-         let tmp = (defined, BaseInterpreter.eval definition config) in
+         let tmp = (defined, BaseInterpreter.eval_ definition config) in
          (Config.set acc_config (Symbol.to_string defined) (snd tmp), acc_mats @ [tmp])))
 
 let logical_schema =

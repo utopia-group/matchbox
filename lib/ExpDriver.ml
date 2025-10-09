@@ -13,12 +13,18 @@ let parse_program path =
 
 let run_program config (ctx : ParserContext.t) =
   let c = Clock.start () in
-  let (_,config') = BaseInterpreter.eval_program config ctx.prog in
+  let config' = BaseInterpreter.eval config ctx.prog in
   let eval_time = Clock.stop c in  
   let eval_in_size = BaseLogic.Config.size config in
-  let eval_out_size = BaseLogic.Config.size config' - eval_in_size in
-  ParserContext.{ctx with stats = {ctx.stats with eval_time; eval_in_size; eval_out_size}}
-
+  let eval_out_size = BaseLogic.Config.size config' in
+  let c = Clock.start() in
+  let min_eval_size = GuardSynthesis.minimize config' in
+  let min_eval_time = Clock.stop c +. eval_time in
+  let stats = {ctx.stats with 
+    eval_time; eval_in_size; eval_out_size;
+    min_eval_time; min_eval_size;
+  } in
+  ParserContext.{ctx with stats}
 let run_ : Safe.t -> unit = function
   | `List ls -> 
     Stats.print_header ();
