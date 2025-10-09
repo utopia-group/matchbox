@@ -1,0 +1,3 @@
+[
+    {"name": "hello", "progpath": "./programs/hello_world.mb", "config": "./programs/hello.json"}
+]
