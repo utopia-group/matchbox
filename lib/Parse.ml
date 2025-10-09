@@ -6,12 +6,8 @@ let print_error_position (lexbuf : Lexing.lexbuf) =
   Fmt.str "Line:%d Position:%d" pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
 
 let parse_program filepath =
-  Printf.eprintf "reading %s\n%!" filepath;
   let channel = In_channel.create filepath in
-  Printf.eprintf "success!... Lexing\n%!";
   let lexbuf = Lexing.from_channel channel in
-  Printf.eprintf "Success!.... closing\n%!";
-  Printf.eprintf "Closed!... parsing\n%!";
   let program = 
     try Ok (Parser.matchstix Lexer.tokens lexbuf) with
     | Parser.Error ->

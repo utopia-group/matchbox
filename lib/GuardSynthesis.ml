@@ -316,12 +316,10 @@ let cover_size hw bexpr =
   compute_min_guard_cover_size hw xs expr
 
 let equivalent_of_size_query k hw keys avar data phi =
-  Printf.eprintf "trying size %d\n%!" k;
   let psi, holes, xs, _ = 
     List.init k ~f:Fn.id
     |> List.fold ~init:(SMT.true_, [],[], SMT.false_) ~f:(fun (psi, holes, vars, prec) i -> 
       let guard, holes', vars', psi' = row_sketch hw keys avar data prec i in
-      Printf.eprintf "Row Sketch %s\n%!" (SMT.e_to_string psi');
       SMT.and_ [psi; psi'],
       holes @ holes',
       vars @ vars',
