@@ -77,6 +77,7 @@ matchstick :
         empty
         |> add_type table typ
         |> opt_add_def defined clause
+        |> update_stats clause
     }
 
 hardware :

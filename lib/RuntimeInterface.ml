@@ -5,10 +5,10 @@ open Semantics
 module Insertion = struct
   type t = { table : string;
              matches : (string * string) list;
-             action : string;
+             action : string list;
              data : (string * string) list;
              priority : int;
-  } [@@ppx_deriving_yojson]
+  } [@@deriving yojson]
 
   let lookup alist x = 
     List.find_map alist ~f:(fun (k, v) ->

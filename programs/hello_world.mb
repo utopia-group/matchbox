@@ -1,5 +1,5 @@
 lpm lag (sw_src : 32, sw_dst : 32) : {group_id : 32} [set_gid].
-limit lag to 320 rows.
+limit lag to 32 rows.
 
 
 cam nexthop (group_id : 32) : {dmac : 48, port : 9} [drop fwd]. 

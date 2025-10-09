@@ -10,12 +10,15 @@ type t = {
     rscs : R.ctx;
     gfds : F.itfc_spec;
     prog : L.t list;
+    stats : Stats.t
+
 }
 let empty = {
     typs = String.Map.empty;
     rscs = String.Map.empty;
     gfds = String.Map.empty;
     prog = [];
+    stats = Stats.empty;
 }
 
 let (@) (p1 : t) (p2 : t) : t= 
@@ -23,6 +26,7 @@ let (@) (p1 : t) (p2 : t) : t=
         rscs = R.(p1.rscs @ p2.rscs);
         gfds = F.(p1.gfds @ p2.gfds);
         prog = p1.prog @ p2.prog;
+        stats = Stats.(p1.stats + p2.stats);
     }
 
 let concat : t list -> t = 
@@ -49,6 +53,33 @@ let add_resource_limit table_name limit (p : t) : t=
       | Some other_limit -> Int.min limit other_limit 
     )
   }
+
+let add_gfd table_name gfd (p : t) : t = 
+  {p with 
+    gfds = Map.update p.gfds table_name ~f:(function
+      | None -> [gfd]
+      | Some old_gfds -> gfd::old_gfds
+    );
+    stats = {p.stats with num_fds = p.stats.num_fds + 1;
+                          size_fds = p.stats.size_fds + F.size gfd}
+  }
+
+let set_typecheck_time t (p : t) : t = 
+  {p with
+    stats = {p.stats with
+      typetime = t
+    }
+  }
+
+let update_stats clause (p : t) : t =
+  match clause with 
+  | None -> p
+  | Some clause ->
+    let stats = Stats.analyze clause in
+    {p with 
+      stats = Stats.(p.stats + stats) 
+    } 
+
 
 let well_formed ctx ({defined;definition} : BaseLogic.t) =
   let annotated = BaseChecker.infer ctx.typs definition in
@@ -91,6 +122,7 @@ let appropriately_sized ctx {defined;definition}  =
     else {defined;definition}
       
 let typecheck (ctx : t) : t = 
+  let c = Clock.start () in
   let prog = 
     List.map ctx.prog ~f:(fun matchstick -> 
       well_formed ctx matchstick
@@ -98,4 +130,6 @@ let typecheck (ctx : t) : t =
       |> appropriately_sized ctx
     )
   in
-  {ctx with prog}
+  let typetime = Clock.stop c in
+  {ctx with prog;
+            stats = {ctx.stats with typetime}}

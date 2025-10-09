@@ -51,6 +51,12 @@ module Config = struct
 
   let get_tables config = config.symbols
 
+  let size (cfg : t) : int = 
+    List.sum (module Int) cfg.symbols ~f:(fun tablename ->
+      let table = Map.find_exn cfg.cfg tablename in
+      Table.length table  
+    )
+
 end
 
 

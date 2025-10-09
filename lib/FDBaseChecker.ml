@@ -27,6 +27,9 @@ module DepFunDep = struct
     && Map.equal (=) fd1.source fd2.source
     && Map.equal (=) fd1.target fd2.target
 
+  let size {source;target;refine} =
+    Map.length source + Map.length target + BExpr.size refine  
+
   type itfc_spec = t list String.Map.t 
 
   let (@) (phi : itfc_spec) (psi : itfc_spec) : itfc_spec =
