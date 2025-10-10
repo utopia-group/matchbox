@@ -3,37 +3,37 @@ open Stijl
 open BaseLogic
 open Semantics
 
+let create_exact field_name value width =
+  Map.singleton
+    (module String)
+    field_name
+    (Match.exact (Bit.Vector.of_int value ~width))
+
+let create_lpm field_name value prefix width =
+  Map.singleton
+    (module String)
+    field_name
+    (Match.Lpm (Bit.Vector.of_int value ~width, prefix))
+
+let create_ternary field_name value =
+  Map.singleton
+    (module String)
+    field_name
+    (Match.Ternary (Trit.Vector.of_string value))
+
+let parse_ip_address ip_str =
+  (* Convert IP address string to integer *)
+  let parse_octet s = Int.of_string s |> Int.max 0 |> Int.min 255 in
+  match String.split ip_str ~on:'.' with
+  | [a; b; c; d] -> (
+    try
+      List.fold [a; b; c; d] ~init:0 ~f:(fun acc octet ->
+          (acc lsl 8) lor parse_octet octet)
+    with _ -> Int.of_string_opt ip_str |> Option.value ~default:0)
+  | _ -> Int.of_string_opt ip_str |> Option.value ~default:0
+
 (* Parse match keys of various formats *)
 let parse_match_key key field_names =
-  let create_exact field_name value width =
-    Map.singleton
-      (module String)
-      field_name
-      (Match.exact (Bit.Vector.of_int value ~width))
-  in
-  let create_lpm field_name value prefix width =
-    Map.singleton
-      (module String)
-      field_name
-      (Match.Lpm (Bit.Vector.of_int value ~width, prefix))
-  in
-  let create_ternary field_name value =
-    Map.singleton
-      (module String)
-      field_name
-      (Match.Ternary (Trit.Vector.of_string value))
-  in
-  let parse_ip_address ip_str =
-    (* Convert IP address string to integer *)
-    let parse_octet s = Int.of_string s |> Int.max 0 |> Int.min 255 in
-    match String.split ip_str ~on:'.' with
-    | [a; b; c; d] -> (
-      try
-        List.fold [a; b; c; d] ~init:0 ~f:(fun acc octet ->
-            (acc lsl 8) lor parse_octet octet)
-      with _ -> Int.of_string_opt ip_str |> Option.value ~default:0)
-    | _ -> Int.of_string_opt ip_str |> Option.value ~default:0
-  in
   if String.contains key ';' then
     (* Handle multi-field entries *)
     let field_parts = String.split key ~on:';' in
@@ -109,7 +109,8 @@ let parse_match_key key field_names =
       | _ -> create_exact field_name 0 32)
     | _ -> create_exact field_name 0 32
 
-let parse_action_params params param_names =
+let parse_action_params params (param_names : (string * string list) list)
+    action_idx =
   let parse_param_value param_str =
     match String.split param_str ~on:'#' with
     | [value_str; width_str] ->
@@ -118,42 +119,41 @@ let parse_action_params params param_names =
     | [value_str] -> Bit.Vector.of_string value_str
     | _ -> Bit.Vector.of_int 0 ~width:32
   in
-  if String.is_empty params || List.is_empty param_names then
-    Map.empty (module String)
-  else
-    let param_parts =
-      String.split params ~on:';'
-      |> List.filter ~f:(fun s -> not (String.is_empty s))
-    in
-    let min_length =
-      Int.min (List.length param_parts) (List.length param_names)
-    in
-    let params_to_use = List.take param_parts min_length in
-    let names_to_use = List.take param_names min_length in
-    List.fold2_exn params_to_use names_to_use ~init:String.Map.empty
+  let param_parts =
+    String.split params ~on:';'
+    |> List.filter ~f:(fun s -> not (String.is_empty s))
+  in
+  let cands =
+    List.filter param_names ~f:(fun (_, data) ->
+        List.length data = List.length param_parts)
+  in
+  let action, param_names = List.nth_exn cands action_idx in
+  ( MagmaAction.make action,
+    List.fold2_exn param_parts param_names
+      ~init:(Map.empty (module String))
       ~f:(fun acc param_str param_name ->
-        Map.set acc ~key:param_name ~data:(parse_param_value param_str))
+        Map.set acc ~key:param_name ~data:(parse_param_value param_str)) )
 
 let parse_csv_line line =
   let parts = String.split line ~on:',' in
   match parts with
-  | ["ADD"; table_name; match_key; action_params; _] ->
-    Some (table_name, match_key, action_params)
+  | ["ADD"; table_name; match_key; action_params; action_idx] ->
+    Some (table_name, match_key, action_params, action_idx)
   | _ -> None
 
-let read_csv_by_table (filename : string)
-    (table_schemas : (string * string list * string list) list) :
-    (string * MatchActionTable.t) list =
+let read_csv_by_table filename
+    (table_schemas : (string * string list * (string * string list) list) list)
+    : (string * MatchActionTable.t) list =
   let schema_map =
     List.fold table_schemas
       ~init:(Map.empty (module String))
       ~f:(fun acc (name, fields, params) ->
         Map.set acc ~key:name ~data:(fields, params))
   in
-  let create_match_action_entry (key, params) (field_names, param_names) =
+  let create_match_action_entry (key, params, action_idx)
+      (field_names, (param_names : (string * string list) list)) =
     let matches = parse_match_key key field_names in
-    let args = parse_action_params params param_names in
-    let action = MagmaAction.make "action" in
+    let action, args = parse_action_params params param_names action_idx in
     MatchAction.make TCAM matches action args
   in
   (* Group entries by table name using a Map to handle non-contiguous entries *)
@@ -161,18 +161,19 @@ let read_csv_by_table (filename : string)
   |> List.filter_map ~f:parse_csv_line
   |> List.fold
        ~init:(Map.empty (module String))
-       ~f:(fun acc (table, key, params) ->
+       ~f:(fun acc (table, key, params, action_idx) ->
+         let action_idx = Int.of_string action_idx in
          Map.update acc table ~f:(function
-           | None -> [(key, params)]
-           | Some existing -> (key, params) :: existing))
+           | None -> [(key, params, action_idx)]
+           | Some existing -> (key, params, action_idx) :: existing))
   |> Map.to_alist
   |> List.map ~f:(fun (table_name, entries) ->
          let schema =
            Map.find schema_map table_name |> Option.value ~default:([], [])
          in
          let table =
-           List.map (List.rev entries) ~f:(fun (key, params) ->
-               create_match_action_entry (key, params) schema)
+           List.map (List.rev entries) ~f:(fun (key, params, action_idx) ->
+               create_match_action_entry (key, params, action_idx) schema)
          in
          (table_name, table))
 
@@ -183,8 +184,8 @@ let format_match_value = function
   | Semantics.Match.Ternary tv -> Trit.Vector.to_string tv
 
 let table_to_csv_lines
-    ?(schema : (string * string list * string list) list option = None)
-    (table_name : string) (table : MatchActionTable.t) : string list =
+    ?(schema : (string * string list * (string * string list) list) list option =
+      None) (table_name : string) (table : MatchActionTable.t) : string list =
   let format_row row =
     let match_key =
       match schema with
@@ -225,14 +226,15 @@ let table_to_csv_lines
   in
   List.map table ~f:format_row
 
-let transform_mats (tfxs : t list) (mats : (string * MatchActionTable.t) list) :
-    (Symbol.t * MatchActionTable.t) list =
+let transform_mats (tfxs : t list) (mats : (Symbol.t * MatchActionTable.t) list)
+    : (Symbol.t * MatchActionTable.t) list =
   let create_config mats =
-    let symbols = List.map mats ~f:(fun (name, _) -> Symbol.make name [] 0) in
+    let symbols = List.map mats ~f:fst in
     let cfg_map =
       List.fold mats
         ~init:(Map.empty (module String))
-        ~f:(fun acc (name, table) -> Map.set acc ~key:name ~data:table)
+        ~f:(fun acc (symbol, table) ->
+          Map.set acc ~key:symbol.Symbol.name ~data:table)
     in
     Config.{symbols; cfg = cfg_map}
   in
@@ -240,6 +242,80 @@ let transform_mats (tfxs : t list) (mats : (string * MatchActionTable.t) list) :
   snd
     (List.fold tfxs ~init:(config, [])
        ~f:(fun (acc_config, acc_mats) {defined; definition} ->
-         (* eval using acc_config if you want to be able to reference tables defined earlier *)
+         (* eval using acc_config if want to be able to reference tables defined earlier *)
          let tmp = (defined, BaseInterpreter.eval definition config) in
          (Config.set acc_config defined (snd tmp), acc_mats @ [tmp])))
+
+let normalize_classbench_config (input_csv : string) (output_csv : string) :
+    unit =
+  let parse_ip_address_with_mask ip_str =
+    match String.split ip_str ~on:'/' with
+    | [ip_str; mask_str] ->
+      let parse_octet s = Int.of_string s |> Int.max 0 |> Int.min 255 in
+      let ip_val =
+        match String.split ip_str ~on:'.' with
+        | [a; b; c; d] ->
+          List.fold [a; b; c; d] ~init:0 ~f:(fun acc octet ->
+              (acc lsl 8) lor parse_octet octet)
+        | _ -> 0
+      in
+      let mask_len = Int.of_string mask_str in
+      (ip_val, mask_len)
+    | _ -> (0, 32)
+  in
+  let format_match_value field_name value width =
+    match value with
+    | Some (ip_val, prefix_len) when String.is_suffix field_name ~suffix:"Addr"
+      ->
+      (* LPM *)
+      sprintf "%d/%d#%d" ip_val prefix_len width
+    | Some (val_int, _) ->
+      (* Exact match format *)
+      sprintf "%d#%d" val_int width
+    | None when String.is_suffix field_name ~suffix:"Addr" ->
+      (* Wildcard LPM *)
+      sprintf "0/0#%d" width
+    | None ->
+      (* Wildcard Ternary *)
+      String.make width '*'
+  in
+  let parse_rule_line line =
+    let fields = String.split line ~on:',' |> List.map ~f:String.strip in
+    let field_map =
+      List.fold fields
+        ~init:(Map.empty (module String))
+        ~f:(fun acc field ->
+          match String.split field ~on:'=' with
+          | [key; value] ->
+            Map.set acc ~key:(String.strip key) ~data:(String.strip value)
+          | _ -> acc)
+    in
+    let dst_addr =
+      Option.map (Map.find field_map "nw_dst") ~f:parse_ip_address_with_mask
+    in
+    let src_addr =
+      Option.map (Map.find field_map "nw_src") ~f:parse_ip_address_with_mask
+    in
+    let proto =
+      Option.map (Map.find field_map "nw_proto") ~f:(fun p ->
+          (Int.of_string p, 0))
+    in
+    let sport =
+      Option.map (Map.find field_map "tp_src") ~f:(fun p ->
+          (Int.of_string p, 0))
+    in
+    let dport =
+      Option.map (Map.find field_map "tp_dst") ~f:(fun p ->
+          (Int.of_string p, 0))
+    in
+    let dst_addr_str = format_match_value "hdr.ipv4.dstAddr" dst_addr 32 in
+    let src_addr_str = format_match_value "hdr.ipv4.srcAddr" src_addr 32 in
+    let proto_str = format_match_value "hdr.ipv4.proto" proto 8 in
+    let sport_str = format_match_value "meta.l4_sport" sport 16 in
+    let dport_str = format_match_value "meta.l4_dport" dport 16 in
+    sprintf "ADD,acl,%s;%s;%s;%s;%s,,0" dst_addr_str src_addr_str proto_str
+      sport_str dport_str
+  in
+  input_csv |> In_channel.read_lines
+  |> List.map ~f:parse_rule_line
+  |> Out_channel.write_lines output_csv

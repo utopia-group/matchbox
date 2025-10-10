@@ -21,4 +21,4 @@
  (public_name eval_acl)
  (name eval_acl)
  (modules eval_acl)
- (libraries stijl core utils))
+ (libraries stijl core utils core_unix.sys_unix))

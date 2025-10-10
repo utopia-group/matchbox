@@ -1,73 +1,232 @@
+[@@@warning "-32-21"]
+
 open Core
 open Stijl
 open BaseLogic
+open Semantics
 open Utils
+
+let acl_schema =
+  [
+    ( "acl",
+      [
+        "hdr.ipv4.dstAddr";
+        "hdr.ipv4.srcAddr";
+        "hdr.ipv4.proto";
+        "meta.l4_sport";
+        "meta.l4_dport";
+      ],
+      [("allow", []); ("deny", [])] );
+  ]
+
+let acl_schema' =
+  [
+    ( "acl",
+      [
+        "meta.is_inbound";
+        "hdr.ipv4.srcAddr";
+        "hdr.ipv4.dstAddr";
+        "hdr.ipv4.proto";
+        "meta.l4_sport";
+        "meta.l4_dport";
+      ],
+      [("allow", []); ("deny", [])] );
+  ]
 
 let aws_schema =
   [
-    ("ipv4", ["hdr.ipv4.dstAddr"], ["dstAddr"; "port"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["port"]);
-    ( "punt",
-      [
-        "hdr.ethernet.etherType";
-        "hdr.ipv4.isValid()";
-        "hdr.ipv4.version";
-        "hdr.ipv4.srcAddr";
-        "hdr.ipv4.dstAddr";
-        "hdr.ipv4.ttl";
-      ],
-      [] );
+    ( "inbound_acl",
+      ["hdr.ipv4.srcAddr"; "hdr.ipv4.proto"; "meta.l4_sport"],
+      [("allow", []); ("deny", [])] );
+    ( "outbound_acl",
+      ["hdr.ipv4.dstAddr"; "hdr.ipv4.proto"; "meta.l4_dport"],
+      [("allow", []); ("deny", [])] );
   ]
 
 let azure_schema =
   [
-    ("ipv4_fib", ["hdr.ipv4.dstAddr"], ["port"]);
-    ("ipv4_rewrite", ["hdr.ipv4.dstAddr"], ["dstAddr"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["port"]);
-    ( "punt",
+    ( "acl",
       [
-        "hdr.ethernet.etherType";
-        "hdr.ipv4.isValid()";
-        "hdr.ipv4.version";
+        "meta.is_inbound";
+        "hdr.ipv4.proto";
         "hdr.ipv4.srcAddr";
         "hdr.ipv4.dstAddr";
-        "hdr.ipv4.ttl";
+        "meta.l4_sport";
+        "meta.l4_dport";
       ],
-      [] );
+      [("allow", []); ("deny", [])] );
   ]
 
-let ethernet = Symbol.make "ethernet" [] 0
-let ipv4 = Symbol.make "ipv4" [] 0
-let punt = Symbol.make "punt" [] 0
-let ipv4_fib = Symbol.make "ipv4_fib" [] 0
-let ipv4_rewrite = Symbol.make "ipv4_rewrite" [] 0
+(* acl to aws *)
 
-(* logical.p4 to action_decompose.p4 *)
+let acl = Symbol.make "acl" [] 0
+let direction = Symbol.make "direction" [] 0
+let inbound_acl = Symbol.make "inbound_acl" [] 0
+let outbound_acl = Symbol.make "outbound_acl" [] 0
 
-let ipv4_to_ipv4_fib : Clause.t =
-  Clause.(id ipv4 |>> Project [Var.make "port" 9])
+let acl_to_inbound_acl : Clause.t =
+  Clause.(
+    Project
+      [
+        Var.make "hdr.ipv4.srcAddr" 32;
+        Var.make "hdr.ipv4.proto" 8;
+        Var.make "meta.l4_sport" 16;
+      ]
+    <<| (CubeFilter
+           (Map.singleton
+              (module String)
+              "meta.is_inbound"
+              (Semantics.Match.Exact (Bit.Vector.of_int ~width:2 0)))
+        <<| id acl))
 
-let ipv4_to_ipv4_rewrite : Clause.t =
-  Clause.(id ipv4 |>> Project [Var.make "dstAddr" 48])
+let acl_to_outbound_acl : Clause.t =
+  Clause.(
+    Project
+      [
+        Var.make "hdr.ipv4.dstAddr" 32;
+        Var.make "hdr.ipv4.proto" 8;
+        Var.make "meta.l4_dport" 16;
+      ]
+    <<| (CubeFilter
+           (Map.singleton
+              (module String)
+              "meta.is_inbound"
+              (Semantics.Match.Exact (Bit.Vector.of_int ~width:2 1)))
+        <<| id acl))
 
-let logical_to_action_decompose_tfxs : t list =
+let acl_to_aws_tfxs : t list =
   [
-    {defined = ipv4_fib; definition = ipv4_to_ipv4_fib};
-    {defined = ipv4_rewrite; definition = ipv4_to_ipv4_rewrite};
-    {defined = ethernet; definition = Clause.id ethernet};
-    {defined = punt; definition = Clause.id punt};
+    {defined = inbound_acl; definition = acl_to_inbound_acl};
+    {defined = outbound_acl; definition = acl_to_outbound_acl};
+  ]
+
+(* acl to azure *)
+
+let acl_to_acl : Clause.t =
+  Clause.(
+    Project
+      [
+        Var.make "meta.is_inbound" 2;
+        Var.make "hdr.ipv4.proto" 8;
+        Var.make "hdr.ipv4.srcAddr" 32;
+        Var.make "hdr.ipv4.dstAddr" 32;
+        Var.make "meta.l4_sport" 16;
+        Var.make "meta.l4_dport" 16;
+      ]
+    <<| id acl)
+
+let acl_to_azure_tfxs : t list = [{defined = acl; definition = acl_to_acl}]
+
+(* acl to google *)
+
+let acl_to_acl' : Clause.t =
+  Clause.(
+    Project
+      [
+        Var.make "meta.is_inbound" 2;
+        Var.make "hdr.ipv4.proto" 8;
+        Var.make "hdr.ipv4.srcAddr" 32;
+        Var.make "hdr.ipv4.dstAddr" 32;
+        Var.make "meta.l4_sport" 16;
+        Var.make "meta.l4_dport" 16;
+      ]
+    <<| id acl)
+
+let acl_to_google_tfxs : t list = [{defined = acl; definition = acl_to_acl'}]
+
+(* aws to azure *)
+
+let inbound_outbound_to_acl : Clause.t =
+  Clause.(
+    WildCard (Var.make "meta.l4_dport" 16)
+    <<| (WildCard (Var.make "hdr.ipv4.dstAddr" 32)
+        <<| (SetTo
+               (Var.make "meta.is_inbound" 2, Gpl.Expr.BV (Bigint.of_int 0, 2))
+            <<| id inbound_acl))
+    |> (WildCard (Var.make "meta.l4_sport" 16)
+       <<| (WildCard (Var.make "hdr.ipv4.srcAddr" 32)
+           <<| (SetTo
+                  ( Var.make "meta.is_inbound" 2,
+                    Gpl.Expr.BV (Bigint.of_int 1, 2) )
+               <<| id outbound_acl))))
+
+let aws_to_azure_tfxs : t list =
+  [{defined = acl; definition = inbound_outbound_to_acl}]
+
+(* azure to aws *)
+
+let azure_to_aws_tfxs : t list =
+  [
+    {defined = inbound_acl; definition = acl_to_inbound_acl};
+    {defined = outbound_acl; definition = acl_to_outbound_acl};
   ]
 
 let () =
-  let output_dir = "Pipelines/retargeting" in
-  (* (id, output_name, input_file, input_schema, output_schema, translation) *)
+  Random.init 42;
+  let output_dir = "Pipelines/acl" in
+  let classbench_config =
+    sprintf "%s/_classbench_acl_inserts_1000.csv" output_dir
+  in
+  let normalized_config =
+    sprintf "%s/classbench_acl_inserts_1000.csv" output_dir
+  in
+  let acl_config =
+    match Sys_unix.file_exists normalized_config with
+    (* | `Yes -> ()
+  | `No | `Unknown -> *)
+    | _ ->
+      printf "Converting ClassBench format to standard format...\n";
+      normalize_classbench_config classbench_config normalized_config;
+      let _, acl_mat =
+        List.hd_exn (read_csv_by_table normalized_config acl_schema)
+      in
+      let acl_mat' =
+        List.map acl_mat ~f:(fun ma ->
+            {
+              ma with
+              matches =
+                Map.set ma.matches ~key:"meta.is_inbound"
+                  ~data:
+                    (Exact
+                       (Bit.Vector.of_int ~width:2
+                          (match ma.action with
+                          | Name action when String.(action = "allow") ->
+                            Random.int 2
+                          | Name action when String.(action = "deny") -> 3
+                          | _ -> failwith "unreachable")));
+            })
+      in
+      let catch_all =
+        MatchAction.make TCAM
+          (Map.of_alist_exn
+             (module String)
+             [
+               ("meta.is_inbound", Match.Ternary (Trit.Vector.wc 2));
+               ("hdr.ipv4.srcAddr", Match.Ternary (Trit.Vector.wc 32));
+               ("hdr.ipv4.dstAddr", Match.Ternary (Trit.Vector.wc 32));
+               ("hdr.ipv4.proto", Match.Ternary (Trit.Vector.wc 8));
+               ("meta.l4_sport", Match.Ternary (Trit.Vector.wc 16));
+               ("meta.l4_dport", Match.Ternary (Trit.Vector.wc 16));
+             ])
+          (MagmaAction.make "deny")
+          (Map.empty (module String))
+      in
+      (* printf "%s\n" (direction_mat |> Semantics.MatchActionTable.to_string); *)
+      let config = [(Symbol.make "acl" [] 0, acl_mat' @ [catch_all])] in
+      config
+      |> List.concat_map ~f:(fun (mat_sym, mat) ->
+             table_to_csv_lines ~schema:(Some acl_schema') mat_sym.Symbol.name
+               mat)
+      |> Out_channel.write_lines normalized_config;
+      config
+  in
+  (* (src_id, tgt_id, trt_schema, translation) *)
   let all_tfxs =
     [
-      ( "lo_ad",
-        "logical_inserts_1001.csv",
-        aws_schema,
-        azure_schema,
-        logical_to_action_decompose_tfxs );
+      ("acl", "aws", aws_schema, acl_to_aws_tfxs);
+      ("acl", "azure", azure_schema, acl_to_azure_tfxs);
+      ("aws", "azure", azure_schema, aws_to_azure_tfxs);
+      ("azure", "aws", aws_schema, azure_to_aws_tfxs);
     ]
   in
   (* Map.iteri
@@ -77,24 +236,35 @@ let () =
        ~f:(fun acc (_, _, _, _, _, tfxs) ->
          List.fold tfxs ~init:acc ~f:(fun acc (_, t) ->
              Clause.count_components acc t))); *)
-  List.iteri all_tfxs
-    ~f:(fun _i (_id, input_file, input_schema, output_schema, tfxs) ->
-      (* printf "(%d, %d, \"%s\"),\n" (i + 1)
+  let _ =
+    List.foldi all_tfxs
+      ~init:(Map.singleton (module String) "acl" acl_config)
+      ~f:(fun _i configs (src_id, tgt_id, output_schema, tfxs) ->
+        (* printf "(%d, %d, \"%s\"),\n" (i + 1)
         (List.fold tfxs ~init:0 ~f:(fun acc (_, t) -> acc + Clause.size t))
         id; *)
-      let input_file = sprintf "%s/%s" output_dir input_file in
-      let output_file = sprintf "%s/%s.csv" output_dir _id in
-      let parsed_tables = read_csv_by_table input_file input_schema in
-      let start_time = Time_ns.now () in
-      let translated_tables = transform_mats tfxs parsed_tables in
-      let end_time = Time_ns.now () in
-      let elapsed_time_us =
-        Time_ns.Span.to_ns (Time_ns.diff end_time start_time) /. 1000.0
-      in
-      translated_tables
-      |> List.concat_map ~f:(fun (table_sym, table) ->
-             table_to_csv_lines ~schema:(Some output_schema)
-               table_sym.Symbol.name table)
-      |> Out_channel.write_lines output_file;
-      (* printf "Translating %s completed in %.1f μs\n" name elapsed_time_us) *)
-      printf "(\"%s\", %.1f),\n" _id elapsed_time_us)
+        let output_file = sprintf "%s/%s_%s.csv" output_dir src_id tgt_id in
+        let parsed_tables = Map.find_exn configs src_id in
+        printf "Input:\n%s\n"
+          (parsed_tables |> List.hd_exn |> snd |> Fn.flip List.take 5
+         |> Semantics.MatchActionTable.to_string);
+        let start_time = Time_ns.now () in
+        let translated_tables = transform_mats tfxs parsed_tables in
+        let end_time = Time_ns.now () in
+        printf "Output:\n%s\n"
+          (translated_tables |> List.hd_exn |> snd |> Fn.flip List.take 5
+         |> Semantics.MatchActionTable.to_string);
+        let elapsed_time_us =
+          Time_ns.Span.to_ns (Time_ns.diff end_time start_time) /. 1000.0
+        in
+        translated_tables
+        |> List.concat_map ~f:(fun (table_sym, table) ->
+               table_to_csv_lines ~schema:(Some output_schema)
+                 table_sym.Symbol.name table)
+        |> Out_channel.write_lines output_file;
+        printf "(\"%s_%s\", %.1f),\n" src_id tgt_id elapsed_time_us;
+        match Map.add configs ~key:tgt_id ~data:translated_tables with
+        | `Ok configs -> configs
+        | `Duplicate -> configs)
+  in
+  ()

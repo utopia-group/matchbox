@@ -119,6 +119,13 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
         data = union_data_exn ftype.data gtype.data;
       } in
     Join (f, g, Some typ)
+  | Override (f, g, _) ->
+    let f = infer ctx f in 
+    let g = infer ctx g in 
+    let ftype = typeof_exn f in
+    let gtype = typeof_exn g in
+    assert (Type.compare_table ftype gtype = 0);
+    Override (f, g, Some (Table ftype))
   | Compose (first, second, None) ->  (* diagram order, i.e second o first*)
     let first = infer ctx first in 
     let second = infer ctx second in 

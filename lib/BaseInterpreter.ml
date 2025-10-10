@@ -157,6 +157,10 @@ let rec eval_inner (clause : Clause.t) (config : Config.t) (state : NonceState.t
     let* g_row = g_mat in
     MatchAction.pair f_row g_row
     |> Option.value_map ~default:empty ~f:return
+  | Override (f, g, _) ->
+    let state, f_mat = eval_inner f config state in
+    let state, g_mat = eval_inner g config state in
+    state, f_mat @ g_mat
   | Compose (f, g, _) ->
     let state, g_mat = eval_inner g config state in 
     let state, f_mat = eval_inner f config state in

@@ -119,58 +119,57 @@ module DepFunDep = struct
       let rgoal1 = {goal1 with refine = goal.refine } in 
       let rgoal2 = {goal2 with refine = goal.refine } in
       check (check ctx c1 rgoal1) c2 rgoal2
+    | Override (_f, _g, _) ->
+      failwith "TODO"
     | Compose (before, after, _) -> 
       let goal_before = fd_of_table_type (typeof_exn before) in 
       let goal_after = fd_of_table_type (typeof_exn after) in 
       assert (Set.equal (Map.key_set goal_before.target) (Map.key_set goal_after.source));
       let refined_goal_before = {goal_before with refine = goal.refine} in 
       check (check ctx before refined_goal_before) after goal_after
-  | MapOut(c, Project xs, _) ->
-    assert (Map.(equal (=) (map_of_varlist xs) goal.target));
-    check ctx c goal
-  | MapOut(c, Nonce x, _) -> 
-    if Map.mem goal.target (Var.str x) then 
-      let w = Map.find_exn goal.target (Var.str x) in 
-      let target = 
-        Map.set (Map.remove goal.target (Var.str x)) ~key:(Var.str x) ~data:w
-      in
-      check ctx c {goal with target}
-    else
-      check ctx c goal    
-  | MapOut(c, SetTo (x, e), _) ->
-    if Map.mem goal.target (Var.str x) then 
-      let w = Map.find_exn goal.target (Var.str x) in 
-      let target = 
-        union (map_of_varset (Expr.vars e))
-              (Map.set (Map.remove goal.target (Var.str x)) ~key:(Var.str x) ~data:w)
-      in
-      check ctx c {goal with target}
-    else
+    | MapOut(c, Project xs, _) ->
+      assert (Map.(equal (=) (map_of_varlist xs) goal.target));
       check ctx c goal
-  | MapOut(c, Del x, _) -> 
-    assert (not (Map.mem goal.target (Var.str x)));
-    check ctx c goal
-  | MapOut(c, Rename _, _) ->
-    check ctx c goal
-  | MapIn(c, Project xs, _) -> 
-    let xsset = String.Set.of_list (List.map ~f:Var.str xs) in 
-    let matchset = Map.key_set goal.source in 
-    assert (Set.is_subset matchset ~of_:xsset);
-    check ctx c goal
-  | MapIn(c, Del x, _) | MapIn(c, WildCard x, _ ) ->
-    assert (not (Map.mem goal.source (Var.str x)));
-    assert (not (Set.exists (BExpr.free_vars goal.refine) ~f:(Var.equal x)));
-    check ctx c goal
-  | MapIn(c, SetTo(x,e), _) -> 
-    let refine = BExpr.subst x e goal.refine  in
-    check ctx c {goal with refine}
-  | MapIn(c, CubeFilter cube,_ ) ->
-    let phi = Semantics.Match.map_to_bexpr cube in 
-    check ctx c {goal with refine = BExpr.and_ phi goal.refine}
-  | MapIn(c, Filter phi, _) -> 
-    (* This is overly strong, but idk how to fix it*)
-    check ctx c {goal with refine = BExpr.and_ phi goal.refine}
-    
+    | MapOut(c, Nonce x, _) -> 
+      if Map.mem goal.target (Var.str x) then 
+        let w = Map.find_exn goal.target (Var.str x) in 
+        let target = 
+          Map.set (Map.remove goal.target (Var.str x)) ~key:(Var.str x) ~data:w
+        in
+        check ctx c {goal with target}
+      else
+        check ctx c goal    
+    | MapOut(c, SetTo (x, e), _) ->
+      if Map.mem goal.target (Var.str x) then 
+        let w = Map.find_exn goal.target (Var.str x) in 
+        let target = 
+          union (map_of_varset (Expr.vars e))
+                (Map.set (Map.remove goal.target (Var.str x)) ~key:(Var.str x) ~data:w)
+        in
+        check ctx c {goal with target}
+      else
+        check ctx c goal
+    | MapOut(c, Del x, _) -> 
+      assert (not (Map.mem goal.target (Var.str x)));
+      check ctx c goal
+    | MapOut(c, Rename _, _) ->
+      check ctx c goal
+    | MapIn(c, Project xs, _) -> 
+      let xsset = String.Set.of_list (List.map ~f:Var.str xs) in 
+      let matchset = Map.key_set goal.source in 
+      assert (Set.is_subset matchset ~of_:xsset);
+      check ctx c goal
+    | MapIn(c, Del x, _) | MapIn(c, WildCard x, _ ) ->
+      assert (not (Map.mem goal.source (Var.str x)));
+      assert (not (Set.exists (BExpr.free_vars goal.refine) ~f:(Var.equal x)));
+      check ctx c goal
+    | MapIn(c, SetTo(x,e), _) -> 
+      let refine = BExpr.subst x e goal.refine  in
+      check ctx c {goal with refine}
+    | MapIn(c, CubeFilter cube,_ ) ->
+      let phi = Semantics.Match.map_to_bexpr cube in 
+      check ctx c {goal with refine = BExpr.and_ phi goal.refine}
+    | MapIn(c, Filter phi, _) -> 
+      (* This is overly strong, but idk how to fix it*)
+      check ctx c {goal with refine = BExpr.and_ phi goal.refine}
 end
-
-

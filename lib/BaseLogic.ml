@@ -94,6 +94,7 @@ module Clause = struct
     | Id of f * Type.t option
     | Table of Semantics.MatchActionTable.t * Type.t option
     | Join of t * t * Type.t option
+    | Override of t * t * Type.t option
     | Compose of t * t * Type.t option (* diagram order *)
     | MapOut of t * OutTfx.t * Type.t option
     | MapIn of t * MatchTfx.t * Type.t option
@@ -112,6 +113,8 @@ module Clause = struct
   let id f = Id (f, None)
   let join c1 c2 = Join (c1, c2, None)
   let ( * ) = join
+  let override c1 c2 = Override (c1, c2, None)
+  let ( |> ) = override
 
   let compose first second = Compose (first, second, None)
   let (>>>) = compose
@@ -125,8 +128,8 @@ module Clause = struct
   let rec size c =
     (match c with
     | Id _ | Table _ -> 0
-    | Join (f, g, _) -> size f + size g
-    | Compose (f, g, _) -> size f + size g
+    | Join (f, g, _) | Override (f, g, _) | Compose (f, g, _) ->
+      size f + size g
     | MapOut (c, _, _) -> size c
     | MapIn (c, _, _) -> size c)
     + 1
@@ -140,6 +143,11 @@ module Clause = struct
       Map.update
         (count_components (count_components cnts f) g)
         "\\cdot \\boxtimes \\cdot"
+        ~f:(Option.value_map ~default:1 ~f:((+) 1))
+    | Override (f, g, _) ->
+      Map.update
+        (count_components (count_components cnts f) g)
+        "\\cdot |> \\cdot"
         ~f:(Option.value_map ~default:1 ~f:((+) 1))
     | Compose (f, g, _) ->
       Map.update

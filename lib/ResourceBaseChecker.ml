@@ -21,3 +21,5 @@ let rec calculate_max_cost (ctx : ctx) : Clause.t -> rsc = function
     List.length t
   | Join (f, g, _) -> 
     calculate_max_cost ctx f * calculate_max_cost ctx g
+  | Override (_f, _g, _) ->
+    failwith "TODO"

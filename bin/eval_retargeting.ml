@@ -1,3 +1,5 @@
+[@@@warning "-32"]
+
 open Core
 open Stijl
 open BaseLogic
@@ -6,8 +8,10 @@ open Utils
 
 let logical_schema =
   [
-    ("ipv4", ["hdr.ipv4.dstAddr"], ["dstAddr"; "port"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["port"]);
+    ( "ipv4",
+      ["hdr.ipv4.dstAddr"],
+      [("ipv4_forward", ["dstAddr"; "port"]); ("nop", [])] );
+    ("ethernet", ["hdr.ethernet.dstAddr"], [("eth_fwd", ["port"]); ("nop", [])]);
     ( "punt",
       [
         "hdr.ethernet.etherType";
@@ -17,14 +21,16 @@ let logical_schema =
         "hdr.ipv4.dstAddr";
         "hdr.ipv4.ttl";
       ],
-      [] );
+      [("drop", [])] );
   ]
 
 let action_decompose_schema =
   [
-    ("ipv4_fib", ["hdr.ipv4.dstAddr"], ["port"]);
-    ("ipv4_rewrite", ["hdr.ipv4.dstAddr"], ["dstAddr"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["port"]);
+    ("ipv4_fib", ["hdr.ipv4.dstAddr"], [("ipv4_forward", ["port"]); ("nop", [])]);
+    ( "ipv4_rewrite",
+      ["hdr.ipv4.dstAddr"],
+      [("rewrite", ["dstAddr"]); ("nop", [])] );
+    ("ethernet", ["hdr.ethernet.dstAddr"], [("eth_fwd", ["port"]); ("nop", [])]);
     ( "punt",
       [
         "hdr.ethernet.etherType";
@@ -34,17 +40,88 @@ let action_decompose_schema =
         "hdr.ipv4.dstAddr";
         "hdr.ipv4.ttl";
       ],
-      [] );
+      [("drop", [])] );
+  ]
+
+let choice_schema =
+  [
+    ( "staging",
+      ["standard_metadata.ingress_port"],
+      [("set_choice", ["c"]); ("skip_pipe", [])] );
+    ( "ipv4",
+      ["hdr.ipv4.dstAddr"],
+      [("ipv4_forward", ["dstAddr"; "port"]); ("nop", [])] );
+    ( "ipv42",
+      ["hdr.ipv4.dstAddr"],
+      [("ipv4_forward", ["dstAddr"; "port"]); ("nop", [])] );
+    ("ethernet", ["hdr.ethernet.dstAddr"], [("eth_fwd", ["port"]); ("nop", [])]);
+    ("ethernet2", ["hdr.ethernet.dstAddr"], [("eth_fwd", ["port"]); ("nop", [])]);
+    ( "punt",
+      [
+        "hdr.ethernet.etherType";
+        "hdr.ipv4.isValid()";
+        "hdr.ipv4.version";
+        "hdr.ipv4.srcAddr";
+        "hdr.ipv4.dstAddr";
+        "hdr.ipv4.ttl";
+      ],
+      [("drop", [])] );
+    ( "punt2",
+      [
+        "hdr.ethernet.etherType";
+        "hdr.ipv4.isValid()";
+        "hdr.ipv4.version";
+        "hdr.ipv4.srcAddr";
+        "hdr.ipv4.dstAddr";
+        "hdr.ipv4.ttl";
+      ],
+      [("drop", [])] );
+  ]
+
+let double_schema =
+  [
+    ( "ipv4",
+      ["hdr.ipv4.dstAddr"],
+      [("ipv4_forward", ["dstAddr"; "port"]); ("nop", [])] );
+    ( "ipv42",
+      ["hdr.ipv4.dstAddr"],
+      [("ipv4_forward", ["dstAddr"; "port"]); ("nop", [])] );
+    ("ethernet", ["hdr.ethernet.dstAddr"], [("eth_fwd", ["port"]); ("nop", [])]);
+    ("ethernet2", ["hdr.ethernet.dstAddr"], [("eth_fwd", ["port"]); ("nop", [])]);
+    ( "punt",
+      [
+        "hdr.ethernet.etherType";
+        "hdr.ipv4.isValid()";
+        "hdr.ipv4.version";
+        "hdr.ipv4.srcAddr";
+        "hdr.ipv4.dstAddr";
+        "hdr.ipv4.ttl";
+      ],
+      [("drop", [])] );
+    ( "punt2",
+      [
+        "hdr.ethernet.etherType";
+        "hdr.ipv4.isValid()";
+        "hdr.ipv4.version";
+        "hdr.ipv4.srcAddr";
+        "hdr.ipv4.dstAddr";
+        "hdr.ipv4.ttl";
+      ],
+      [("drop", [])] );
   ]
 
 let early_validate_schema =
   [
     ( "ethernet_validate",
       ["hdr.ethernet.etherType"; "hdr.ipv4.isValid()"; "hdr.ipv4.ttl"],
-      [] );
-    ("ipv4_validate", ["hdr.ipv4.version"; "hdr.ipv4.ttl"], []);
-    ("ipv4", ["hdr.ipv4.dstAddr"], ["dstAddr"; "port"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["port"]);
+      [("malformed", []); ("ok", [])] );
+    ( "ipv4_validate",
+      ["hdr.ipv4.version"; "hdr.ipv4.ttl"],
+      [("malformed", []); ("ok", [])] );
+    ( "ipv4",
+      ["hdr.ipv4.dstAddr"],
+      [("ipv4_forward", ["dstAddr"; "port"]); ("nop", [])] );
+    ("ethernet", ["hdr.ethernet.dstAddr"], [("eth_fwd", ["port"]); ("nop", [])]);
     ( "acl",
       [
         "hdr.ethernet.srcAddr";
@@ -52,72 +129,19 @@ let early_validate_schema =
         "hdr.ipv4.srcAddr";
         "hdr.ipv4.dstAddr";
       ],
-      [] );
-  ]
-
-let choice_schema =
-  [
-    ("staging", ["standard_metadata.ingress_port"], ["c"]);
-    ("ipv4", ["hdr.ipv4.dstAddr"], ["dstAddr"; "port"]);
-    ("ipv42", ["hdr.ipv4.dstAddr"], ["dstAddr"; "port"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["port"]);
-    ("ethernet2", ["hdr.ethernet.dstAddr"], ["port"]);
-    ( "punt",
-      [
-        "hdr.ethernet.etherType";
-        "hdr.ipv4.isValid()";
-        "hdr.ipv4.version";
-        "hdr.ipv4.srcAddr";
-        "hdr.ipv4.dstAddr";
-        "hdr.ipv4.ttl";
-      ],
-      [] );
-    ( "punt2",
-      [
-        "hdr.ethernet.etherType";
-        "hdr.ipv4.isValid()";
-        "hdr.ipv4.version";
-        "hdr.ipv4.srcAddr";
-        "hdr.ipv4.dstAddr";
-        "hdr.ipv4.ttl";
-      ],
-      [] );
-  ]
-
-let double_schema =
-  [
-    ("ipv4", ["hdr.ipv4.dstAddr"], ["dstAddr"; "port"]);
-    ("ipv42", ["hdr.ipv4.dstAddr"], ["dstAddr"; "port"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["port"]);
-    ("ethernet2", ["hdr.ethernet.dstAddr"], ["port"]);
-    ( "punt",
-      [
-        "hdr.ethernet.etherType";
-        "hdr.ipv4.isValid()";
-        "hdr.ipv4.version";
-        "hdr.ipv4.srcAddr";
-        "hdr.ipv4.dstAddr";
-        "hdr.ipv4.ttl";
-      ],
-      [] );
-    ( "punt2",
-      [
-        "hdr.ethernet.etherType";
-        "hdr.ipv4.isValid()";
-        "hdr.ipv4.version";
-        "hdr.ipv4.srcAddr";
-        "hdr.ipv4.dstAddr";
-        "hdr.ipv4.ttl";
-      ],
-      [] );
+      [("drop", [])] );
   ]
 
 let link_agg_schema =
   [
     (* ("lookup", ["port"; "meta.nexthop"], ["nexthop"; "port"]); *)
-    ("nexthop", ["meta.nexthop"], ["port"]);
-    ("ethernet", ["hdr.ethernet.dstAddr"], ["nexthop"]);
-    ("ipv4", ["hdr.ipv4.dstAddr"], ["dstAddr"; "nexthop"]);
+    ("nexthop", ["meta.nexthop"], [("set_port", ["port"]); ("drop", [])]);
+    ( "ethernet",
+      ["hdr.ethernet.dstAddr"],
+      [("eth_fwd", ["nexthop"]); ("nop", [])] );
+    ( "ipv4",
+      ["hdr.ipv4.dstAddr"],
+      [("ipv4_forward", ["dstAddr"; "nexthop"]); ("nop", [])] );
     ( "punt",
       [
         "hdr.ethernet.etherType";
@@ -127,7 +151,7 @@ let link_agg_schema =
         "hdr.ipv4.dstAddr";
         "hdr.ipv4.ttl";
       ],
-      [] );
+      [("drop", [])] );
   ]
 
 let ethernet = Symbol.make "ethernet" [] 0
@@ -687,151 +711,45 @@ let link_agg_to_early_validate_tfxs : t list =
 
 let () =
   let output_dir = "Pipelines/retargeting" in
-  (* (id, output_name, input_file, input_schema, output_schema, translation) *)
+  (* (id, configuration, input_schema, output_schema, translation) *)
   let all_tfxs =
     [
-      ( "lo_ad",
-        "logical_inserts_1001.csv",
-        logical_schema,
-        action_decompose_schema,
-        logical_to_action_decompose_tfxs );
-      ( "lo_ch",
-        "logical_inserts_1001.csv",
-        logical_schema,
-        choice_schema,
-        logical_to_choice_tfxs );
-      ( "lo_db",
-        "logical_inserts_1001.csv",
-        logical_schema,
-        double_schema,
-        logical_to_double_tfxs );
-      ( "lo_ev",
-        "logical_inserts_1001.csv",
-        logical_schema,
-        early_validate_schema,
-        logical_to_early_validate_tfxs );
-      ( "lo_la",
-        "logical_inserts_1001.csv",
-        logical_schema,
-        link_agg_schema,
-        logical_to_link_agg_tfxs );
-      ( "ad_lo",
-        "lo_ad.csv",
-        action_decompose_schema,
-        logical_schema,
-        action_decompose_to_logical_tfxs );
-      ( "ad_ch",
-        "lo_ad.csv",
-        action_decompose_schema,
-        choice_schema,
-        action_decompose_to_choice_tfxs );
-      ( "ad_db",
-        "lo_ad.csv",
-        action_decompose_schema,
-        double_schema,
-        action_decompose_to_double_tfxs );
-      ( "ad_ev",
-        "lo_ad.csv",
-        action_decompose_schema,
+      ("lo", "ad", action_decompose_schema, logical_to_action_decompose_tfxs);
+      ("lo", "ch", choice_schema, logical_to_choice_tfxs);
+      ("lo", "db", double_schema, logical_to_double_tfxs);
+      ("lo", "ev", early_validate_schema, logical_to_early_validate_tfxs);
+      ("lo", "la", link_agg_schema, logical_to_link_agg_tfxs);
+      ("ad", "lo", logical_schema, action_decompose_to_logical_tfxs);
+      ("ad", "ch", choice_schema, action_decompose_to_choice_tfxs);
+      ("ad", "db", double_schema, action_decompose_to_double_tfxs);
+      ( "ad",
+        "ev",
         early_validate_schema,
         action_decompose_to_early_validate_tfxs );
-      ( "ad_la",
-        "lo_ad.csv",
-        action_decompose_schema,
-        link_agg_schema,
-        action_decompose_to_link_agg_tfxs );
-      ( "ch_lo",
-        "lo_ch.csv",
-        choice_schema,
-        logical_schema,
-        choice_to_logical_tfxs );
-      ( "ch_ad",
-        "lo_ch.csv",
-        choice_schema,
-        action_decompose_schema,
-        choice_to_action_decompose_tfxs );
-      ("ch_db", "lo_ch.csv", choice_schema, double_schema, choice_to_double_tfxs);
-      ( "ch_ev",
-        "lo_ch.csv",
-        choice_schema,
-        early_validate_schema,
-        choice_to_early_validate_tfxs );
-      ( "ch_la",
-        "lo_ch.csv",
-        choice_schema,
-        link_agg_schema,
-        choice_to_link_agg_tfxs );
-      ( "db_lo",
-        "lo_db.csv",
-        double_schema,
-        logical_schema,
-        double_to_logical_tfxs );
-      ( "db_ad",
-        "lo_db.csv",
-        double_schema,
-        action_decompose_schema,
-        double_to_action_decompose_tfxs );
-      ("db_ch", "lo_db.csv", double_schema, choice_schema, double_to_choice_tfxs);
-      ( "db_ev",
-        "lo_db.csv",
-        double_schema,
-        early_validate_schema,
-        double_to_early_validate_tfxs );
-      ( "db_la",
-        "lo_db.csv",
-        double_schema,
-        link_agg_schema,
-        double_to_link_agg_tfxs );
-      ( "ev_lo",
-        "lo_ev.csv",
-        early_validate_schema,
-        logical_schema,
-        early_validate_to_logical_tfxs );
-      ( "ev_ad",
-        "lo_ev.csv",
-        early_validate_schema,
+      ("ad", "la", link_agg_schema, action_decompose_to_link_agg_tfxs);
+      ("ch", "lo", logical_schema, choice_to_logical_tfxs);
+      ("ch", "ad", action_decompose_schema, choice_to_action_decompose_tfxs);
+      ("ch", "db", double_schema, choice_to_double_tfxs);
+      ("ch", "ev", early_validate_schema, choice_to_early_validate_tfxs);
+      ("ch", "la", link_agg_schema, choice_to_link_agg_tfxs);
+      ("db", "lo", logical_schema, double_to_logical_tfxs);
+      ("db", "ad", action_decompose_schema, double_to_action_decompose_tfxs);
+      ("db", "ch", choice_schema, double_to_choice_tfxs);
+      ("db", "ev", early_validate_schema, double_to_early_validate_tfxs);
+      ("db", "la", link_agg_schema, double_to_link_agg_tfxs);
+      ("ev", "lo", logical_schema, early_validate_to_logical_tfxs);
+      ( "ev",
+        "ad",
         action_decompose_schema,
         early_validate_to_action_decompose_tfxs );
-      ( "ev_ch",
-        "lo_ev.csv",
-        early_validate_schema,
-        choice_schema,
-        early_validate_to_choice_tfxs );
-      ( "ev_db",
-        "lo_ev.csv",
-        early_validate_schema,
-        double_schema,
-        early_validate_to_double_tfxs );
-      ( "ev_la",
-        "lo_ev.csv",
-        early_validate_schema,
-        link_agg_schema,
-        early_validate_to_link_agg_tfxs );
-      ( "la_lo",
-        "lo_la.csv",
-        link_agg_schema,
-        logical_schema,
-        link_agg_to_logical_tfxs );
-      ( "la_ad",
-        "lo_la.csv",
-        link_agg_schema,
-        action_decompose_schema,
-        link_agg_to_action_decompose_tfxs );
-      ( "la_ch",
-        "lo_la.csv",
-        link_agg_schema,
-        choice_schema,
-        link_agg_to_choice_tfxs );
-      ( "la_db",
-        "lo_la.csv",
-        link_agg_schema,
-        double_schema,
-        link_agg_to_double_tfxs );
-      ( "la_ev",
-        "lo_la.csv",
-        link_agg_schema,
-        early_validate_schema,
-        link_agg_to_early_validate_tfxs );
+      ("ev", "ch", choice_schema, early_validate_to_choice_tfxs);
+      ("ev", "db", double_schema, early_validate_to_double_tfxs);
+      ("ev", "la", link_agg_schema, early_validate_to_link_agg_tfxs);
+      ("la", "lo", logical_schema, link_agg_to_logical_tfxs);
+      ("la", "ad", action_decompose_schema, link_agg_to_action_decompose_tfxs);
+      ("la", "ch", choice_schema, link_agg_to_choice_tfxs);
+      ("la", "db", double_schema, link_agg_to_double_tfxs);
+      ("la", "ev", early_validate_schema, link_agg_to_early_validate_tfxs);
     ]
   in
   (* Map.iteri
@@ -841,24 +759,43 @@ let () =
        ~f:(fun acc (_, _, _, _, _, tfxs) ->
          List.fold tfxs ~init:acc ~f:(fun acc (_, t) ->
              Clause.count_components acc t))); *)
-  List.iteri all_tfxs
-    ~f:(fun _i (_id, input_file, input_schema, output_schema, tfxs) ->
-      (* printf "(%d, %d, \"%s\"),\n" (i + 1)
+  let _ =
+    List.foldi all_tfxs
+      ~init:
+        (Map.singleton
+           (module String)
+           "lo"
+           (List.map
+              (read_csv_by_table
+                 (sprintf "%s/logical_inserts_1001.csv" output_dir)
+                 logical_schema)
+              ~f:(fun (name, mat) -> (Symbol.make name [] 0, mat))))
+      ~f:(fun _i configs (src_id, tgt_id, output_schema, tfxs) ->
+        (* printf "(%d, %d, \"%s\"),\n" (i + 1)
         (List.fold tfxs ~init:0 ~f:(fun acc (_, t) -> acc + Clause.size t))
         id; *)
-      let input_file = sprintf "%s/%s" output_dir input_file in
-      let output_file = sprintf "%s/%s.csv" output_dir _id in
-      let parsed_tables = read_csv_by_table input_file input_schema in
-      let start_time = Time_ns.now () in
-      let translated_tables = transform_mats tfxs parsed_tables in
-      let end_time = Time_ns.now () in
-      let elapsed_time_us =
-        Time_ns.Span.to_ns (Time_ns.diff end_time start_time) /. 1000.0
-      in
-      translated_tables
-      |> List.concat_map ~f:(fun (table_sym, table) ->
-             table_to_csv_lines ~schema:(Some output_schema)
-               table_sym.Symbol.name table)
-      |> Out_channel.write_lines output_file;
-      (* printf "Translating %s completed in %.1f μs\n" name elapsed_time_us) *)
-      printf "(\"%s\", %.1f),\n" _id elapsed_time_us)
+        let output_file = sprintf "%s/%s_%s.csv" output_dir src_id tgt_id in
+        let parsed_tables = Map.find_exn configs src_id in
+        printf "Input:\n%s\n"
+          (parsed_tables |> List.hd_exn |> snd |> Fn.flip List.take 5
+         |> Semantics.MatchActionTable.to_string);
+        let start_time = Time_ns.now () in
+        let translated_tables = transform_mats tfxs parsed_tables in
+        let end_time = Time_ns.now () in
+        printf "Output:\n%s\n"
+          (translated_tables |> List.hd_exn |> snd |> Fn.flip List.take 5
+         |> Semantics.MatchActionTable.to_string);
+        let elapsed_time_us =
+          Time_ns.Span.to_ns (Time_ns.diff end_time start_time) /. 1000.0
+        in
+        translated_tables
+        |> List.concat_map ~f:(fun (table_sym, table) ->
+               table_to_csv_lines ~schema:(Some output_schema)
+                 table_sym.Symbol.name table)
+        |> Out_channel.write_lines output_file;
+        printf "(\"%s_%s\", %.1f),\n" src_id tgt_id elapsed_time_us;
+        match Map.add configs ~key:tgt_id ~data:translated_tables with
+        | `Ok configs -> configs
+        | `Duplicate -> configs)
+  in
+  ()

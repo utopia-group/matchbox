@@ -176,6 +176,14 @@ module Match = struct
       match Trit.Vector.intersect tv1 tv2 with 
       | None -> None
       | Some tv -> Some (Ternary tv))
+    | Ternary tv, Exact v | Exact v, Ternary tv -> 
+      Option.map
+        (Trit.Vector.intersect tv (Trit.Vector.of_bv v))
+        ~f:(fun tv -> (Exact (Trit.Vector.to_bv_exn tv)))
+    | Ternary tv, Lpm (v, _) | Lpm (v, _), Ternary tv ->
+      Option.map
+        (Trit.Vector.intersect tv (Trit.Vector.of_bv v))
+        ~f:(fun tv -> (Lpm (Trit.Vector.to_bv_exn tv, Bit.Vector.length v)))
     | _ -> failwith "TODO"
 
   let empty_intersection m1 m2 = intersect m1 m2 |> Option.is_none
@@ -491,8 +499,8 @@ module MatchAction = struct
         | None, None -> failwith "error: impossible" 
         | Some data, None | None, Some data ->
           Some (Map.add_exn intersection ~key ~data)
-        | Some d1, Some d2 -> 
-          let+ data = Match.intersect d1 d2 in 
+        | Some d1, Some d2 ->
+          let+ data = Match.intersect d1 d2 in
           Map.set intersection ~key ~data
       )
     in
