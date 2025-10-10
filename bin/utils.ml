@@ -226,25 +226,11 @@ let table_to_csv_lines
   in
   List.map table ~f:format_row
 
-let transform_mats (tfxs : t list) (mats : (Symbol.t * MatchActionTable.t) list)
-    : (Symbol.t * MatchActionTable.t) list =
-  let create_config mats =
-    let symbols = List.map mats ~f:fst in
-    let cfg_map =
-      List.fold mats
-        ~init:(Map.empty (module String))
-        ~f:(fun acc (symbol, table) ->
-          Map.set acc ~key:symbol.Symbol.name ~data:table)
-    in
-    Config.{symbols; cfg = cfg_map}
-  in
-  let config = create_config mats in
-  snd
-    (List.fold tfxs ~init:(config, [])
-       ~f:(fun (acc_config, acc_mats) {defined; definition} ->
-         (* eval using acc_config if want to be able to reference tables defined earlier *)
-         let tmp = (defined, BaseInterpreter.eval definition config) in
-         (Config.set acc_config defined (snd tmp), acc_mats @ [tmp])))
+let transform_config (tfxs : t list) (config : Config.t) : Config.t =
+  List.fold tfxs ~init:config ~f:(fun acc_config stmt ->
+      (* eval using acc_config if want to be able to reference tables defined earlier *)
+      let config' = BaseInterpreter.eval config [stmt] in
+      Config.union acc_config config')
 
 let normalize_classbench_config (input_csv : string) (output_csv : string) :
     unit =

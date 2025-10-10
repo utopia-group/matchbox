@@ -22,3 +22,9 @@
  (name eval_acl)
  (modules eval_acl)
  (libraries stijl core utils core_unix.sys_unix))
+
+(executable
+ (public_name csv_to_json)
+ (name csv_to_json)
+ (modules csv_to_json)
+ (libraries stijl core utils yojson))

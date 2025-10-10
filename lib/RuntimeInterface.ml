@@ -3,11 +3,26 @@ open Yojson
 open Semantics
 
 module Insertion = struct
-  type t = { table : string;
-             matches : (string * string) list;
-             action : string list;
-             data : (string * string) list;
-             priority : int;
+  type string_assoc = (string * string) list
+  
+  let string_assoc_to_yojson (alist : string_assoc) : Yojson.Safe.t =
+    `Assoc (List.map alist ~f:(fun (k, v) -> (k, `String v)))
+  
+  let string_assoc_of_yojson (json : Yojson.Safe.t) : (string_assoc, string) Result.t =
+    match json with
+    | `Assoc pairs -> 
+      Ok (List.map pairs ~f:(fun (k, v) -> 
+        match v with 
+        | `String s -> (k, s)
+        | _ -> failwith (Printf.sprintf "expected string value for key %s" k)))
+    | _ -> Error "expected JSON object"
+
+  type t = { 
+    table : string;
+    matches : string_assoc [@to_yojson string_assoc_to_yojson] [@of_yojson string_assoc_of_yojson];
+    action : string list;
+    data : string_assoc [@to_yojson string_assoc_to_yojson] [@of_yojson string_assoc_of_yojson];
+    priority : int;
   } [@@deriving yojson]
 
   let lookup alist x = 
@@ -63,7 +78,7 @@ module Insertion = struct
     if Set.mem aset act then 
       act
     else 
-      failwithf "coulnd't find action %s" (MagmaAction.to_string act) ()  
+      failwithf "couldn't find action %s" (MagmaAction.to_string act) ()  
   | json -> failwithf "expected action to be a toplevel list, got %s" (Safe.to_string json) ()
 
   let convert_datum width = function
@@ -124,3 +139,18 @@ let convert_trace schema (json : Yojson.Safe.t) : BaseLogic.Config.t =
 let parse_trace_file schema filename : BaseLogic.Config.t = 
   Safe.from_file filename
   |> convert_trace schema
+
+let config_to_json (config : BaseLogic.Config.t) : Yojson.Safe.t =
+  let rows =
+    config.cfg |> Map.to_alist
+    |> List.concat_map ~f:(fun (table, entries) ->
+        List.map entries ~f:(fun entry ->
+            Insertion.
+            { table;
+              matches = entry |> MatchAction.get_matches |> Map.map ~f:Match.to_string |> Map.to_alist;
+              action = [Semantics.MagmaAction.to_string (MatchAction.get_action entry)];
+              data = entry |> MatchAction.get_data |> Map.map ~f:Bit.Vector.to_string |> Map.to_alist;
+              priority = 100
+            }))
+  in
+  `List (List.map rows ~f:Insertion.to_yojson)

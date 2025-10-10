@@ -102,7 +102,7 @@ let functional ctx ({defined;definition} : BaseLogic.t) =
     let spec = F.remaining_obligations ctx.gfds new_spec in
     Map.iteri spec ~f:(fun ~key ~data ->
       List.iter data ~f:(fun fd ->
-        Printf.eprintf "Type Error: %s must satisfy %s" key (F.to_string fd);
+        Printf.eprintf "Type Error: %s must satisfy %s\n" key (F.to_string fd);
         had_type_error := true;
       )
     )

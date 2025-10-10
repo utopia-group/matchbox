@@ -1,0 +1,8 @@
+[
+    {
+        "name": "lo_ad",
+        "progpath": "./programs/retargeting/lo_ad.mb",
+        "input": "./programs/retargeting/logical.json",
+        "output": "./programs/retargeting/action_decompose.json"
+    }
+]

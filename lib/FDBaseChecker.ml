@@ -62,8 +62,19 @@ module DepFunDep = struct
 
   let implies (spec : itfc_spec) (table : string) (fd : t) = 
     Option.value_map (find_fd spec table) 
-      ~f:(List.exists ~f:(fd_eq fd))
       ~default:false
+      ~f:(List.exists ~f:(fun fd' ->
+        BExpr.equal fd.refine fd'.refine
+        && Map.equal (=) fd.source fd'.source
+        && (
+          Map.fold2 ~init:true fd.target fd'.target ~f:(fun ~key:_ ~data acc -> 
+            match data with
+            | `Left _ -> false
+            | `Right _ -> acc
+            | `Both (w1, w2) -> if w1 = w2 then acc else false
+          )
+        )
+      ))
 
   let union = Map.merge ~f:(fun ~key -> function 
     | `Left w | `Right w -> Some w

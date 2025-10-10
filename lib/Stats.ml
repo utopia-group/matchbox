@@ -87,6 +87,10 @@ let rec analyze (c : BaseLogic.Clause.t) =
     let s = analyze c1 + analyze c2 in 
     {s with num_joins = Int.add s.num_joins 1} 
     |> incr_size
+  | Override (c1, c2, _) -> 
+    let s = analyze c1 + analyze c2 in 
+    {s with num_override = Int.add s.num_override 1} 
+    |> incr_size
   | Compose (c1,c2, _) -> 
     let s = analyze c1 + analyze c2 in 
     {s with num_compose = Int.add s.num_compose 1}

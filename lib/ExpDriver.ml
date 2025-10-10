@@ -3,7 +3,8 @@ open Yojson
 type t = {
   name : string; 
   progpath: string; 
-  config : string
+  input : string;
+  output : string option;
 } [@@deriving yojson]
 
 
@@ -18,22 +19,26 @@ let run_program config (ctx : ParserContext.t) =
   let eval_in_size = BaseLogic.Config.size config in
   let eval_out_size = BaseLogic.Config.size config' in
   let c = Clock.start() in
-  let min_eval_size = GuardSynthesis.minimize config' in
+  (* let min_eval_size = GuardSynthesis.minimize config' in *)
   let min_eval_time = Clock.stop c +. eval_time in
   let stats = {ctx.stats with 
     eval_time; eval_in_size; eval_out_size;
-    min_eval_time; min_eval_size;
+    min_eval_time;
+    (* min_eval_size; *)
   } in
-  ParserContext.{ctx with stats}
+  config', ParserContext.{ctx with stats}
 let run_ : Safe.t -> unit = function
   | `List ls -> 
     Stats.print_header ();
     List.iter ls ~f:(fun json ->
-      let {name;progpath;config} = of_yojson json |> Result.ok_or_failwith in 
+      let {name;progpath;input;output} = of_yojson json |> Result.ok_or_failwith in 
       let prog = parse_program progpath in 
       let pctx = ParserContext.typecheck prog in 
-      let inconfig = RuntimeInterface.parse_trace_file pctx.typs config in 
-      let pctx = run_program inconfig pctx in
+      let config = RuntimeInterface.parse_trace_file pctx.typs input in 
+      let config', pctx = run_program config pctx in
+      Option.iter output ~f:(fun output ->
+        Safe.to_file output (RuntimeInterface.config_to_json config')
+      );
       Stats.println name pctx.stats
     )
   | json -> 

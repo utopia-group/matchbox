@@ -53,6 +53,14 @@ module Config = struct
       Table.length table  
     )
 
+  let union cfg1 cfg2 = 
+    { symbols = Set.union cfg1.symbols cfg2.symbols;
+      cfg = Map.merge cfg1.cfg cfg2.cfg ~f:(fun ~key -> function
+        | `Left t | `Right t -> Some t
+        | `Both _ ->
+          failwithf "union conflict on table %s" key ())
+    }
+
   let diff (cfg1 : t) (cfg2 : t) : t = 
     { symbols = Set.diff cfg1.symbols cfg2.symbols;
       cfg = Map.filter_keys cfg1.cfg ~f:(Fn.non (Map.mem cfg2.cfg))

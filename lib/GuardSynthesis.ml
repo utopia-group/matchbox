@@ -378,6 +378,7 @@ let encode_table table =
 let minimum_size_table (table : MatchActionTable.t) = 
   let hw, keys, avar, data, phi = encode_table table in
   let rec loop k = 
+    if k > List.length table then failwith "couldn't find minimum table";
     match find_equivalent_of_size k hw keys avar data phi with 
     | None -> loop (k + 1)
     | Some _ -> k

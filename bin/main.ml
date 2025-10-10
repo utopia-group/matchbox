@@ -6,7 +6,7 @@ let main =
   Command.basic ~summary:"Typecheck (and run) a matchstix program"
   [%map_open
     let path = anon ("program" %: string) 
-    and input_file = flag "--config" (optional string) ~doc:"F file containing configuration rules in JSON format"
+    and input_file = flag "--config" (optional string) ~doc:"File containing input configuration rules in JSON format"
     in fun () ->
       let parsed = Parse.parse_program path |> Result.ok_or_failwith in
       let ctx = ParserContext.typecheck parsed in

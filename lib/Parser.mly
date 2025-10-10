@@ -86,7 +86,7 @@ hardware :
 | CAM { Hardware.CAM }
 
 typed_vars :
-| xs = separated_nonempty_list(COMMA, typed_var)
+| xs = separated_list(COMMA, typed_var)
   { String.Map.of_alist_exn xs }
 
 typed_var :

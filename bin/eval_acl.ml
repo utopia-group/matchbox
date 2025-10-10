@@ -212,11 +212,16 @@ let () =
           (Map.empty (module String))
       in
       (* printf "%s\n" (direction_mat |> Semantics.MatchActionTable.to_string); *)
-      let config = [(Symbol.make "acl" [] 0, acl_mat' @ [catch_all])] in
-      config
-      |> List.concat_map ~f:(fun (mat_sym, mat) ->
-             table_to_csv_lines ~schema:(Some acl_schema') mat_sym.Symbol.name
-               mat)
+      let config =
+        Config.
+          {
+            symbols = Set.singleton (module String) "acl";
+            cfg = Map.singleton (module String) "acl" (acl_mat' @ [catch_all]);
+          }
+      in
+      config.cfg
+      |> Map.fold ~init:[] ~f:(fun ~key ~data acc ->
+             acc @ table_to_csv_lines ~schema:(Some acl_schema') key data)
       |> Out_channel.write_lines normalized_config;
       config
   in
@@ -244,26 +249,25 @@ let () =
         (List.fold tfxs ~init:0 ~f:(fun acc (_, t) -> acc + Clause.size t))
         id; *)
         let output_file = sprintf "%s/%s_%s.csv" output_dir src_id tgt_id in
-        let parsed_tables = Map.find_exn configs src_id in
+        let config = Map.find_exn configs src_id in
         printf "Input:\n%s\n"
-          (parsed_tables |> List.hd_exn |> snd |> Fn.flip List.take 5
-         |> Semantics.MatchActionTable.to_string);
+          (config.cfg |> Map.to_alist |> List.hd_exn |> snd
+         |> Fn.flip List.take 5 |> Semantics.MatchActionTable.to_string);
         let start_time = Time_ns.now () in
-        let translated_tables = transform_mats tfxs parsed_tables in
+        let config' = transform_config tfxs config in
         let end_time = Time_ns.now () in
         printf "Output:\n%s\n"
-          (translated_tables |> List.hd_exn |> snd |> Fn.flip List.take 5
-         |> Semantics.MatchActionTable.to_string);
+          (config'.cfg |> Map.to_alist |> List.hd_exn |> snd
+         |> Fn.flip List.take 5 |> Semantics.MatchActionTable.to_string);
         let elapsed_time_us =
           Time_ns.Span.to_ns (Time_ns.diff end_time start_time) /. 1000.0
         in
-        translated_tables
-        |> List.concat_map ~f:(fun (table_sym, table) ->
-               table_to_csv_lines ~schema:(Some output_schema)
-                 table_sym.Symbol.name table)
+        config'.cfg
+        |> Map.fold ~init:[] ~f:(fun ~key ~data acc ->
+               acc @ table_to_csv_lines ~schema:(Some output_schema) key data)
         |> Out_channel.write_lines output_file;
         printf "(\"%s_%s\", %.1f),\n" src_id tgt_id elapsed_time_us;
-        match Map.add configs ~key:tgt_id ~data:translated_tables with
+        match Map.add configs ~key:tgt_id ~data:config' with
         | `Ok configs -> configs
         | `Duplicate -> configs)
   in
