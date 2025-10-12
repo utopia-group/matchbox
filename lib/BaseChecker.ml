@@ -8,19 +8,20 @@ let actions_compat_keys ~first ~second =
   String.Map.equal Int.equal 
     arguments parameters
 
-let rec match_expr_type ctx e : int =
+let rec match_expr_type match_type e : int =
   let open Gpl.Expr in
   match e with
   | BV (_, w) -> w (*, Type.Exact)*)
   | Var x -> 
-    fst (Type.find_matchtype_exn ctx (Var.str x))
+    (* fst (Type.find_matchtype_exn ctx (Var.str x)) *)
+    Map.find_exn match_type (Var.str x)
   | BinOp(_, e1, e2) ->
-    let w1 = match_expr_type ctx e1 in 
-    let w2 = match_expr_type ctx e2 in
+    let w1 = match_expr_type match_type e1 in 
+    let w2 = match_expr_type match_type e2 in
     assert (w1 = w2);
     w1(*, Type.join mk1 mk2*)
   | UnOp (_, e) ->
-    match_expr_type ctx e
+    match_expr_type match_type e
   | Apply _ -> failwith "[typeof] apply"
 
 let rec action_expr_infer datatypes e : Gpl.Expr.t * int =
@@ -42,7 +43,7 @@ let rec action_expr_infer datatypes e : Gpl.Expr.t * int =
   | Apply _ -> failwith "[action_expr_infer] apply"
 
 
-let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : int String.Map.t) : int String.Map.t =
+let match_tfx_type (_ctx : Type.ctx) tfx  (rowtype : int String.Map.t) : int String.Map.t =
   let open MatchTfx in
   match tfx with 
   | Del x ->
@@ -50,7 +51,7 @@ let match_tfx_type (ctx : Type.ctx) tfx  (rowtype : int String.Map.t) : int Stri
   | Project vars -> 
     Map.filter_keys rowtype ~f:(fun k -> List.exists vars ~f:(fun x -> String.equal k (Var.str x)))
   | SetTo (x, e) -> 
-    Map.set rowtype ~key:(Var.str x) ~data:(match_expr_type ctx e)
+    Map.set rowtype ~key:(Var.str x) ~data:(match_expr_type rowtype e)
   | WildCard x -> 
     Map.set rowtype ~key:(Var.str x) ~data:(Var.width x)
   | Filter _ -> rowtype

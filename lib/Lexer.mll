@@ -20,8 +20,10 @@ rule tokens = parse
 | "to" { TO }
 | "limit" { LIMIT }
 | "rows" { ROWS }
+| "assume" { ASSUME }
 | "o--" { MATCHSTICK }
 | "->" { ARROW }
+| "--->" { FDARROW }
 | ">>" { COMPOSE }
 | ":=" { ASSIGN }
 | ";" { SEMICOLON }

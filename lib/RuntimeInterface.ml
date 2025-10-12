@@ -5,10 +5,10 @@ open Semantics
 module Insertion = struct
   type string_assoc = (string * string) list
   
-  let string_assoc_to_yojson (alist : string_assoc) : Yojson.Safe.t =
+  let string_assoc_to_yojson (alist : string_assoc) : Safe.t =
     `Assoc (List.map alist ~f:(fun (k, v) -> (k, `String v)))
   
-  let string_assoc_of_yojson (json : Yojson.Safe.t) : (string_assoc, string) Result.t =
+  let string_assoc_of_yojson (json : Safe.t) : (string_assoc, string) Result.t =
     match json with
     | `Assoc pairs -> 
       Ok (List.map pairs ~f:(fun (k, v) -> 
@@ -56,7 +56,7 @@ module Insertion = struct
     | json -> failwithf "failed to get match from %s" (Safe.to_string json) ()
 
 
-  let convert_match (ttype : Type.table) : Yojson.Safe.t -> MatchExpression.t = function 
+  let convert_match (ttype : Type.table) : Safe.t -> MatchExpression.t = function 
     | `Assoc matches -> 
       List.fold matches ~init:MatchExpression.empty ~f:(fun mexpr (k, v) -> 
           extract_match ttype.hw v
@@ -105,7 +105,7 @@ module Insertion = struct
   | json -> 
     failwithf "Priority must be an int, got %s" (Safe.to_string json) ()
 
-  let convert_row schema (json : Yojson.Safe.t) : string * MatchAction.t * int =
+  let convert_row schema (json : Safe.t) : string * MatchAction.t * int =
     match json with 
     | `Assoc dict ->
       let table, ttyp = dict %!! "table" |> convert_table schema in
@@ -119,7 +119,7 @@ module Insertion = struct
 
 end
 
-let convert_trace schema (json : Yojson.Safe.t) : BaseLogic.Config.t =
+let convert_trace schema (json : Safe.t) : BaseLogic.Config.t =
   let open BaseLogic in 
   match json with 
   | `List raw_rows ->
@@ -140,7 +140,7 @@ let parse_trace_file schema filename : BaseLogic.Config.t =
   Safe.from_file filename
   |> convert_trace schema
 
-let config_to_json (config : BaseLogic.Config.t) : Yojson.Safe.t =
+let config_to_json (config : BaseLogic.Config.t) : Safe.t =
   let rows =
     config.cfg |> Map.to_alist
     |> List.concat_map ~f:(fun (table, entries) ->

@@ -14,10 +14,10 @@ module DepFunDep = struct
       |> List.map ~f:(fun (name, width) -> 
         Printf.sprintf "%s : %i" name width  
       )
-      |> String.concat ~sep:","
+      |> String.concat ~sep:", "
     in
     Printf.sprintf 
-      "{%s | %s } ---> {%s}"
+      "{%s | %s} ---> {%s}"
       (aux source)
       (BExpr.to_smtlib refine)
       (aux target)
@@ -171,12 +171,29 @@ module DepFunDep = struct
       assert (Set.is_subset matchset ~of_:xsset);
       check ctx c goal
     | MapIn(c, Del x, _) | MapIn(c, WildCard x, _ ) ->
-      assert (not (Map.mem goal.source (Var.str x)));
+      (* assert (not (Map.mem goal.source (Var.str x))); *)
       assert (not (Set.exists (BExpr.free_vars goal.refine) ~f:(Var.equal x)));
-      check ctx c goal
+      let goal' = 
+        {goal with
+         (* TODO: *)
+         (* refine = BExpr.subst x TTrue goal.refine; *)
+         source = Map.remove goal.source (Var.str x)}
+      in
+      check ctx c goal'
     | MapIn(c, SetTo(x,e), _) -> 
-      let refine = BExpr.subst x e goal.refine  in
-      check ctx c {goal with refine}
+      let refine = BExpr.subst x e goal.refine in
+      let goal' =
+        {goal with
+         source = match e with
+         | Var x' ->
+           Map.remove
+             (Map.set goal.source
+                      ~key:(Var.str x')
+                      ~data:(Map.find_exn goal.source (Var.str x)))
+             (Var.str x)
+         | _ -> failwith "unimplemented"}
+      in
+      check ctx c {goal' with refine}
     | MapIn(c, CubeFilter cube,_ ) ->
       let phi = Semantics.Match.map_to_bexpr cube in 
       check ctx c {goal with refine = BExpr.and_ phi goal.refine}

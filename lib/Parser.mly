@@ -11,6 +11,7 @@
 %token <string> BV
 %token MATCHSTICK
 %token ARROW
+%token FDARROW
 %token SEMICOLON
 %token COLON
 %token TIMES
@@ -47,6 +48,7 @@
 %token CAM
 %token LIMIT
 %token ROWS
+%token ASSUME
 
 %left COMPOSE SEMICOLON
 
@@ -68,6 +70,11 @@ tmatchstick : m = terminated(matchstick, DOT) { m }
 matchstick :
 | LIMIT; table = ID; TO; n = INT; option(ROWS);
     { ParserContext.(empty |> add_resource_limit table n) }
+| ASSUME; table = ID; COLON; LBRACE; source = typed_vars; BAR; phi = formula; RBRACE; FDARROW; target = delimited(LBRACE, typed_vars, RBRACE);
+    {   let open ParserContext in
+        let typ = FDBaseChecker.DepFunDep.{refine = phi; source; target} in
+        refine_type table typ empty
+    }
 | hw = hardware; table = ID; 
     keys = delimited(LPAREN, typed_vars, RPAREN);
     COLON;
@@ -130,7 +137,7 @@ algebra :
     { Clause.(c |>> OutTfx.SetTo(x, e))}
 | c = algebra; COMPOSE; DELETE; DATA; x = var
     { Clause.(c |>> OutTfx.Del (x) )}
-| c = algebra; COMPOSE; RENAME; old_name = action; TO new_name = action
+| c = algebra; COMPOSE; RENAME; old_name = action; TO; new_name = action
     { Clause.(c |>> OutTfx.Rename (old_name, new_name))  }
 | c = algebra; COMPOSE; ADD; name = action
     { Clause.(c |>> OutTfx.Add name)  }

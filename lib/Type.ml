@@ -11,8 +11,6 @@ type table = { hw : Semantics.Hardware.t;
 
 type t = 
   | Table of table
-  | Var of varwidth
-  | Match of (varwidth * match_kind)
   [@@deriving sexp, compare]
 
 let to_string (tau : t) = 
@@ -75,7 +73,6 @@ let join mk1 mk2 =
 
 let get_table = function 
   | Table t -> Some t
-  | _ -> None
 
 let get_table_exn typ = 
   get_table typ
@@ -132,23 +129,6 @@ let union_data_exn sdata tdata : varwidth String.Map.t =
   | `Left w | `Right w -> Some w
   )
 
-let get_varwidth = function 
-  | Var w -> Some w
-  | _ -> None
-
-let get_match_type = function 
-  | Match m -> Some m
-  | _ -> None
-
-
-let get_varwidth_exn t =
-  get_varwidth t
-  |> Option.value_exn ~message:"Expected varwidth got something else"
-
-let get_match_type_exn t =
-  get_match_type t
-  |> Option.value_exn ~message:"Expected match type got something else"
-
 let find_exn (ctx : ctx) x =
   Map.find ctx x
   |> Option.value_exn ~message:("Could not find " ^ x ^ " in type context")
@@ -161,14 +141,6 @@ let find_action_exn ctx t =
   find_exn ctx t
   |> get_action_exn 
 
-let find_varwidth_exn ctx t =
-  find_exn ctx t 
-  |> get_varwidth_exn
-
-let find_matchtype_exn ctx s = 
-  find_exn ctx s 
-  |> get_match_type_exn
-
 let find_keys_exn (ctx : ctx) (name : string): (string * int) list =
   find_table_exn ctx name
   |> get_keys
@@ -178,17 +150,10 @@ let get_table_actions (ctx : ctx) t = (find_table_exn ctx t).actions
 let is_table typ = 
   get_table typ 
   |> Option.is_some
-let is_var typ = 
-  get_varwidth typ
-  |> Option.is_some
 
 let is_action typ = 
   get_action typ
   |> Option.is_some
-
-let is_var_width w typ = 
-    get_varwidth typ 
-    |> Option.value_map ~f:((=) w) ~default:false
 
 let get_names ~f (ctx : ctx) = 
     Map.fold ctx ~init:[] ~f:(fun ~key ~data ctx -> 
@@ -200,13 +165,5 @@ let get_names ~f (ctx : ctx) =
 
 let get_tables = get_names ~f:is_table
 let get_all_actions = get_names ~f:is_action
-let get_vars = Map.fold ~init:[] ~f:(fun ~key ~data vars -> 
-    match data with 
-    | Var w -> 
-      (key, w)::vars
-    | _ -> vars
-  )
-
-let get_vars_width w = get_names ~f:(is_var_width w)
 
 let get_type_exn (ctx : ctx) name = Map.find_exn ctx name

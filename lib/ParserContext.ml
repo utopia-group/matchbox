@@ -38,32 +38,39 @@ let add_type (tbl : string) (tau : T.t) (p : t) : t =
       gfds = Map.add_multi p.gfds ~key:tbl ~data:(F.fd_of_typ tau)
   }
 
-let complete_clause (clause : Clause.t option) (table : string) (typ : T.t) : Clause.t option =
+let refine_type (tbl : string) (fd : F.t) (p : t) : t =
+  {p with gfds = Map.add_multi p.gfds ~key:tbl ~data:fd}
+
+let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t) : Clause.t option =
+  let table_typ = T.get_table_exn typ in
   Option.map clause ~f:(fun c ->
     match c with
-    | Table (_, t, t_typ) ->
-      let typ = T.get_table_exn typ in
+    | Table (_, t, c_typ) ->
       Clause.Table (table,
         List.map t ~f:(fun ma ->
           Semantics.MatchAction.{
             ma with
-            hw = typ.hw;
+            hw = table_typ.hw;
             matches =
               List.fold2_exn
                 (Map.to_alist ma.matches)
-                (Map.to_alist typ.keys)
+                (Map.to_alist table_typ.keys)
                 ~init:(Map.empty (module String))
                 (* TODO: typecheck here? *)
                 ~f:(fun acc (_, match_) (key, _) -> Map.set acc ~key ~data:match_);
             data =
               List.fold2_exn
                 (Map.to_alist ma.data)
-                (Map.to_alist typ.data)
+                (Map.to_alist table_typ.data)
                 ~init:(Map.empty (module String))
                 (* TODO: typecheck here? *)
                 ~f:(fun acc (_, bv) (key, _) -> Map.set acc ~key ~data:bv)
           }
-        ), t_typ)
+        ), c_typ)
+    | MapIn (c', WildCard x, c_typ) ->
+      let w = Map.find_exn table_typ.keys (Var.str x) in
+      let completed_c' = Option.value_exn (complete_clause (Some c') table typ) in
+      MapIn (completed_c', WildCard (Var.make (Var.str x) w), c_typ)
     | _ -> c
   )
 
