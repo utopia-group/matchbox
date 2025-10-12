@@ -88,6 +88,10 @@ let data_tfx_type tfx (actions : Type.ActionSet.t) (datatypes : int String.Map.t
     Rename (a1,a2),
     Set.(add (remove actions a1) a2), 
     datatypes
+  | Add a ->
+    Add a,
+    Set.add actions a, 
+    datatypes
 
 
 let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t = 
@@ -97,13 +101,15 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
   | Id (f, None) -> 
     let typ = Type.(Table (find_table_exn ctx f.name)) in
     Id (f, Some typ)
-  | Table (t, _) ->
+  | Table (name, t, _) ->
     let keys = String.Map.of_alist_exn (MatchActionTable.keys t) in 
     let actions = Type.ActionSet.of_list (MatchActionTable.action_names t) in 
+    let typ_actions = Type.get_table_actions ctx name in
+    assert (Set.is_subset actions ~of_:typ_actions);
     let data = MatchActionTable.data t in 
     let hw = MatchActionTable.hw t in 
-    let typ = Type.Table {hw; keys; actions; data} in
-    Table (t, Some typ)
+    let typ = Type.Table {hw; keys; actions = typ_actions; data} in
+    Table (name, t, Some typ)
   | Join (f, g, None) ->
     let f = infer ctx f in 
     let g = infer ctx g in 

@@ -4,5 +4,23 @@
         "progpath": "./programs/retargeting/lo_ad.mb",
         "input": "./programs/retargeting/logical.json",
         "output": "./programs/retargeting/action_decompose.json"
+    },
+    {
+        "name": "lo_ch",
+        "progpath": "./programs/retargeting/lo_ch.mb",
+        "input": "./programs/retargeting/logical.json",
+        "output": "./programs/retargeting/choice.json"
+    },
+    {
+        "name": "lo_db",
+        "progpath": "./programs/retargeting/lo_db.mb",
+        "input": "./programs/retargeting/logical.json",
+        "output": "./programs/retargeting/double.json"
+    },
+    {
+        "name": "lo_ev",
+        "progpath": "./programs/retargeting/lo_ev.mb",
+        "input": "./programs/retargeting/logical.json",
+        "output": "./programs/retargeting/early_validate.json"
     }
 ]

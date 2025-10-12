@@ -15,6 +15,7 @@ type t = {
   num_data_adds : int;
   num_data_dels : int;
   num_action_renames : int;
+  num_action_adds : int;
   eval_time : float;
   eval_in_size : int;
   eval_out_size : int;
@@ -40,6 +41,7 @@ let empty =
     num_data_adds = 0;
     num_data_dels = 0;
     num_action_renames = 0;
+    num_action_adds = 0;
     eval_time = 0.;
     eval_in_size = 0;
     eval_out_size = 0;
@@ -65,6 +67,7 @@ let (+) s1 s2 =
     num_data_adds = s1.num_data_adds + s2.num_data_adds;
     num_data_dels = s1.num_data_dels + s2.num_data_dels;
     num_action_renames = s1.num_action_renames + s2.num_action_renames;
+    num_action_adds = s1.num_action_adds + s2.num_action_adds;
     eval_time = s1.eval_time +. s2.eval_time;
     eval_in_size = s1.eval_in_size + s2.eval_in_size;
     eval_out_size = s1.eval_out_size + s2.eval_out_size;
@@ -106,6 +109,10 @@ let rec analyze (c : BaseLogic.Clause.t) =
   | MapOut (c, Rename _, _) ->
     let s = analyze c in 
     {s with num_action_renames = Int.add s.num_action_renames 1}
+    |> incr_size
+  | MapOut (c, Add _, _) ->
+    let s = analyze c in 
+    {s with num_action_adds = Int.add s.num_action_adds 1}
     |> incr_size
   | MapIn (c, Del _, _) -> 
     let s = analyze c in 

@@ -7,8 +7,10 @@
 }
 
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let bv = "0b" ['0' '1' '*']+
 
 rule tokens = parse
+| "//" [^ '\n']* { tokens lexbuf }
 | [' ' '\t' '\n'] { tokens lexbuf }
 | ['0'-'9']+ as i { INT (Int.of_string i) }
 | "action" { ACTION }
@@ -19,6 +21,7 @@ rule tokens = parse
 | "limit" { LIMIT }
 | "rows" { ROWS }
 | "o--" { MATCHSTICK }
+| "->" { ARROW }
 | ">>" { COMPOSE }
 | ":=" { ASSIGN }
 | ";" { SEMICOLON }
@@ -26,6 +29,7 @@ rule tokens = parse
 | "," { COMMA }
 | "*" { TIMES }
 | "." { DOT }
+| "|" { BAR }
 | "[" { LSQUARE }
 | "]" { RSQUARE }
 | "(" { LPAREN }
@@ -38,6 +42,7 @@ rule tokens = parse
 | "false" { FALSE }
 | "filter" { FILTER }
 | "rename" { RENAME }
+| "add" { ADD }
 | "tcam" { TCAM }
 | "cam" { CAM }
 | "lpm" { LPM }
@@ -46,5 +51,6 @@ rule tokens = parse
 | "||" { OR }
 | "=>" { IMP }
 | id as x         { ID x }
+| bv as x         { BV x }
 | _  as c { raise (ParseError (Printf.sprintf "At offset %d: unexpected character %c.\n" (Lexing.lexeme_start lexbuf) c)) }
 | eof { EOF }

@@ -184,7 +184,7 @@ let ipv42 = Symbol.make "ipv42" [] 0
 let punt2 = Symbol.make "punt2" [] 0
 
 let create_staging : Clause.t =
-  Clause.table
+  Clause.table "staging"
     [
       MatchAction.make TCAM
         (Map.singleton
@@ -268,7 +268,8 @@ let create_lookup : Clause.t =
     else nexthop
   in
   Clause.Table
-    ( Bit.Vector.enumerate 9
+    ( "lookup",
+      Bit.Vector.enumerate 9
       |> List.fold
            ~init:([], Set.empty (module Int))
            ~f:(fun (mas, seen_nexthops) port ->
@@ -319,7 +320,6 @@ let logical_to_link_agg_tfxs : t list =
     {defined = punt; definition = Clause.id punt};
   ]
 
-(* Original hardcoded transformation *)
 (* let ethernet_to_ethernet : Clause.t =
   Clause.(
     id ethernet

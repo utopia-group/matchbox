@@ -8,7 +8,9 @@
 
 %token <int> INT
 %token <string> ID
+%token <string> BV
 %token MATCHSTICK
+%token ARROW
 %token SEMICOLON
 %token COLON
 %token TIMES
@@ -21,6 +23,7 @@
 %token DOT
 %token ASSIGN
 %token EOF
+%token BAR
 %token LSQUARE
 %token RSQUARE
 %token LPAREN
@@ -38,6 +41,7 @@
 %token FILTER
 %token COMMA
 %token RENAME
+%token ADD
 %token TCAM
 %token LPM
 %token CAM
@@ -76,7 +80,7 @@ matchstick :
         let typ = Type.(Table {hw; keys; actions; data}) in
         empty
         |> add_type table typ
-        |> opt_add_def defined clause
+        |> opt_add_def defined (complete_clause clause table typ)
         |> update_stats clause
     }
 
@@ -94,6 +98,18 @@ typed_var :
     { (x, w) }
 
 algebra :
+| BAR; bvs = separated_list(COMMA, BV); ARROW; action = ID; LPAREN; data = separated_list(COMMA, BV); RPAREN; BAR
+    {   Clause.table "" [
+            MatchAction.make TCAM
+                (bvs
+                 |> List.map ~f:(fun bv -> ("", bv |> Trit.Vector.of_string |> Match.Ternary))
+                 |> Map.of_alist_exn (module String))
+                (MagmaAction.make action)
+                (data
+                 |> List.map ~f:(fun bv -> ("", Bit.Vector.of_string bv))
+                 |> Map.of_alist_exn (module String))
+        ]
+    }
 | name = ID 
     { Clause.id (Symbol.make name [] (-1)) }
 | c1 = algebra; TIMES; c2 = algebra 
@@ -116,6 +132,8 @@ algebra :
     { Clause.(c |>> OutTfx.Del (x) )}
 | c = algebra; COMPOSE; RENAME; old_name = action; TO new_name = action
     { Clause.(c |>> OutTfx.Rename (old_name, new_name))  }
+| c = algebra; COMPOSE; ADD; name = action
+    { Clause.(c |>> OutTfx.Add name)  }
 
 var : 
 | x = ID; 

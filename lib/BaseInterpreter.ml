@@ -135,7 +135,7 @@ let apply_out_tfx state row tfx =
       state,
       new_action,
       data
-    | Rename _ -> 
+    | Rename _ | Add _ -> 
       state,
       action,
       data
@@ -147,7 +147,7 @@ let rec eval_inner (clause : Clause.t) (config : Config.t) (state : NonceState.t
   match clause with
   | Id (f,_) -> 
     state, get_mat config f
-  | Table (t, _) -> 
+  | Table (_, t, _) -> 
     state, t
   | Join (f, g, _) ->
     let state, f_mat = eval_inner f config state in

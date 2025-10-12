@@ -17,7 +17,7 @@ let rec calculate_max_cost (ctx : ctx) : Clause.t -> rsc = function
   | Id (f, _) -> find_cost ctx f
   | Compose (f, _, _) | MapOut (f, _, _) | MapIn(f, _, _) -> 
     calculate_max_cost ctx f
-  | Table (t, _) ->
+  | Table (_, t, _) ->
     List.length t
   | Join (f, g, _) -> 
     calculate_max_cost ctx f * calculate_max_cost ctx g

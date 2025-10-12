@@ -1,0 +1,42 @@
+tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
+tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop].
+tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop].
+
+tcam ethernet_validate (etherType : 16, isValid : 1, ttl : 8) : {} [malformed ok]
+o--
+    punt >>
+    delete key version >>
+    delete key srcAddr >>
+    delete key dstAddr >>
+    rename drop to malformed >>
+    add ok.
+
+tcam ipv4_validate (version : 4, ttl : 8) : {} [malformed ok]
+o--
+    punt >>
+    delete key etherType >>
+    delete key isValid >>
+    delete key srcAddr >>
+    delete key dstAddr >>
+    rename drop to malformed >>
+    add ok.
+
+tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+o--
+    ipv4.
+
+tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+o--
+    ethernet.
+
+tcam acl (eth_srcAddr : 48, eth_dstAddr : 48, ipv4_srcAddr : 32, ipv4_dstAddr : 32) : {} [drop]
+o--
+    punt >>
+    delete key etherType >>
+    delete key isValid >>
+    delete key version >>
+    delete key ttl >>
+    key ipv4_srcAddr := srcAddr >>
+    key ipv4_dstAddr := dstAddr >>
+    ignore key eth_srcAddr >>
+    ignore key eth_dstAddr.

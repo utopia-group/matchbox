@@ -38,6 +38,35 @@ let add_type (tbl : string) (tau : T.t) (p : t) : t =
       gfds = Map.add_multi p.gfds ~key:tbl ~data:(F.fd_of_typ tau)
   }
 
+let complete_clause (clause : Clause.t option) (table : string) (typ : T.t) : Clause.t option =
+  Option.map clause ~f:(fun c ->
+    match c with
+    | Table (_, t, t_typ) ->
+      let typ = T.get_table_exn typ in
+      Clause.Table (table,
+        List.map t ~f:(fun ma ->
+          Semantics.MatchAction.{
+            ma with
+            hw = typ.hw;
+            matches =
+              List.fold2_exn
+                (Map.to_alist ma.matches)
+                (Map.to_alist typ.keys)
+                ~init:(Map.empty (module String))
+                (* TODO: typecheck here? *)
+                ~f:(fun acc (_, match_) (key, _) -> Map.set acc ~key ~data:match_);
+            data =
+              List.fold2_exn
+                (Map.to_alist ma.data)
+                (Map.to_alist typ.data)
+                ~init:(Map.empty (module String))
+                (* TODO: typecheck here? *)
+                ~f:(fun acc (_, bv) (key, _) -> Map.set acc ~key ~data:bv)
+          }
+        ), t_typ)
+    | _ -> c
+  )
+
 let opt_add_def (defined : Symbol.t) (clause : Clause.t option) (p : t) : t =
   match clause with
   | None -> p

@@ -115,9 +115,9 @@ module DepFunDep = struct
     match clause with 
     | Id (f, _) -> 
       Map.add_multi ctx ~key:f.name ~data:goal
-    | Table (_, None) -> 
+    | Table (_, _, None) -> 
       failwith "Must run base type interpreter before FDChecker"
-    | Table (_, Some typ) -> 
+    | Table (_, _, Some typ) -> 
       assert (fd_eq (fd_of_typ typ) goal);
       ctx
     | Join (c1, c2, _) -> 
@@ -163,7 +163,7 @@ module DepFunDep = struct
     | MapOut(c, Del x, _) -> 
       assert (not (Map.mem goal.target (Var.str x)));
       check ctx c goal
-    | MapOut(c, Rename _, _) ->
+    | MapOut(c, Rename _, _) | MapOut(c, Add _, _) ->
       check ctx c goal
     | MapIn(c, Project xs, _) -> 
       let xsset = String.Set.of_list (List.map ~f:Var.str xs) in 

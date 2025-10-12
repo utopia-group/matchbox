@@ -94,13 +94,14 @@ module OutTfx = struct
     | Project of Var.t list
     | SetTo of Var.t * Expr.t
     | Rename of MagmaAction.t * MagmaAction.t
+    | Add of MagmaAction.t
 end
 
 module Clause = struct
   type f = Symbol.t [@@deriving sexp, compare]
   type t =
     | Id of f * Type.t option
-    | Table of Semantics.MatchActionTable.t * Type.t option
+    | Table of string * Semantics.MatchActionTable.t * Type.t option
     | Join of t * t * Type.t option
     | Override of t * t * Type.t option
     | Compose of t * t * Type.t option (* diagram order *)
@@ -109,7 +110,7 @@ module Clause = struct
 
   let typeof_exn = function 
     | Id (_, Some t)
-    | Table (_, Some t)
+    | Table (_, _, Some t)
     | Join (_, _, Some t)
     | Compose (_, _, Some t)
     | MapOut (_, _, Some t)
@@ -131,7 +132,7 @@ module Clause = struct
   let mapin c tfx = MapIn (c, tfx, None)
   let (<<|) tfx c = mapin c tfx
 
-  let table mat = Table(mat, None)
+  let table name mat = Table(name, mat, None)
 
   let rec size c =
     (match c with
@@ -180,7 +181,7 @@ module Clause = struct
             f_components
             "\\rangeop{\\cdot}{[a \\mapsto a']}"
             ~f:(Option.value_map ~default:1 ~f:((+) 1))
-        | Nonce _ -> failwith "TODO")
+        | Add _ |  Nonce _ -> failwith "TODO")
     | MapIn (f, tfx, _) -> (
       let f_components = count_components cnts f in
       match tfx with
