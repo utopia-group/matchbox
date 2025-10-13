@@ -1,0 +1,30 @@
+tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
+tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop].
+tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop].
+
+tcam lookup (port : 9, nexthop : 32) : {port : 9, nexthop : 32} [_]
+o--
+    forall port := enumerate(9), nexthop := unique(32):
+        |port, nexthop -> _(port, nexthop)|.
+
+assume lookup : {nexthop : 32 | true} ---> {port : 9}.
+
+tcam nexthop (nexthop : 32) : {port : 9} [set_port drop]
+o--
+    lookup
+    >> delete key port
+    >> delete data nexthop
+    >> rename _ to set_port
+    >> add drop.
+
+// tcam ethernet (dstAddr : 48) : {nexthop : 9} [fwd nop]
+// o--
+//     ethernet.
+
+// tcam ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop]
+// o--
+//     ipv4.
+
+// tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop]
+// o--
+//     punt.

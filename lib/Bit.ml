@@ -86,7 +86,7 @@ module Vector = struct
     in
     loop width
 
-  let random ?(seed = Some 20) width =
+  let random ?(seed = None) width =
     Option.iter seed ~f:Random.init;
     List.init width ~f:(fun _ -> Random.bool ())
 

@@ -42,7 +42,6 @@ let refine_type (tbl : string) (fd : F.t) (p : t) : t =
   {p with gfds = Map.add_multi p.gfds ~key:tbl ~data:fd}
 
 let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t) : Clause.t option =
-  let table_typ = T.get_table_exn typ in
   Option.map clause ~f:(fun c ->
     match c with
     | Table (_, t, c_typ) ->
@@ -50,29 +49,97 @@ let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t) 
         List.map t ~f:(fun ma ->
           Semantics.MatchAction.{
             ma with
-            hw = table_typ.hw;
+            hw = typ.hw;
             matches =
-              List.fold2_exn
+            (match
+              List.fold2
                 (Map.to_alist ma.matches)
-                (Map.to_alist table_typ.keys)
+                (Map.to_alist typ.keys)
                 ~init:(Map.empty (module String))
                 (* TODO: typecheck here? *)
-                ~f:(fun acc (_, match_) (key, _) -> Map.set acc ~key ~data:match_);
+                ~f:(fun acc (_, match_) (key, _) -> Map.set acc ~key ~data:match_)
+            with
+            | Ok matches -> matches
+            | Unequal_lengths -> ma.matches);
             data =
-              List.fold2_exn
+            match 
+              List.fold2
                 (Map.to_alist ma.data)
-                (Map.to_alist table_typ.data)
+                (Map.to_alist typ.data)
                 ~init:(Map.empty (module String))
                 (* TODO: typecheck here? *)
                 ~f:(fun acc (_, bv) (key, _) -> Map.set acc ~key ~data:bv)
+            with
+            | Ok data -> data
+            | Unequal_lengths -> ma.data
           }
         ), c_typ)
     | MapIn (c', WildCard x, c_typ) ->
-      let w = Map.find_exn table_typ.keys (Var.str x) in
+      let w = Map.find_exn typ.keys (Var.str x) in
       let completed_c' = Option.value_exn (complete_clause (Some c') table typ) in
       MapIn (completed_c', WildCard (Var.make (Var.str x) w), c_typ)
+    | MapIn (c', tfx, c_typ) -> 
+      let completed_c' = Option.value_exn (complete_clause (Some c') table typ) in
+      MapIn (completed_c', tfx, c_typ)
+    | MapOut (c', tfx, c_typ) -> 
+      let completed_c' = Option.value_exn (complete_clause (Some c') table typ) in
+      MapOut (completed_c', tfx, c_typ)
     | _ -> c
   )
+
+let create_table keys action data =
+  let open Semantics in
+  Clause.table "" [
+    MatchAction.make TCAM
+        (keys
+          |> List.map ~f:(fun bv -> ("", bv |> Trit.Vector.of_string |> Match.Ternary))
+          |> Map.of_alist_exn (module String))
+        (MagmaAction.make action)
+        (data
+          |> List.map ~f:(fun bv -> ("", Bit.Vector.of_string bv))
+          |> Map.of_alist_exn (module String))
+  ]
+
+let bulk_create_table decls keys action data =
+  let rec make_unique seen data =
+    if Set.mem seen (Bit.Vector.to_int data) then
+      make_unique seen (Bit.Vector.incr data)
+    else
+      (data, Set.add seen (Bit.Vector.to_int data))
+  in
+  let open Semantics in
+  let enums, rest = List.partition_tf decls
+    ~f:(function (_, "enumerate", _) -> true | _ -> false)
+  in
+  enums
+  |> List.fold ~init:[Map.empty (module String)]
+    ~f:(fun acc (x, _, w) ->
+      List.map (List.cartesian_product acc (Bit.Vector.enumerate w))
+        ~f:(fun (row, a) -> Map.set row ~key:x ~data:a))
+  |> List.fold 
+    ~init:([], List.fold rest ~init:(Map.empty (module String))
+      ~f:(fun acc (x, _, _) -> Map.set acc ~key:x ~data:(Set.empty (module Int))))
+    ~f:(fun (rows, seen) row ->
+      let row', seen' =
+        List.fold rest
+          ~init:(row, seen)
+          ~f:(fun (row, seen) (x, f, w) ->
+            assert (String.(f = "unique"));
+            let data, seen' = make_unique (Map.find_exn seen x) (Bit.Vector.random w) in
+            Map.set row ~key:x ~data, Map.set seen ~key:x ~data:seen')
+      in
+      row' :: rows, seen')
+  |> fst
+  |> List.map ~f:(fun row ->
+    MatchAction.make TCAM
+      (Map.of_alist_exn
+        (module String)
+        (List.map keys ~f:(fun k -> k, Match.exact (Map.find_exn row k))))
+      (MagmaAction.make action)
+      (Map.of_alist_exn
+        (module String)
+        (List.map data ~f:(fun k -> k, Map.find_exn row k))))
+  |> Clause.table ""
 
 let opt_add_def (defined : Symbol.t) (clause : Clause.t option) (p : t) : t =
   match clause with
@@ -121,7 +188,7 @@ let well_formed ctx ({defined;definition} : BaseLogic.t) =
   let annotated = BaseChecker.infer ctx.typs definition in
   let table_name = Symbol.to_string defined in 
   let expected_type = Map.find_exn ctx.typs table_name in
-  let computed_type = Type.Table (Clause.typeof_exn annotated) in
+  let computed_type = Clause.typeof_exn annotated in
   if not Type.(equal expected_type computed_type) then 
     failwithf "Expected table %s to have type:\n\t%s\nbut it had type:\n\t%s" 
       table_name 

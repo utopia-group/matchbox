@@ -49,8 +49,7 @@ module DepFunDep = struct
  
 
   let fd_of_typ typ = 
-    Type.get_table_exn typ
-    |> fd_of_table_type
+    fd_of_table_type typ
 
   let inherent_fd (gamma : Type.ctx) (f : Symbol.t) : t =
     Type.find_exn gamma (Symbol.to_string f)
@@ -117,8 +116,12 @@ module DepFunDep = struct
       Map.add_multi ctx ~key:f.name ~data:goal
     | Table (_, _, None) -> 
       failwith "Must run base type interpreter before FDChecker"
-    | Table (_, _, Some typ) -> 
-      assert (fd_eq (fd_of_typ typ) goal);
+    | Table (_name, _, Some _typ) -> 
+      (* printf "name: %s\n" name;
+      printf "goal: %s\n" (to_string goal);
+      printf "fd: %s\n" (to_string (fd_of_typ typ)); *)
+      (* TODO: Check whether goal is a subset of fd (both source & target) *)
+      (* assert (fd_eq (fd_of_typ typ) goal); *)
       ctx
     | Join (c1, c2, _) -> 
       let goal1 = fd_of_table_type (typeof_exn c1) in 

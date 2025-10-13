@@ -14,7 +14,7 @@ let parse_program path =
 
 let run_program config (ctx : ParserContext.t) =
   let c = Clock.start () in
-  let _, config' = BaseInterpreter.eval_program config ctx.prog in
+  let config' = BaseInterpreter.eval config ctx.prog in
   let eval_time = Clock.stop c in  
   let eval_in_size = BaseLogic.Config.size config in
   let eval_out_size = BaseLogic.Config.size config' in

@@ -273,7 +273,9 @@ let create_lookup : Clause.t =
       |> List.fold
            ~init:([], Set.empty (module Int))
            ~f:(fun (mas, seen_nexthops) port ->
-             let nexthop = make_unique seen_nexthops (Bit.Vector.random 32) in
+             let nexthop =
+               make_unique seen_nexthops (Bit.Vector.random ~seed:(Some 42) 32)
+             in
              ( MatchAction.make TCAM
                  (Map.of_alist_exn
                     (module String)

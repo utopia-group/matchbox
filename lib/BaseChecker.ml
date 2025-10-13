@@ -100,7 +100,7 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
   let open Clause in
   match clause with 
   | Id (f, None) -> 
-    let typ = Type.(Table (find_table_exn ctx f.name)) in
+    let typ = Type.find_table_exn ctx f.name in
     Id (f, Some typ)
   | Table (name, t, _) ->
     let keys = String.Map.of_alist_exn (MatchActionTable.keys t) in 
@@ -109,7 +109,7 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
     assert (Set.is_subset actions ~of_:typ_actions);
     let data = MatchActionTable.data t in 
     let hw = MatchActionTable.hw t in 
-    let typ = Type.Table {hw; keys; actions = typ_actions; data} in
+    let typ = Type.{hw; keys; actions = typ_actions; data} in
     Table (name, t, Some typ)
   | Join (f, g, None) ->
     let f = infer ctx f in 
@@ -117,7 +117,7 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
     let ftype = typeof_exn f in
     let gtype = typeof_exn g in
     let typ = let open Type in 
-      Table {
+      {
         hw = Hardware.join ftype.hw gtype.hw;
         keys = merge_keys_exn ftype.keys gtype.keys;
         actions = 
@@ -131,20 +131,20 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
     let g = infer ctx g in 
     let ftype = typeof_exn f in
     let gtype = typeof_exn g in
-    assert (Type.compare_table ftype gtype = 0);
-    Override (f, g, Some (Table ftype))
+    assert (Type.compare ftype gtype = 0);
+    Override (f, g, Some ftype)
   | Compose (first, second, None) ->  (* diagram order, i.e second o first*)
     let first = infer ctx first in 
     let second = infer ctx second in 
     let type1 = typeof_exn first in
     let type2 = typeof_exn second in
     assert (actions_compat_keys ~first:type1 ~second:type2);
-    let typ = Type.(Table {
+    let typ = Type.{
       hw = type1.hw;
       keys = type1.keys;
       actions = type2.actions;
       data = type2.data;
-    }) in
+    } in
     Compose (first, second, Some typ)
   | MapOut (f, tfx, None) ->
     let f = infer ctx f in 
@@ -153,7 +153,7 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
     let actions = Type.get_actions ftype in 
     let tfx, actions, data_types' = data_tfx_type tfx actions data_types in 
     let typ = let open Type in 
-      Table {ftype with actions; data = data_types'}
+      {ftype with actions; data = data_types'}
     in
     MapOut(f, tfx, Some typ)
   | MapIn (f,tfx, None) ->
@@ -162,9 +162,9 @@ let rec infer (ctx : Type.ctx) (clause : Clause.t) : Clause.t =
     let in_match_type = ftype.keys in
     let out_match_typ = match_tfx_type ctx tfx in_match_type in
     let out = 
-      Type.(Table {ftype with 
+      Type.{ftype with 
         keys = out_match_typ
-      })
+      }
     in
     MapIn(f, tfx, Some out)
   | Id (_, Some _) 

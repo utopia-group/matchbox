@@ -42,7 +42,7 @@ module Insertion = struct
   let (%!!) = lookup_exn
 
 
-  let convert_table (schema : Type.ctx) : Safe.t -> string * Type.table = function
+  let convert_table (schema : Type.ctx) : Safe.t -> string * Type.t = function
     | `String name -> 
       let table_typ = Type.find_table_exn schema name in 
       name, table_typ
@@ -56,7 +56,7 @@ module Insertion = struct
     | json -> failwithf "failed to get match from %s" (Safe.to_string json) ()
 
 
-  let convert_match (ttype : Type.table) : Safe.t -> MatchExpression.t = function 
+  let convert_match (ttype : Type.t) : Safe.t -> MatchExpression.t = function 
     | `Assoc matches -> 
       List.fold matches ~init:MatchExpression.empty ~f:(fun mexpr (k, v) -> 
           extract_match ttype.hw v

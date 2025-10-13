@@ -49,6 +49,7 @@
 %token LIMIT
 %token ROWS
 %token ASSUME
+%token FORALL
 
 %left COMPOSE SEMICOLON
 
@@ -84,7 +85,7 @@ matchstick :
     {   let open ParserContext in
         let defined = Symbol.make table [] (-1) in
         let actions = Type.ActionSet.of_list action_list in
-        let typ = Type.(Table {hw; keys; actions; data}) in
+        let typ = Type.{hw; keys; actions; data} in
         empty
         |> add_type table typ
         |> opt_add_def defined (complete_clause clause table typ)
@@ -104,19 +105,15 @@ typed_var :
 | x = ID; COLON; w = INT 
     { (x, w) }
 
+decl :
+| x = ID; ASSIGN; f = ID; LPAREN; w = INT; RPAREN
+    { (x, f, w) }
+
 algebra :
-| BAR; bvs = separated_list(COMMA, BV); ARROW; action = ID; LPAREN; data = separated_list(COMMA, BV); RPAREN; BAR
-    {   Clause.table "" [
-            MatchAction.make TCAM
-                (bvs
-                 |> List.map ~f:(fun bv -> ("", bv |> Trit.Vector.of_string |> Match.Ternary))
-                 |> Map.of_alist_exn (module String))
-                (MagmaAction.make action)
-                (data
-                 |> List.map ~f:(fun bv -> ("", Bit.Vector.of_string bv))
-                 |> Map.of_alist_exn (module String))
-        ]
-    }
+| BAR; keys = separated_list(COMMA, BV); ARROW; action = ID; LPAREN; data = separated_list(COMMA, BV); RPAREN; BAR
+    { ParserContext.create_table keys action data }
+| FORALL; decls = separated_nonempty_list(COMMA, decl); COLON; BAR; keys = separated_nonempty_list(COMMA, ID); ARROW; action = ID; LPAREN; data = separated_list(COMMA, ID); RPAREN; BAR
+    { ParserContext.bulk_create_table decls keys action data }
 | name = ID 
     { Clause.id (Symbol.make name [] (-1)) }
 | c1 = algebra; TIMES; c2 = algebra 

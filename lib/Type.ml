@@ -3,15 +3,11 @@ open Core
 module ActionSet = Set.Make (Semantics.MagmaAction)
 
 type varwidth = int [@@deriving sexp, compare]
-type match_kind = Exact | LPM | Ternary | Range | Optional [@@deriving sexp, compare]
-type table = { hw : Semantics.Hardware.t;
+(* type match_kind = Exact | LPM | Ternary | Range | Optional [@@deriving sexp, compare] *)
+type t = { hw : Semantics.Hardware.t;
                keys : varwidth String.Map.t;
                actions : ActionSet.t; 
                data : varwidth String.Map.t} [@@deriving sexp, compare]
-
-type t = 
-  | Table of table
-  [@@deriving sexp, compare]
 
 let to_string (tau : t) = 
   sexp_of_t tau
@@ -33,16 +29,16 @@ let (@) (ctx1 : ctx) (ctx2 : ctx) =
   )
 
 
-let mkeq mk mk' = 
+(* let mkeq mk mk' = 
   match mk, mk' with 
   | Exact, Exact 
   | LPM, LPM
   | Ternary, Ternary
   | Range, Range
   | Optional, Optional -> true
-  | _,_ -> false
+  | _,_ -> false *)
 
-let castable original ~to_ = 
+(* let castable original ~to_ = 
   (* this means "castable without incurring performance penalties" *)
   match original, to_ with 
   | Exact,_ 
@@ -54,9 +50,9 @@ let castable original ~to_ =
   | Optional, LPM 
   | Optional, Range 
   | Ternary, Ternary -> true
-  | _, _ -> false
+  | _, _ -> false *)
 
-let join mk1 mk2 = 
+(* let join mk1 mk2 = 
   match mk1, mk2 with
   | Exact, _ -> mk2
   | _, Exact -> mk1
@@ -67,17 +63,7 @@ let join mk1 mk2 =
   | Range, Ternary | Ternary, Range -> failwith "range and ternary incompatible matchkinds"
   | Ternary, _ | _, Ternary -> Ternary
   | Optional, _ | _, Optional -> 
-    failwith "Optional only compatible with Exact and Ternary, got something else"
-
-
-
-let get_table = function 
-  | Table t -> Some t
-
-let get_table_exn typ = 
-  get_table typ
-  |> Option.value_exn ~message:"Type Error, expected table"
-
+    failwith "Optional only compatible with Exact and Ternary, got something else" *)
 
 let get_actions ttype = ttype.actions
 
@@ -98,14 +84,14 @@ let action_product (actions1 : ActionSet.t) (actions2 : ActionSet.t) : ActionSet
   )
 
 
-let get_keys (t : table) : (string * int) list = 
+let get_keys (t : t) : (string * int) list = 
   t.keys
   |> Map.to_alist
 
-let get_data (t : table) : varwidth String.Map.t =
+let get_data (t : t) : varwidth String.Map.t =
   t.data
 
-let invert_table ( t : table ) : table = 
+let invert_table (t : t) : t = 
   { t with 
     keys = get_data t |> String.Map.map ~f:(fun w -> w);
     data = t.keys
@@ -135,7 +121,6 @@ let find_exn (ctx : ctx) x =
 
 let find_table_exn (ctx : ctx) t = 
   find_exn ctx t
-  |> get_table_exn
 
 let find_action_exn ctx t = 
   find_exn ctx t
@@ -147,9 +132,7 @@ let find_keys_exn (ctx : ctx) (name : string): (string * int) list =
 
 let get_table_actions (ctx : ctx) t = (find_table_exn ctx t).actions
 
-let is_table typ = 
-  get_table typ 
-  |> Option.is_some
+let is_table = Option.is_some
 
 let is_action typ = 
   get_action typ
@@ -163,7 +146,7 @@ let get_names ~f (ctx : ctx) =
             ctx
     )
 
-let get_tables = get_names ~f:is_table
+let get_tables = get_names
 let get_all_actions = get_names ~f:is_action
 
 let get_type_exn (ctx : ctx) name = Map.find_exn ctx name

@@ -115,7 +115,7 @@ module Clause = struct
     | Compose (_, _, Some t)
     | MapOut (_, _, Some t)
     | MapIn (_, _, Some t) -> 
-      Type.get_table_exn t
+      t
     | _ -> 
       failwith "[typeof_exn] Couldn't deduce type"
 

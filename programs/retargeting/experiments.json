@@ -22,5 +22,11 @@
         "progpath": "./programs/retargeting/lo_ev.mb",
         "input": "./programs/retargeting/logical.json",
         "output": "./programs/retargeting/early_validate.json"
+    },
+    {
+        "name": "lo_la",
+        "progpath": "./programs/retargeting/lo_la.mb",
+        "input": "./programs/retargeting/logical.json",
+        "output": "./programs/retargeting/link_agg.json"
     }
 ]
