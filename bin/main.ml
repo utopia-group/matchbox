@@ -25,9 +25,10 @@ let exp =
   let open Command.Let_syntax in 
   Command.basic ~summary:"Run experiments based a driver file"
   [%map_open
-    let path = anon ("driver" %: string) in
-    fun () ->
-      ExpDriver.run path
+    let path = anon ("driver" %: string)
+    and minimize = flag "--minimize" no_arg ~doc:"Check table size optimizality"
+    in fun () ->
+      ExpDriver.run path minimize
   ]
 
 let () = Command_unix.run @@ Command.group 

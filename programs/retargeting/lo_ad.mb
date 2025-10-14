@@ -1,6 +1,6 @@
 tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
 tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop].
-tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop].
+tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
 tcam ipv4_fib (dstAddr : 32) : {port : 9} [fwd nop]
 o--
@@ -17,6 +17,6 @@ tcam ad_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
 o--
     ethernet.
 
-tcam ad_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop]
+tcam ad_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop]
 o--
     punt.

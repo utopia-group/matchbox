@@ -19,25 +19,20 @@ end
 module Vector = struct
   type t = bool list [@@deriving sexp, compare]
 
-  let of_string (bs : string) =
+  let of_string (bv : string) =
     let rec loop bs =
-      let n = String.length bs in 
-      if n = 0 then 
-        [] 
-      else
-        let b = String.get bs 0 in 
-        let bs' = String.drop_prefix bs 1 in 
-        match b with 
-        | '0' -> false :: loop bs'
-        | '1' -> true :: loop bs'
-        | '#' -> loop bs'
-        | 'b' -> loop bs'
-        | _ -> failwithf "unrecognized character %c in bitstring %s" b bs ()
+      match bs with
+      | [] -> []
+      | b0 :: b1 :: bs' when Char.(b0 = '0' || b0 = '#') && Char.(b1 = 'b') ->
+        loop bs'
+      | b :: bs' ->
+        (match b with 
+        | '0' -> false
+        | '1' -> true
+        | _ -> failwithf "unrecognized character %c in bitstring %s" b bv ())
+        :: loop bs'
     in
-    match String.slice bs 0 1 with 
-    | "0b" | "#b" -> 
-      loop (String.drop_prefix bs 2)
-    | _ -> loop bs
+    loop (String.to_list bv)
 
   let length : t -> int = List.length
 

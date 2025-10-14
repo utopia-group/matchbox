@@ -1,23 +1,26 @@
-tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
-tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop].
-tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
+tcam db_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
+tcam db_ipv42 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
+tcam db_ethernet (dstAddr : 48) : {port : 9} [fwd nop].
+tcam db_ethernet2 (dstAddr : 48) : {port : 9} [fwd nop].
+tcam db_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
+tcam db_punt2 (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
-assume punt : {etherType : 16, isValid : 1, ttl : 8 | true} ---> {}.
+assume db_punt : {etherType : 16, isValid : 1, ttl : 8 | true} ---> {}.
 
 tcam ethernet_validate (etherType : 16, isValid : 1, ttl : 8) : {} [malformed ok]
 o--
-    punt >>
+    db_punt >>
     delete key version >>
     delete key srcAddr >>
     delete key dstAddr >>
     rename drop to malformed >>
     rename nop to ok.
 
-assume punt : {version : 4, ttl : 8 | true} ---> {}.
+assume db_punt : {version : 4, ttl : 8 | true} ---> {}.
 
 tcam ipv4_validate (version : 4, ttl : 8) : {} [malformed ok]
 o--
-    punt >>
+    db_punt >>
     delete key etherType >>
     delete key isValid >>
     delete key srcAddr >>
@@ -27,17 +30,17 @@ o--
 
 tcam ev_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
 o--
-    ethernet.
+    db_ethernet.
 
 tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
 o--
-    ipv4.
+    db_ipv4.
 
-assume punt : {srcAddr : 32, dstAddr : 32 | true} ---> {}.
+assume db_punt : {srcAddr : 32, dstAddr : 32 | true} ---> {}.
 
 tcam acl (eth_srcAddr : 48, eth_dstAddr : 48, ipv4_srcAddr : 32, ipv4_dstAddr : 32) : {} [drop nop]
 o--
-    punt >>
+    db_punt >>
     delete key etherType >>
     delete key isValid >>
     delete key version >>

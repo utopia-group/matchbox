@@ -1,0 +1,18 @@
+tcam db_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
+tcam db_ipv42 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
+tcam db_ethernet (dstAddr : 48) : {port : 9} [fwd nop].
+tcam db_ethernet2 (dstAddr : 48) : {port : 9} [fwd nop].
+tcam db_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
+tcam db_punt2 (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
+
+tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+o--
+    db_ipv4.
+
+tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+o--
+    db_ethernet.
+
+tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop]
+o--
+    db_punt.

@@ -1,6 +1,7 @@
-tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
-tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop].
-tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
+tcam ipv4_fib (dstAddr : 32) : {port : 9} [fwd nop].
+tcam ipv4_rewrite (dstAddr : 32) : {dstAddr : 48} [rewrite nop].
+tcam ad_ethernet (dstAddr : 48) : {port : 9} [fwd nop].
+tcam ad_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
 ghost tcam lookup (port : 9, nexthop : 32) : {port : 9, nexthop : 32} [_]
 o--
@@ -21,13 +22,22 @@ assume lookup : {port : 9 | true} ---> {nexthop : 32}.
 
 tcam la_ethernet (dstAddr : 48) : {nexthop : 32} [fwd nop]
 o--
-    ethernet >> (
+    ad_ethernet >> (
         lookup >>
         delete key nexthop >>
         delete data port >>
         rename _ to fwd >>
         add nop
     ).
+
+ghost tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+o--
+    ipv4_fib * ipv4_rewrite >>
+    rename fwd;rewrite to fwd >>
+    rename fwd;nop to nop >>
+    rename rewrite;nop to nop >>
+    rename nop;rewrite to nop >>
+    rename nop;nop to nop.
 
 tcam la_ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop]
 o--
@@ -36,7 +46,7 @@ o--
         delete data dstAddr >> (
             lookup >>
             delete key nexthop >>
-            delete data port 
+            delete data port
         )
     ) * (
         ipv4 >>
@@ -47,4 +57,4 @@ o--
 
 tcam la_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop]
 o--
-    punt.
+    ad_punt.

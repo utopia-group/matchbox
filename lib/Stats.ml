@@ -138,13 +138,12 @@ let rec analyze (c : BaseLogic.Clause.t) =
     analyze c
     |> incr_size
 
-
 let print_header () = 
   Printf.printf "name,typetime,num_fds,size_fds,size,num_joins,num_compose,num_override,num_filters,num_tblvars,num_literals,num_key_adds,num_key_dels,num_data_adds,num_data_dels,num_action_renames,eval_time,eval_in_size,eval_out_size,min_eval_size,min_eval_time\n%!"
 
 let println name (stats : t) : unit =
   let stats = {stats with name} in
-  Printf.printf "%s,%f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%f,%d\n%!"
+  Printf.printf "%s,%f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%d,%f\n%!"
     stats.name
     stats.typetime
     stats.num_fds
@@ -164,5 +163,5 @@ let println name (stats : t) : unit =
     stats.eval_time
     stats.eval_in_size
     stats.eval_out_size
-    stats.min_eval_time
     stats.min_eval_size
+    stats.min_eval_time

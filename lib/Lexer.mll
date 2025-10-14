@@ -7,7 +7,7 @@
 }
 
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
-let bv = "0b" ['0' '1' '*']+
+let bp = "0b" ['0' '1' '*']+
 
 rule tokens = parse
 | "//" [^ '\n']* { tokens lexbuf }
@@ -55,6 +55,6 @@ rule tokens = parse
 | "||" { OR }
 | "=>" { IMP }
 | id as x         { ID x }
-| bv as x         { BV x }
+| bp as x         { BP x }
 | _  as c { raise (ParseError (Printf.sprintf "At offset %d: unexpected character %c.\n" (Lexing.lexeme_start lexbuf) c)) }
 | eof { EOF }

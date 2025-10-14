@@ -1,23 +1,24 @@
-tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
-tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop].
-tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
+tcam nexthop (nexthop : 32) : {port : 9} [set_port drop].
+tcam la_ethernet (dstAddr : 48) : {nexthop : 32} [fwd nop].
+tcam la_ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop].
+tcam la_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
-assume punt : {etherType : 16, isValid : 1, ttl : 8 | true} ---> {}.
+assume la_punt : {etherType : 16, isValid : 1, ttl : 8 | true} ---> {}.
 
 tcam ethernet_validate (etherType : 16, isValid : 1, ttl : 8) : {} [malformed ok]
 o--
-    punt >>
+    la_punt >>
     delete key version >>
     delete key srcAddr >>
     delete key dstAddr >>
     rename drop to malformed >>
     rename nop to ok.
 
-assume punt : {version : 4, ttl : 8 | true} ---> {}.
+assume la_punt : {version : 4, ttl : 8 | true} ---> {}.
 
 tcam ipv4_validate (version : 4, ttl : 8) : {} [malformed ok]
 o--
-    punt >>
+    la_punt >>
     delete key etherType >>
     delete key isValid >>
     delete key srcAddr >>
@@ -27,17 +28,31 @@ o--
 
 tcam ev_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
 o--
-    ethernet.
+    la_ethernet >>
+    nexthop >>
+    rename set_port to fwd >>
+    rename drop to nop.
 
 tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
 o--
-    ipv4.
+    (
+        la_ipv4 >>
+        delete data dstAddr >>
+        nexthop
+    ) * (
+        la_ipv4 >>
+        delete data nexthop
+    ) >>
+    rename set_port;fwd to fwd >>
+    rename set_port;nop to nop >>
+    rename drop;fwd to nop >>
+    rename drop;nop to nop.
 
-assume punt : {srcAddr : 32, dstAddr : 32 | true} ---> {}.
+assume la_punt : {srcAddr : 32, dstAddr : 32 | true} ---> {}.
 
 tcam acl (eth_srcAddr : 48, eth_dstAddr : 48, ipv4_srcAddr : 32, ipv4_dstAddr : 32) : {} [drop nop]
 o--
-    punt >>
+    la_punt >>
     delete key etherType >>
     delete key isValid >>
     delete key version >>

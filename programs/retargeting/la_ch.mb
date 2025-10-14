@@ -1,0 +1,46 @@
+tcam nexthop (nexthop : 32) : {port : 9} [set_port drop].
+tcam la_ethernet (dstAddr : 48) : {nexthop : 32} [fwd nop].
+tcam la_ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop].
+tcam la_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
+
+tcam staging (ingress_port : 9) : {c : 4} [set_choice skip_pipe]
+o--
+    |0b********* -> set_choice(0b0011)|.
+
+tcam ch_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+o--
+    (
+        la_ipv4 >>
+        delete data dstAddr >>
+        nexthop
+    ) * (
+        la_ipv4 >>
+        delete data nexthop
+    ) >>
+    rename set_port;fwd to fwd >>
+    rename set_port;nop to nop >>
+    rename drop;fwd to nop >>
+    rename drop;nop to nop.
+
+tcam ch_ipv42 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+o--
+    ch_ipv4.
+
+tcam ch_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+o--
+    la_ethernet >>
+    nexthop >>
+    rename set_port to fwd >>
+    rename drop to nop.
+
+tcam ch_ethernet2 (dstAddr : 48) : {port : 9} [fwd nop]
+o--
+    ch_ethernet.
+
+tcam ch_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop]
+o--
+    la_punt.
+
+tcam ch_punt2 (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop]
+o--
+    la_punt.

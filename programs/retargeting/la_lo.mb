@@ -1,0 +1,30 @@
+tcam nexthop (nexthop : 32) : {port : 9} [set_port drop].
+tcam la_ethernet (dstAddr : 48) : {nexthop : 32} [fwd nop].
+tcam la_ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop].
+tcam la_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
+
+tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+o--
+    (
+        la_ipv4 >>
+        delete data dstAddr >>
+        nexthop
+    ) * (
+        la_ipv4 >>
+        delete data nexthop
+    ) >>
+    rename set_port;fwd to fwd >>
+    rename set_port;nop to nop >>
+    rename drop;fwd to nop >>
+    rename drop;nop to nop.
+
+tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+o--
+    la_ethernet >>
+    nexthop >>
+    rename set_port to fwd >>
+    rename drop to nop.
+
+tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop]
+o--
+    la_punt.

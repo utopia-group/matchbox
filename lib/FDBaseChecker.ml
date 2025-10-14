@@ -181,7 +181,7 @@ module DepFunDep = struct
       let matchset = Map.key_set goal.source in 
       assert (Set.is_subset matchset ~of_:xsset);
       check ctx c goal
-    | MapIn(c, Del x, _) | MapIn(c, WildCard x, _ ) ->
+    | MapIn(c, Del x, _) | MapIn(c, WildCard x, _) ->
       (* assert (not (Map.mem goal.source (Var.str x))); *)
       assert (not (Set.exists (BExpr.free_vars goal.refine) ~f:(Var.equal x)));
       let goal' = 

@@ -412,14 +412,6 @@ let punt_to_ethernet_validate : Clause.t =
     |>> Rename (MagmaAction.make "drop", MagmaAction.make "malformed")
     |>> Rename (MagmaAction.make "nop", MagmaAction.make "ok"))
 
-let punt_to_acl : Clause.t =
-  Clause.(
-    WildCard (Var.make "hdr.ethernet.srcAddr" 32)
-    <<| (WildCard (Var.make "hdr.ethernet.dstAddr" 32)
-        <<| (Project
-               [Var.make "hdr.ipv4.srcAddr" 32; Var.make "hdr.ipv4.dstAddr" 32]
-            <<| id punt)))
-
 let action_decompose_to_early_validate_tfxs : t list =
   [
     {defined = ethernet_validate; definition = punt_to_ethernet_validate};
@@ -557,10 +549,6 @@ let double_to_link_agg_tfxs : t list =
 
 (* early_validate.p4 to logical.p4 *)
 
-let ethernet_validate = Symbol.make "ethernet_validate" [] 0
-let ipv4_validate = Symbol.make "ipv4_validate" [] 0
-let acl = Symbol.make "acl" [] 0
-
 let validate_acl_to_punt : Clause.t =
   Clause.(
     Project
@@ -634,8 +622,6 @@ let early_validate_to_link_agg_tfxs : t list =
   ]
 
 (* link_agg.p4 to logical.p4 *)
-
-let nexthop = Symbol.make "nexthop" [] 0
 
 let rename_nexthop : Clause.t =
   Clause.(

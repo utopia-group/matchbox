@@ -8,7 +8,7 @@
 
 %token <int> INT
 %token <string> ID
-%token <string> BV
+%token <string> BP
 %token MATCHSTICK
 %token ARROW
 %token FDARROW
@@ -72,17 +72,19 @@ tmatchstick : m = terminated(matchstick, DOT) { m }
 matchstick :
 | LIMIT; table = ID; TO; n = INT; option(ROWS);
     { ParserContext.(empty |> add_resource_limit table n) }
-| ASSUME; table = ID; COLON; LBRACE; source = typed_vars; BAR; phi = formula; RBRACE; FDARROW; target = delimited(LBRACE, typed_vars, RBRACE);
+| ASSUME; table = ID; COLON;
+  LBRACE; source = typed_vars; BAR; phi = formula; RBRACE; FDARROW;
+  target = delimited(LBRACE, typed_vars, RBRACE);
     {   let open ParserContext in
         let typ = FDBaseChecker.DepFunDep.{refine = phi; source; target} in
         add_assumption table typ empty
     }
 | ghost = option(GHOST); hw = hardware; table = ID; 
-    keys = delimited(LPAREN, typed_vars, RPAREN);
-    COLON;
-    data = delimited(LBRACE, typed_vars, RBRACE);
-    action_list = delimited(LSQUARE, nonempty_list(action), RSQUARE);
-    clause = option(preceded(MATCHSTICK, algebra));
+  keys = delimited(LPAREN, typed_vars, RPAREN);
+  COLON;
+  data = delimited(LBRACE, typed_vars, RBRACE);
+  action_list = delimited(LSQUARE, nonempty_list(action), RSQUARE);
+  clause = option(preceded(MATCHSTICK, algebra));
     {   let open ParserContext in
         let defined = Symbol.make table [] (-1) in
         let actions = Type.ActionSet.of_list action_list in
@@ -110,10 +112,21 @@ decl :
 | x = ID; ASSIGN; f = ID; LPAREN; w = INT; RPAREN
     { (x, f, w) }
 
+row :
+| BAR;
+    keys = separated_list(COMMA, BP); ARROW;
+    action = ID; LPAREN; data = separated_list(COMMA, BP); RPAREN;
+  BAR
+    { (keys, action, data) }
+
 algebra :
-| BAR; keys = separated_list(COMMA, BV); ARROW; action = ID; LPAREN; data = separated_list(COMMA, BV); RPAREN; BAR
-    { ParserContext.create_table keys action data }
-| FORALL; decls = separated_nonempty_list(COMMA, decl); COLON; BAR; keys = separated_nonempty_list(COMMA, ID); ARROW; action = ID; LPAREN; data = separated_list(COMMA, ID); RPAREN; BAR
+| rows = separated_nonempty_list(COMMA, row)
+    { ParserContext.create_table rows }
+| FORALL; decls = separated_nonempty_list(COMMA, decl); COLON;
+    BAR;
+      keys = separated_nonempty_list(COMMA, ID); ARROW;
+      action = ID; LPAREN; data = separated_list(COMMA, ID); RPAREN;
+    BAR
     { ParserContext.bulk_create_table decls keys action data }
 | name = ID 
     { Clause.id (Symbol.make name [] (-1)) }

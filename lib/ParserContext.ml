@@ -103,18 +103,20 @@ let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t) 
     | _ -> c
   )
 
-let create_table keys action data =
+let create_table rows =
   let open Semantics in
-  Clause.table "" [
-    MatchAction.make TCAM
+  Clause.table ""
+    (List.map rows ~f:(fun (keys, action, data) ->
+      MatchAction.make TCAM
         (keys
-          |> List.map ~f:(fun bv -> ("", bv |> Trit.Vector.of_string |> Match.Ternary))
-          |> Map.of_alist_exn (module String))
+         |> List.map ~f:(fun bv -> ("", bv |> Trit.Vector.of_string |> Match.Ternary))
+         |> Map.of_alist_exn (module String))
         (MagmaAction.make action)
         (data
-          |> List.map ~f:(fun bv -> ("", Bit.Vector.of_string bv))
-          |> Map.of_alist_exn (module String))
-  ]
+         |> List.map ~f:(fun bv -> ("", Bit.Vector.of_string bv))
+         |> Map.of_alist_exn (module String))
+      )
+    )
 
 let bulk_create_table decls keys action data =
   let rec make_unique seen data =
@@ -124,28 +126,32 @@ let bulk_create_table decls keys action data =
       (data, Set.add seen (Bit.Vector.to_int data))
   in
   let open Semantics in
-  let enums, rest = List.partition_tf decls
-    ~f:(function (_, "enumerate", _) -> true | _ -> false)
+  let enums, uniques = List.partition_tf decls
+    ~f:(function (_, "enumerate", _) -> true
+               | (_, "unique", _) -> false
+               | _ -> failwith "expected either 'enumerate' or 'unique'")
   in
   enums
+  (* Generate all combinations of 'enumerate' fields *)
   |> List.fold ~init:[Map.empty (module String)]
     ~f:(fun acc (x, _, w) ->
       List.map (List.cartesian_product acc (Bit.Vector.enumerate w))
         ~f:(fun (row, a) -> Map.set row ~key:x ~data:a))
+  (* Extend each combination with unique values of 'unique' fields *)
   |> List.fold 
-    ~init:([], List.fold rest ~init:(Map.empty (module String))
+    ~init:([], List.fold uniques ~init:(Map.empty (module String))
       ~f:(fun acc (x, _, _) -> Map.set acc ~key:x ~data:(Set.empty (module Int))))
     ~f:(fun (rows, seen) row ->
       let row', seen' =
-        List.fold rest
+        List.fold uniques
           ~init:(row, seen)
-          ~f:(fun (row, seen) (x, f, w) ->
-            assert (String.(f = "unique"));
+          ~f:(fun (row, seen) (x, _, w) ->
             let data, seen' = make_unique (Map.find_exn seen x) (Bit.Vector.random w) in
             Map.set row ~key:x ~data, Map.set seen ~key:x ~data:seen')
       in
       row' :: rows, seen')
   |> fst
+  (* Make match-action rules *)
   |> List.map ~f:(fun row ->
     MatchAction.make TCAM
       (Map.of_alist_exn
@@ -247,6 +253,8 @@ let typecheck (ctx : t) : t =
       well_formed ctx matchstick
       |> functional {
         ctx with gfds =
+        (* Also consider user-provided FD assumptions,
+           but not those made on the current table being typechecked *)
         Map.merge ctx.gfds
           (Map.remove ctx.assumptions (Symbol.to_string matchstick.defined))
           ~f:(fun ~key:_ -> function
