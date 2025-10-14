@@ -22,6 +22,7 @@ rule tokens = parse
 | "rows" { ROWS }
 | "assume" { ASSUME }
 | "forall" { FORALL }
+| "ghost" { GHOST }
 | "o--" { MATCHSTICK }
 | "->" { ARROW }
 | "--->" { FDARROW }

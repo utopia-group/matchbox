@@ -36,6 +36,13 @@ let run_ : Safe.t -> unit = function
       let pctx = ParserContext.typecheck pctx in 
       let config = RuntimeInterface.parse_trace_file pctx.typs input in 
       let config', pctx = run_program config pctx in
+      let config' = BaseLogic.Config.{
+        symbols = Set.filter config'.symbols 
+          ~f:(fun s -> not (Map.find_exn pctx.typs s).is_ghost);
+        cfg = Map.filter_keys config'.cfg
+          ~f:(fun key -> not (Map.find_exn pctx.typs key).is_ghost)
+        }
+      in
       Option.iter output ~f:(fun output ->
         Safe.to_file output (RuntimeInterface.config_to_json config')
       );

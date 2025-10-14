@@ -9,6 +9,7 @@ type t = {
     typs : T.ctx;
     rscs : R.ctx;
     gfds : F.itfc_spec;
+    assumptions: F.itfc_spec;
     prog : L.t list;
     stats : Stats.t
 
@@ -17,6 +18,7 @@ let empty = {
     typs = String.Map.empty;
     rscs = String.Map.empty;
     gfds = String.Map.empty;
+    assumptions = String.Map.empty;
     prog = [];
     stats = Stats.empty;
 }
@@ -25,6 +27,7 @@ let (@) (p1 : t) (p2 : t) : t=
     { typs = T.(p1.typs @ p2.typs);
         rscs = R.(p1.rscs @ p2.rscs);
         gfds = F.(p1.gfds @ p2.gfds);
+        assumptions = F.(p1.assumptions @ p2.assumptions);
         prog = p1.prog @ p2.prog;
         stats = Stats.(p1.stats + p2.stats);
     }
@@ -38,8 +41,21 @@ let add_type (tbl : string) (tau : T.t) (p : t) : t =
       gfds = Map.add_multi p.gfds ~key:tbl ~data:(F.fd_of_typ tau)
   }
 
-let refine_type (tbl : string) (fd : F.t) (p : t) : t =
-  {p with gfds = Map.add_multi p.gfds ~key:tbl ~data:fd}
+let add_assumption (tbl : string) (fd : F.t) (p : t) : t =
+  {p with assumptions = Map.add_multi p.gfds ~key:tbl ~data:fd}
+
+let refine_fds (p : t) : t = 
+  let open FDBaseChecker in
+  {p with
+   gfds = Map.map p.gfds ~f:(fun fds ->
+    fds
+    |> List.sort ~compare:DepFunDep.compare
+    |> List.fold ~init:[] ~f:(fun acc fd ->
+      if List.exists acc
+        ~f:(fun fd' -> DepFunDep.compare fd fd' >= 0)
+      then acc
+      else fd :: acc))
+  }
 
 let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t) : Clause.t option =
   Option.map clause ~f:(fun c ->
@@ -184,9 +200,9 @@ let update_stats clause (p : t) : t =
     } 
 
 
-let well_formed ctx ({defined;definition} : BaseLogic.t) =
-  let annotated = BaseChecker.infer ctx.typs definition in
-  let table_name = Symbol.to_string defined in 
+let well_formed ctx (stmt : BaseLogic.t) =
+  let annotated = BaseChecker.infer ctx.typs stmt in
+  let table_name = Symbol.to_string stmt.defined in 
   let expected_type = Map.find_exn ctx.typs table_name in
   let computed_type = Clause.typeof_exn annotated in
   if not Type.(equal expected_type computed_type) then 
@@ -195,7 +211,7 @@ let well_formed ctx ({defined;definition} : BaseLogic.t) =
       (Type.to_string expected_type)
       (Type.to_string computed_type) () 
   else
-    {defined; definition = annotated}
+    {defined = stmt.defined; definition = annotated}
 
 let functional ctx ({defined;definition} : BaseLogic.t) = 
   let requirements = Map.find_exn ctx.gfds (Symbol.to_string defined) in
@@ -229,7 +245,14 @@ let typecheck (ctx : t) : t =
   let prog = 
     List.map ctx.prog ~f:(fun matchstick -> 
       well_formed ctx matchstick
-      |> functional ctx
+      |> functional {
+        ctx with gfds =
+        Map.merge ctx.gfds
+          (Map.remove ctx.assumptions (Symbol.to_string matchstick.defined))
+          ~f:(fun ~key:_ -> function
+          | `Left x | `Right x -> Some x
+          | `Both (x, y) -> Some (List.append x y)
+        )}
       |> appropriately_sized ctx
     )
   in

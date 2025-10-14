@@ -4,7 +4,8 @@ module ActionSet = Set.Make (Semantics.MagmaAction)
 
 type varwidth = int [@@deriving sexp, compare]
 (* type match_kind = Exact | LPM | Ternary | Range | Optional [@@deriving sexp, compare] *)
-type t = { hw : Semantics.Hardware.t;
+type t = { is_ghost: bool;
+               hw : Semantics.Hardware.t;
                keys : varwidth String.Map.t;
                actions : ActionSet.t; 
                data : varwidth String.Map.t} [@@deriving sexp, compare]
@@ -131,6 +132,8 @@ let find_keys_exn (ctx : ctx) (name : string): (string * int) list =
   |> get_keys
 
 let get_table_actions (ctx : ctx) t = (find_table_exn ctx t).actions
+
+let check_table_is_ghost (ctx : ctx) t = (find_table_exn ctx t).is_ghost
 
 let is_table = Option.is_some
 

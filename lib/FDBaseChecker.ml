@@ -8,6 +8,18 @@ module DepFunDep = struct
     target : int String.Map.t;
   }
 
+  let compare fd1 fs2 =
+    let fd1_source_keys = Map.key_set fd1.source in
+    let fd2_source_keys = Map.key_set fs2.source in
+    if Set.equal fd1_source_keys fd2_source_keys then (
+      let fd1_target_keys = Map.key_set fd1.target in
+      let fd2_target_keys = Map.key_set fs2.target in
+      if Set.equal fd1_target_keys fd2_target_keys then 0
+      else if Set.is_subset fd1_target_keys ~of_:fd2_target_keys then -1
+      else 1)
+    else if Set.is_subset fd1_source_keys ~of_:fd2_source_keys then -1
+    else 1
+
   let to_string {refine; source; target} =
     let aux xs = 
       Map.to_alist xs
@@ -116,12 +128,8 @@ module DepFunDep = struct
       Map.add_multi ctx ~key:f.name ~data:goal
     | Table (_, _, None) -> 
       failwith "Must run base type interpreter before FDChecker"
-    | Table (_name, _, Some _typ) -> 
-      (* printf "name: %s\n" name;
-      printf "goal: %s\n" (to_string goal);
-      printf "fd: %s\n" (to_string (fd_of_typ typ)); *)
-      (* TODO: Check whether goal is a subset of fd (both source & target) *)
-      (* assert (fd_eq (fd_of_typ typ) goal); *)
+    | Table (_, _, Some typ) -> 
+      assert (fd_eq (fd_of_typ typ) goal);
       ctx
     | Join (c1, c2, _) -> 
       let goal1 = fd_of_table_type (typeof_exn c1) in 

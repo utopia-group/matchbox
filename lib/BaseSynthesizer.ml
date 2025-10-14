@@ -17,7 +17,7 @@ let typecheck_cand (ctx : Type.ctx option) (cand : t) : bool =
         (* TODO: for now assume unknown symbols are valid *)
         true
       | Some _ ->
-        let _ = BaseChecker.infer type_ctx cand.definition in
+        let _ = BaseChecker.infer type_ctx cand in
         true
     with _ ->
       incr typecheck_pruned;

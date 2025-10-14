@@ -50,6 +50,7 @@
 %token ROWS
 %token ASSUME
 %token FORALL
+%token GHOST
 
 %left COMPOSE SEMICOLON
 
@@ -74,9 +75,9 @@ matchstick :
 | ASSUME; table = ID; COLON; LBRACE; source = typed_vars; BAR; phi = formula; RBRACE; FDARROW; target = delimited(LBRACE, typed_vars, RBRACE);
     {   let open ParserContext in
         let typ = FDBaseChecker.DepFunDep.{refine = phi; source; target} in
-        refine_type table typ empty
+        add_assumption table typ empty
     }
-| hw = hardware; table = ID; 
+| ghost = option(GHOST); hw = hardware; table = ID; 
     keys = delimited(LPAREN, typed_vars, RPAREN);
     COLON;
     data = delimited(LBRACE, typed_vars, RBRACE);
@@ -85,7 +86,7 @@ matchstick :
     {   let open ParserContext in
         let defined = Symbol.make table [] (-1) in
         let actions = Type.ActionSet.of_list action_list in
-        let typ = Type.{hw; keys; actions; data} in
+        let typ = Type.{is_ghost = Option.is_some ghost; hw; keys; actions; data} in
         empty
         |> add_type table typ
         |> opt_add_def defined (complete_clause clause table typ)
