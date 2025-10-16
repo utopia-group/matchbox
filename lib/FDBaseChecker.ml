@@ -137,12 +137,22 @@ module DepFunDep = struct
       assert (Map.(equal (=) goal.source (union goal1.source goal2.source)));
       assert (Map.(equal (=) goal.target (union goal1.target goal2.target)));
       assert (Set.is_subset (BExpr.free_vars goal.refine) ~of_:(var_set goal1.source));
-      assert (Set.is_subset (BExpr.free_vars goal.refine) ~of_:(var_set goal2.target));
+      assert (Set.is_subset (BExpr.free_vars goal.refine) ~of_:(var_set goal2.source));
       let rgoal1 = {goal1 with refine = goal.refine } in 
       let rgoal2 = {goal2 with refine = goal.refine } in
       check (check ctx c1 rgoal1) c2 rgoal2
-    | Override (_f, _g, _) ->
-      failwith "TODO"
+    | Override (c1, c2, _) ->
+      let goal1 = fd_of_table_type (typeof_exn c1) in 
+      let goal2 = fd_of_table_type (typeof_exn c2) in 
+      assert (Map.(equal (=) goal1.source goal2.source));
+      assert (Map.(equal (=) goal.source goal1.source));
+      assert (Map.(equal (=) goal1.target goal2.target));
+      assert (Map.(equal (=) goal.target goal1.target));
+      assert (Set.is_subset (BExpr.free_vars goal.refine) ~of_:(var_set goal1.source));
+      assert (Set.is_subset (BExpr.free_vars goal.refine) ~of_:(var_set goal2.source));
+      let rgoal1 = {goal1 with refine = goal.refine } in 
+      let rgoal2 = {goal2 with refine = goal.refine } in
+      check (check ctx c1 rgoal1) c2 rgoal2
     | Compose (before, after, _) -> 
       let goal_before = fd_of_table_type (typeof_exn before) in 
       let goal_after = fd_of_table_type (typeof_exn after) in 
@@ -174,7 +184,7 @@ module DepFunDep = struct
     | MapOut(c, Del x, _) -> 
       assert (not (Map.mem goal.target (Var.str x)));
       check ctx c goal
-    | MapOut(c, Rename _, _) | MapOut(c, Add _, _) ->
+    | MapOut(c, Rename _, _) ->
       check ctx c goal
     | MapIn(c, Project xs, _) -> 
       let xsset = String.Set.of_list (List.map ~f:Var.str xs) in 

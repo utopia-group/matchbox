@@ -21,12 +21,14 @@ rule tokens = parse
 | "limit" { LIMIT }
 | "rows" { ROWS }
 | "assume" { ASSUME }
+| "assert" { ASSERT }
 | "forall" { FORALL }
-| "ghost" { GHOST }
+| "private" { PRIVATE }
 | "o--" { MATCHSTICK }
 | "->" { ARROW }
 | "--->" { FDARROW }
 | ">>" { COMPOSE }
+| "|>" { OVERRIDE }
 | ":=" { ASSIGN }
 | ";" { SEMICOLON }
 | ":" { COLON }
@@ -46,7 +48,6 @@ rule tokens = parse
 | "false" { FALSE }
 | "filter" { FILTER }
 | "rename" { RENAME }
-| "add" { ADD }
 | "tcam" { TCAM }
 | "cam" { CAM }
 | "lpm" { LPM }

@@ -26,10 +26,10 @@ o--
         delete key ipv4_dstAddr
     ) >>
     rename malformed;malformed;drop to drop >>
-    rename malformed;malformed;nop to nop >>
+    rename malformed;malformed;nop to drop >>
     rename malformed;ok;drop to drop >>
-    rename malformed;ok;nop to nop >>
+    rename malformed;ok;nop to drop >>
     rename ok;malformed;drop to drop >>
-    rename ok;malformed;nop to nop >>
-    rename ok;ok;drop to nop >>
+    rename ok;malformed;nop to drop >>
+    rename ok;ok;drop to drop >>
     rename ok;ok;nop to nop.

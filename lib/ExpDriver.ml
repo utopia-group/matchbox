@@ -13,11 +13,19 @@ let parse_program path =
   |> Parse.parse_program
   |> Result.ok_or_failwith
 
-let run_program config (ctx : ParserContext.t) (minimize : bool)
+let run_program config (pctx : ParserContext.t) (minimize : bool)
   : BaseLogic.Config.t * ParserContext.t =
   let c = Clock.start () in
-  let config' = BaseInterpreter.eval config ctx.prog in
+  let config' = BaseInterpreter.eval config pctx.prog in
   let eval_time = Clock.stop c in  
+  (* Do not output ghost tables *)
+  let config' = BaseLogic.Config.{
+    symbols = Set.filter config'.symbols 
+      ~f:(fun s -> not (Map.find_exn pctx.typs s).is_private);
+    cfg = Map.filter_keys config'.cfg
+      ~f:(fun key -> not (Map.find_exn pctx.typs key).is_private)
+    }
+  in
   let eval_in_size = BaseLogic.Config.size config in
   let eval_out_size = BaseLogic.Config.size config' in
   let min_eval_size, min_eval_time =
@@ -26,11 +34,11 @@ let run_program config (ctx : ParserContext.t) (minimize : bool)
       GuardSynthesis.minimize config', Clock.stop c +. eval_time
     else (0, 0.)
   in
-  let stats = {ctx.stats with 
+  let stats = {pctx.stats with 
     eval_time; eval_in_size; eval_out_size;
     min_eval_time; min_eval_size;
   } in
-  config', ParserContext.{ctx with stats}
+  config', {pctx with stats}
 
 let run_ (json : Safe.t) (minimize : bool) : unit =
   match json with
@@ -42,14 +50,6 @@ let run_ (json : Safe.t) (minimize : bool) : unit =
       let pctx = ParserContext.typecheck pctx in 
       let config = RuntimeInterface.parse_trace_file pctx.typs input in 
       let config', pctx = run_program config pctx minimize in
-      (* Do not output ghost tables *)
-      let config' = BaseLogic.Config.{
-        symbols = Set.filter config'.symbols 
-          ~f:(fun s -> not (Map.find_exn pctx.typs s).is_ghost);
-        cfg = Map.filter_keys config'.cfg
-          ~f:(fun key -> not (Map.find_exn pctx.typs key).is_ghost)
-        }
-      in
       Option.iter output ~f:(fun output ->
         Safe.to_file output (RuntimeInterface.config_to_json config')
       );

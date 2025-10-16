@@ -17,6 +17,7 @@
 %token TIMES
 %token ELSE
 %token COMPOSE
+%token OVERRIDE
 %token KEY
 %token DATA
 %token ACTION
@@ -42,15 +43,15 @@
 %token FILTER
 %token COMMA
 %token RENAME
-%token ADD
 %token TCAM
 %token LPM
 %token CAM
 %token LIMIT
 %token ROWS
 %token ASSUME
+%token ASSERT
 %token FORALL
-%token GHOST
+%token PRIVATE
 
 %left COMPOSE SEMICOLON
 
@@ -77,9 +78,16 @@ matchstick :
   target = delimited(LBRACE, typed_vars, RBRACE);
     {   let open ParserContext in
         let typ = FDBaseChecker.DepFunDep.{refine = phi; source; target} in
-        add_assumption table typ empty
+        {empty with gfds = Map.add_multi empty.gfds ~key:table ~data:typ}
     }
-| ghost = option(GHOST); hw = hardware; table = ID; 
+| ASSERT; table = ID; COLON;
+  LBRACE; source = typed_vars; BAR; phi = formula; RBRACE; FDARROW;
+  target = delimited(LBRACE, typed_vars, RBRACE);
+    {   let open ParserContext in
+        let typ = FDBaseChecker.DepFunDep.{refine = phi; source; target} in
+        add_assertion table typ empty
+    }
+| private_ = option(PRIVATE); hw = hardware; table = ID; 
   keys = delimited(LPAREN, typed_vars, RPAREN);
   COLON;
   data = delimited(LBRACE, typed_vars, RBRACE);
@@ -88,7 +96,7 @@ matchstick :
     {   let open ParserContext in
         let defined = Symbol.make table [] (-1) in
         let actions = Type.ActionSet.of_list action_list in
-        let typ = Type.{is_ghost = Option.is_some ghost; hw; keys; actions; data} in
+        let typ = Type.{is_private = Option.is_some private_; hw; keys; actions; data} in
         empty
         |> add_type table typ
         |> opt_add_def defined (complete_clause clause table typ)
@@ -134,6 +142,8 @@ algebra :
     { Clause.(c1 * c2) } 
 | c1 = algebra; COMPOSE; c2 = algebra
     { Clause.(c1 >>> c2) }
+| c1 = algebra; OVERRIDE; c2 = algebra
+    { Clause.override c1 c2 }
 | LPAREN; c = algebra; RPAREN
     { c }
 | c = algebra; COMPOSE; KEY; x = var; ASSIGN; e = expr 
@@ -150,8 +160,6 @@ algebra :
     { Clause.(c |>> OutTfx.Del (x) )}
 | c = algebra; COMPOSE; RENAME; old_name = action; TO; new_name = action
     { Clause.(c |>> OutTfx.Rename (old_name, new_name))  }
-| c = algebra; COMPOSE; ADD; name = action
-    { Clause.(c |>> OutTfx.Add name)  }
 
 var : 
 | x = ID; 

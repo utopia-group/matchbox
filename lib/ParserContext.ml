@@ -9,7 +9,7 @@ type t = {
     typs : T.ctx;
     rscs : R.ctx;
     gfds : F.itfc_spec;
-    assumptions: F.itfc_spec;
+    assertions: F.itfc_spec;
     prog : L.t list;
     stats : Stats.t
 
@@ -18,7 +18,7 @@ let empty = {
     typs = String.Map.empty;
     rscs = String.Map.empty;
     gfds = String.Map.empty;
-    assumptions = String.Map.empty;
+    assertions = String.Map.empty;
     prog = [];
     stats = Stats.empty;
 }
@@ -27,7 +27,7 @@ let (@) (p1 : t) (p2 : t) : t=
     { typs = T.(p1.typs @ p2.typs);
         rscs = R.(p1.rscs @ p2.rscs);
         gfds = F.(p1.gfds @ p2.gfds);
-        assumptions = F.(p1.assumptions @ p2.assumptions);
+        assertions = F.(p1.assertions @ p2.assertions);
         prog = p1.prog @ p2.prog;
         stats = Stats.(p1.stats + p2.stats);
     }
@@ -41,8 +41,59 @@ let add_type (tbl : string) (tau : T.t) (p : t) : t =
       gfds = Map.add_multi p.gfds ~key:tbl ~data:(F.fd_of_typ tau)
   }
 
-let add_assumption (tbl : string) (fd : F.t) (p : t) : t =
-  {p with assumptions = Map.add_multi p.gfds ~key:tbl ~data:fd}
+let add_assertion (tbl : string) (fd : F.t) (p : t) : t =
+  {p with assertions = Map.add_multi p.assertions ~key:tbl ~data:fd}
+
+let rec elim_override (clause : Clause.t) =
+  match clause with
+  | Table _ -> clause
+  | Override (c1, c2, typ) -> (
+    match elim_override c1, elim_override c2 with
+    | Table (name1, mat1, _), Table (_, mat2, _) ->
+      Table (name1, List.append mat1 mat2, typ)
+    | _ -> failwith "unreachable")
+  | _ -> failwith "unimplemented"
+
+let is_total keys (clause : Clause.t) =
+  match clause with
+  | Table (_, mat, _) ->
+    Map.for_alli keys
+      ~f:(fun ~key ~data ->
+        let has_catchall =
+          let catch_all = Trit.Vector.wc data in
+          List.exists mat ~f:(fun {matches; _} ->
+            match Map.find_exn matches key with
+            | Ternary tv -> Trit.Vector.equal tv catch_all
+            | _ -> false)
+        in
+        if has_catchall then true
+        else
+          let fully_enumerated =
+            let enumerated = List.fold mat ~init:(Set.empty (module Int))
+              ~f:(fun acc {matches; _} ->
+                match Map.find_exn matches key with
+                | Exact bv -> Set.add acc (Bit.Vector.to_int bv)
+                | _ -> acc)
+            in
+            Set.length enumerated = 1 lsl data
+          in
+          fully_enumerated)
+  | _ -> failwith "unreachable"
+
+let check_assertion {defined; definition} (p : t) : t =
+  {p with
+   gfds =
+   match Map.find p.assertions (Symbol.to_string defined) with
+   | Some assertions ->
+     assertions 
+     |> List.map ~f:(fun stmt ->
+        if definition |> elim_override |> is_total stmt.source then stmt
+        else failwithf "Assertion failed: %s must satisfy %s" 
+          (Symbol.to_string defined) (F.to_string stmt) ())
+     |> List.fold ~init:p.gfds ~f:(fun acc fd ->
+        Map.add_multi acc ~key:(Symbol.to_string defined) ~data:fd)
+   | None -> p.gfds
+  }
 
 let refine_fds (p : t) : t = 
   let open FDBaseChecker in
@@ -57,37 +108,37 @@ let refine_fds (p : t) : t =
       else fd :: acc))
   }
 
-let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t) : Clause.t option =
+let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t)
+  : Clause.t option =
+  let open Semantics in
   Option.map clause ~f:(fun c ->
     match c with
     | Table (_, t, c_typ) ->
       Clause.Table (table,
         List.map t ~f:(fun ma ->
-          Semantics.MatchAction.{
+          MatchAction.{
             ma with
             hw = typ.hw;
             matches =
-            (match
-              List.fold2
-                (Map.to_alist ma.matches)
-                (Map.to_alist typ.keys)
-                ~init:(Map.empty (module String))
-                (* TODO: typecheck here? *)
-                ~f:(fun acc (_, match_) (key, _) -> Map.set acc ~key ~data:match_)
-            with
-            | Ok matches -> matches
-            | Unequal_lengths -> ma.matches);
+            (* TODO: typecheck here? *)
+            List.cartesian_product
+              (Map.to_alist ma.matches)
+              (Map.to_alist typ.keys)
+            |> List.fold ~init:(Map.empty (module String))
+                ~f:(fun acc ((_, match_), (key, width)) ->
+                  if Match.length match_ = width then
+                    Map.set acc ~key ~data:match_
+                  else acc);
             data =
-            match 
-              List.fold2
-                (Map.to_alist ma.data)
-                (Map.to_alist typ.data)
-                ~init:(Map.empty (module String))
-                (* TODO: typecheck here? *)
-                ~f:(fun acc (_, bv) (key, _) -> Map.set acc ~key ~data:bv)
-            with
-            | Ok data -> data
-            | Unequal_lengths -> ma.data
+            (* TODO: typecheck here? *)
+            List.cartesian_product
+              (Map.to_alist ma.data)
+              (Map.to_alist typ.data)
+            |> List.fold ~init:(Map.empty (module String))
+                ~f:(fun acc ((_, bv), (key, width)) ->
+                  if Bit.Vector.length bv = width then
+                    Map.set acc ~key ~data:bv
+                  else acc)
           }
         ), c_typ)
     | MapIn (c', WildCard x, c_typ) ->
@@ -100,6 +151,10 @@ let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t) 
     | MapOut (c', tfx, c_typ) -> 
       let completed_c' = Option.value_exn (complete_clause (Some c') table typ) in
       MapOut (completed_c', tfx, c_typ)
+    | Override (c1, c2, c_typ) ->
+      let c1' = Option.value_exn (complete_clause (Some c1) table typ) in
+      let c2' = Option.value_exn (complete_clause (Some c2) table typ) in
+      Override (c1', c2', c_typ)
     | _ -> c
   )
 
@@ -109,22 +164,18 @@ let create_table rows =
     (List.map rows ~f:(fun (keys, action, data) ->
       MatchAction.make TCAM
         (keys
-         |> List.map ~f:(fun bv -> ("", bv |> Trit.Vector.of_string |> Match.Ternary))
+         |> List.mapi ~f:(fun i bv ->
+            (Int.to_string i, bv |> Trit.Vector.of_string |> Match.Ternary))
          |> Map.of_alist_exn (module String))
         (MagmaAction.make action)
         (data
-         |> List.map ~f:(fun bv -> ("", Bit.Vector.of_string bv))
+         |> List.mapi ~f:(fun i bv ->
+            (Int.to_string i, Bit.Vector.of_string bv))
          |> Map.of_alist_exn (module String))
       )
     )
 
 let bulk_create_table decls keys action data =
-  let rec make_unique seen data =
-    if Set.mem seen (Bit.Vector.to_int data) then
-      make_unique seen (Bit.Vector.incr data)
-    else
-      (data, Set.add seen (Bit.Vector.to_int data))
-  in
   let open Semantics in
   let enums, uniques = List.partition_tf decls
     ~f:(function (_, "enumerate", _) -> true
@@ -140,14 +191,15 @@ let bulk_create_table decls keys action data =
   (* Extend each combination with unique values of 'unique' fields *)
   |> List.fold 
     ~init:([], List.fold uniques ~init:(Map.empty (module String))
-      ~f:(fun acc (x, _, _) -> Map.set acc ~key:x ~data:(Set.empty (module Int))))
+      ~f:(fun acc (x, _, _) -> Map.set acc ~key:x ~data:0))
     ~f:(fun (rows, seen) row ->
       let row', seen' =
         List.fold uniques
           ~init:(row, seen)
           ~f:(fun (row, seen) (x, _, w) ->
-            let data, seen' = make_unique (Map.find_exn seen x) (Bit.Vector.random w) in
-            Map.set row ~key:x ~data, Map.set seen ~key:x ~data:seen')
+            let idx = Map.find_exn seen x in
+            let data = Bit.Vector.of_int ~width:w idx in
+            Map.set row ~key:x ~data, Map.set seen ~key:x ~data:(idx + 1))
       in
       row' :: rows, seen')
   |> fst
@@ -249,20 +301,13 @@ let appropriately_sized ctx {defined;definition}  =
 let typecheck (ctx : t) : t = 
   let c = Clock.start () in
   let prog = 
-    List.map ctx.prog ~f:(fun matchstick -> 
+    List.fold ctx.prog ~init:(ctx, []) ~f:(fun (ctx, prog) matchstick -> 
       well_formed ctx matchstick
-      |> functional {
-        ctx with gfds =
-        (* Also consider user-provided FD assumptions,
-           but not those made on the current table being typechecked *)
-        Map.merge ctx.gfds
-          (Map.remove ctx.assumptions (Symbol.to_string matchstick.defined))
-          ~f:(fun ~key:_ -> function
-          | `Left x | `Right x -> Some x
-          | `Both (x, y) -> Some (List.append x y)
-        )}
+      |> functional ctx
       |> appropriately_sized ctx
-    )
+      |> Fn.flip (List.cons) prog
+      |> Tuple2.create (check_assertion matchstick ctx)
+    ) |> snd |> List.rev
   in
   let typetime = Clock.stop c in
   {ctx with prog;

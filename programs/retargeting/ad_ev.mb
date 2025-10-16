@@ -34,10 +34,10 @@ tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
 o--
     ipv4_fib * ipv4_rewrite >>
     rename fwd;rewrite to fwd >>
+    rename nop;nop to nop >>
+    // assumption: cannot only fwd or only rewrite
     rename fwd;nop to nop >>
-    rename rewrite;nop to nop >>
-    rename nop;rewrite to nop >>
-    rename nop;nop to nop.
+    rename nop;rewrite to nop.
 
 assume ad_punt : {srcAddr : 32, dstAddr : 32 | true} ---> {}.
 

@@ -89,11 +89,6 @@ let data_tfx_type tfx (actions : Type.ActionSet.t) (datatypes : int String.Map.t
     Rename (a1,a2),
     Set.(add (remove actions a1) a2), 
     datatypes
-  | Add a ->
-    Add a,
-    Set.add actions a, 
-    datatypes
-
 
 let rec infer (ctx : Type.ctx) ({defined; definition} : BaseLogic.t) : Clause.t = 
   let open Semantics in 
@@ -109,18 +104,18 @@ let rec infer (ctx : Type.ctx) ({defined; definition} : BaseLogic.t) : Clause.t 
     assert (Set.is_subset actions ~of_:typ_actions);
     let data = MatchActionTable.data t in 
     let hw = MatchActionTable.hw t in 
-    let is_ghost = Type.check_table_is_ghost ctx name in
-    let typ = Type.{is_ghost; hw; keys; actions = typ_actions; data} in
+    let is_private = Type.check_table_is_private ctx name in
+    let typ = Type.{is_private; hw; keys; actions = typ_actions; data} in
     Table (name, t, Some typ)
   | Join (f, g, None) ->
     let f = infer ctx {defined; definition = f} in 
     let g = infer ctx {defined; definition = g} in 
     let ftype = typeof_exn f in
     let gtype = typeof_exn g in
-    let is_ghost = Type.check_table_is_ghost ctx (Symbol.to_string defined) in
+    let is_private = Type.check_table_is_private ctx (Symbol.to_string defined) in
     let typ = let open Type in 
       {
-        is_ghost;
+        is_private;
         hw = Hardware.join ftype.hw gtype.hw;
         keys = merge_keys_exn ftype.keys gtype.keys;
         actions = 
@@ -134,7 +129,7 @@ let rec infer (ctx : Type.ctx) ({defined; definition} : BaseLogic.t) : Clause.t 
     let g = infer ctx {defined; definition = g} in 
     let ftype = typeof_exn f in
     let gtype = typeof_exn g in
-    assert (Type.compare ftype gtype = 0);
+    assert (Type.equal ftype gtype);
     Override (f, g, Some ftype)
   | Compose (first, second, None) ->  (* diagram order, i.e second o first*)
     let first = infer ctx {defined; definition = first} in 
@@ -142,9 +137,9 @@ let rec infer (ctx : Type.ctx) ({defined; definition} : BaseLogic.t) : Clause.t 
     let type1 = typeof_exn first in
     let type2 = typeof_exn second in
     assert (actions_compat_keys ~first:type1 ~second:type2);
-    let is_ghost = Type.check_table_is_ghost ctx (Symbol.to_string defined) in
+    let is_private = Type.check_table_is_private ctx (Symbol.to_string defined) in
     let typ = Type.{
-      is_ghost;
+      is_private;
       hw = type1.hw;
       keys = type1.keys;
       actions = type2.actions;
@@ -157,10 +152,10 @@ let rec infer (ctx : Type.ctx) ({defined; definition} : BaseLogic.t) : Clause.t 
     let data_types = Type.get_data ftype in  
     let actions = Type.get_actions ftype in 
     let tfx, actions, data_types' = data_tfx_type tfx actions data_types in 
-    let is_ghost = Type.check_table_is_ghost ctx (Symbol.to_string defined) in
+    let is_private = Type.check_table_is_private ctx (Symbol.to_string defined) in
     let typ =
       Type.{ftype with
-        is_ghost;
+        is_private;
         actions;
         data = data_types'
       }
@@ -171,10 +166,10 @@ let rec infer (ctx : Type.ctx) ({defined; definition} : BaseLogic.t) : Clause.t 
     let ftype = typeof_exn f in 
     let in_match_type = ftype.keys in
     let out_match_typ = match_tfx_type ctx tfx in_match_type in
-    let is_ghost = Type.check_table_is_ghost ctx (Symbol.to_string defined) in
+    let is_private = Type.check_table_is_private ctx (Symbol.to_string defined) in
     let out = 
       Type.{ftype with
-        is_ghost;
+        is_private;
         keys = out_match_typ
       }
     in

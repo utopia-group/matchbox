@@ -94,7 +94,6 @@ module OutTfx = struct
     | Project of Var.t list
     | SetTo of Var.t * Expr.t
     | Rename of MagmaAction.t * MagmaAction.t
-    | Add of MagmaAction.t
 end
 
 module Clause = struct
@@ -112,6 +111,7 @@ module Clause = struct
     | Id (_, Some t)
     | Table (_, _, Some t)
     | Join (_, _, Some t)
+    | Override (_, _, Some t)
     | Compose (_, _, Some t)
     | MapOut (_, _, Some t)
     | MapIn (_, _, Some t) -> 
@@ -181,7 +181,7 @@ module Clause = struct
             f_components
             "\\rangeop{\\cdot}{[a \\mapsto a']}"
             ~f:(Option.value_map ~default:1 ~f:((+) 1))
-        | Add _ |  Nonce _ -> failwith "TODO")
+        |  Nonce _ -> failwith "TODO")
     | MapIn (f, tfx, _) -> (
       let f_components = count_components cnts f in
       match tfx with

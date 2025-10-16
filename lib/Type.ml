@@ -4,11 +4,11 @@ module ActionSet = Set.Make (Semantics.MagmaAction)
 
 type varwidth = int [@@deriving sexp, compare]
 (* type match_kind = Exact | LPM | Ternary | Range | Optional [@@deriving sexp, compare] *)
-type t = { is_ghost: bool;
-               hw : Semantics.Hardware.t;
-               keys : varwidth String.Map.t;
-               actions : ActionSet.t; 
-               data : varwidth String.Map.t} [@@deriving sexp, compare]
+type t = {is_private: bool;
+          hw : Semantics.Hardware.t;
+          keys : varwidth String.Map.t;
+          actions : ActionSet.t; 
+          data : varwidth String.Map.t} [@@deriving sexp, compare]
 
 let to_string (tau : t) = 
   sexp_of_t tau
@@ -133,7 +133,7 @@ let find_keys_exn (ctx : ctx) (name : string): (string * int) list =
 
 let get_table_actions (ctx : ctx) t = (find_table_exn ctx t).actions
 
-let check_table_is_ghost (ctx : ctx) t = (find_table_exn ctx t).is_ghost
+let check_table_is_private (ctx : ctx) t = (find_table_exn ctx t).is_private
 
 let is_table = Option.is_some
 

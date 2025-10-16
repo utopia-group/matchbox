@@ -4,32 +4,34 @@ tcam ev_ethernet (dstAddr : 48) : {port : 9} [fwd nop].
 tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
 tcam acl (eth_srcAddr : 48, eth_dstAddr : 48, ipv4_srcAddr : 32, ipv4_dstAddr : 32) : {} [drop nop].
 
-ghost tcam lookup (port : 9, nexthop : 32) : {port : 9, nexthop : 32} [_]
+private tcam lookup (port : 9, nexthop : 32) : {port : 9, nexthop : 32} [_1 _2]
 o--
     forall port := enumerate(9), nexthop := unique(32):
-        |port, nexthop -> _(port, nexthop)|.
+        |port, nexthop -> _1(port, nexthop)|
+    |> |0b111111111, 0b******************************** ->
+        _1(0b111111111, 0b11111111111111111111111111111111)|.
 
-assume lookup : {nexthop : 32 | true} ---> {port : 9}.
+assert lookup : {nexthop : 32 | true} ---> {port : 9}.
 
 tcam nexthop (nexthop : 32) : {port : 9} [set_port drop]
 o--
     lookup >>
     delete key port >>
     delete data nexthop >>
-    rename _ to set_port >>
-    add drop.
+    rename _1 to set_port >>
+    rename _2 to drop.
 
-assume lookup : {port : 9 | true} ---> {nexthop : 32}.
+assert lookup : {port : 9 | true} ---> {nexthop : 32}.
 
 tcam la_ethernet (dstAddr : 48) : {nexthop : 32} [fwd nop]
 o--
     ev_ethernet >> (
         lookup >>
         delete key nexthop >>
-        delete data port >>
-        rename _ to fwd >>
-        add nop
-    ).
+        delete data port
+    ) >>
+    rename _1 to fwd >>
+    rename _2 to nop.
 
 tcam la_ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop]
 o--
@@ -44,8 +46,10 @@ o--
         ev_ipv4 >>
         delete data port
     ) >>
-    rename _;fwd to fwd >>
-    rename _;nop to nop.
+    rename _1;fwd to fwd >>
+    rename _1;nop to nop >>
+    rename _2;fwd to nop >>
+    rename _2;nop to nop.
 
 assume acl : {ipv4_srcAddr : 32, ipv4_dstAddr : 32 | true} ---> {}.
 
@@ -61,10 +65,10 @@ o--
         delete key ipv4_dstAddr
     ) >>
     rename malformed;malformed;drop to drop >>
-    rename malformed;malformed;nop to nop >>
+    rename malformed;malformed;nop to drop >>
     rename malformed;ok;drop to drop >>
-    rename malformed;ok;nop to nop >>
+    rename malformed;ok;nop to drop >>
     rename ok;malformed;drop to drop >>
-    rename ok;malformed;nop to nop >>
-    rename ok;ok;drop to nop >>
+    rename ok;malformed;nop to drop >>
+    rename ok;ok;drop to drop >>
     rename ok;ok;nop to nop.

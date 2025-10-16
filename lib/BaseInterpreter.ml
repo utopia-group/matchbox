@@ -135,7 +135,7 @@ let apply_out_tfx state row tfx =
       state,
       new_action,
       data
-    | Rename _ | Add _ -> 
+    | Rename _ -> 
       state,
       action,
       data
