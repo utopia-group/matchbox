@@ -1,0 +1,52 @@
+tcam acl (
+    is_inbound : 2,
+    srcAddr : 32,
+    dstAddr : 32,
+    proto : 8,
+    l4_sport : 16,
+    l4_dport : 16
+) : {} [allow deny].
+
+assume acl : {
+    // is_inbound : 2,
+    srcAddr : 32,
+    proto : 8,
+    l4_sport : 16
+    | true && is_inbound & 2[3] == 2[0] & 2[3] && true
+} ---> {}.
+
+tcam inbound_acl (
+    // is_inbound : 2,
+    srcAddr : 32,
+    proto : 8,
+    l4_sport : 16
+) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        is_inbound -> 0b00
+    } >>
+    delete key is_inbound >>
+    delete key dstAddr >>
+    delete key l4_dport.
+
+assume acl : {
+    dstAddr : 32,
+    proto : 8,
+    l4_dport : 16
+    | true && is_inbound & 2[3] == 2[1] & 2[3] && true
+} ---> {}.
+
+tcam outbound_acl (
+    dstAddr : 32,
+    proto : 8,
+    l4_dport : 16
+) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        is_inbound -> 0b01
+    } >>
+    delete key is_inbound >>
+    delete key srcAddr >>
+    delete key l4_sport.

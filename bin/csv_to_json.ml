@@ -9,14 +9,26 @@ open Core
 open Stijl
 open Utils
 
-(* Schema from eval_retargeting.ml - logical_schema *)
-let logical_schema =
+(* let schema =
   [
     ("ipv4", ["dstAddr"], [("fwd", ["dstAddr"; "port"]); ("nop", [])]);
     ("ethernet", ["dstAddr"], [("fwd", ["port"]); ("nop", [])]);
     ( "punt",
       ["etherType"; "isValid"; "version"; "srcAddr"; "dstAddr"; "ttl"],
       [("drop", [])] );
+  ] *)
+let schema =
+  [
+    ( "acl",
+      [
+        "meta.is_inbound";
+        "hdr.ipv4.srcAddr";
+        "hdr.ipv4.dstAddr";
+        "hdr.ipv4.proto";
+        "meta.l4_sport";
+        "meta.l4_dport";
+      ],
+      [("allow", []); ("deny", [])] );
   ]
 
 (* Convert match value to JSON-compatible string *)
@@ -81,13 +93,12 @@ let entry_to_json (table_name : string) (entry : Semantics.MatchAction.t)
 (* Main conversion function *)
 let csv_to_json (input_csv : string) (output_json : string) : unit =
   (* Read CSV and parse into tables using existing read_csv_by_table function *)
-  let tables = read_csv_by_table input_csv logical_schema in
+  let tables = read_csv_by_table input_csv schema in
 
   (* Convert all entries to JSON *)
   let json_entries =
     List.concat_map tables ~f:(fun (table_name, entries) ->
-        List.map entries ~f:(fun entry ->
-            entry_to_json table_name entry logical_schema))
+        List.map entries ~f:(fun entry -> entry_to_json table_name entry schema))
   in
 
   (* Write to JSON file *)

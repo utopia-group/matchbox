@@ -12,8 +12,8 @@ type t = {
     assertions: F.itfc_spec;
     prog : L.t list;
     stats : Stats.t
-
 }
+
 let empty = {
     typs = String.Map.empty;
     rscs = String.Map.empty;
@@ -157,6 +157,39 @@ let rec complete_clause (clause : Clause.t option) (table : string) (typ : T.t)
       Override (c1', c2', c_typ)
     | _ -> c
   )
+
+let rec fill_var_widths_expr expr keys =
+  let open Gpl.Expr in
+  match expr with
+  | Var (s, w) when w = -1 ->
+    let w' = Map.find_exn keys s in
+    Var (s, w')
+  | BinOp (bop, expr1, expr2) ->
+    BinOp (bop,
+      fill_var_widths_expr expr1 keys,
+      fill_var_widths_expr expr2 keys)
+  | _ -> expr
+
+let rec fill_var_widths_bexpr bexpr keys =
+  let open Gpl.BExpr in
+  match bexpr with
+  | TComp (comp, expr1, expr2) ->
+    TComp (comp,
+      fill_var_widths_expr expr1 keys,
+      fill_var_widths_expr expr2 keys)
+  | TNary (bop, bexprs) ->
+    TNary (bop, List.map bexprs ~f:(fun e -> fill_var_widths_bexpr e keys))
+  | _ -> bexpr
+
+let fill_var_widths (p : t) : t =
+  {p with gfds =
+   Map.mapi p.gfds ~f:(fun ~key ~data ->
+     List.map data ~f:(fun fd ->
+       let keys = (Map.find_exn p.typs key).keys in
+       {fd with refine = fill_var_widths_bexpr fd.refine keys}
+     )
+   )
+  }
 
 let create_table rows =
   let open Semantics in

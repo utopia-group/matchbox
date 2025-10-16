@@ -72,11 +72,18 @@ module DepFunDep = struct
     Map.find spec table
 
   let implies (spec : itfc_spec) (table : string) (fd : t) = 
+    (* printf "spec:\n%s\n"
+      (Map.find_exn spec table
+       |> List.map ~f:(fun v ->
+            Printf.sprintf "%s" (to_string v))
+       |> String.concat ~sep:"\n");
+    printf "fd:\n%s\n" (to_string fd); *)
     Option.value_map (find_fd spec table) 
       ~default:false
       ~f:(List.exists ~f:(fun fd' ->
         BExpr.equal fd.refine fd'.refine
-        && Map.equal (=) fd.source fd'.source
+        &&
+        Map.equal (=) fd.source fd'.source
         && (
           Map.fold2 ~init:true fd.target fd'.target ~f:(fun ~key:_ ~data acc -> 
             match data with

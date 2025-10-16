@@ -51,6 +51,12 @@ let parse_match_key key field_names =
                 let prefix_len = Int.of_string prefix_str in
                 Match.Lpm (Bit.Vector.of_int value ~width, prefix_len)
               | _ -> Match.exact (Bit.Vector.of_int 0 ~width))
+            | [ip] -> (
+              match String.split ip ~on:'/' with
+              | [value_str; prefix_str] ->
+                let prefix_len = Int.of_string prefix_str in
+                Match.Lpm (Bit.Vector.of_string value_str, prefix_len)
+              | _ -> failwith "unreachable")
             | _ -> Match.exact (Bit.Vector.of_int 0 ~width:32)
           else
             match String.split field ~on:'#' with

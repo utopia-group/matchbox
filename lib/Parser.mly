@@ -36,10 +36,12 @@
 %token IGNORE
 %token EQ
 %token AND
+%token BAND
 %token OR
 %token IMP
 %token TRUE
 %token FALSE
+%token CUBE_FILTER
 %token FILTER
 %token COMMA
 %token RENAME
@@ -57,10 +59,10 @@
 
 %left TIMES
 
-/* AND binds tighter than or */
-%nonassoc OR 
-%nonassoc AND
-
+/* AND binds tighter than OR */
+%left OR
+%left AND
+%left BAND
 
 %start <ParserContext.t> matchstix
 %%
@@ -127,6 +129,10 @@ row :
   BAR
     { (keys, action, data) }
 
+mapping :
+| key = ID; ARROW; value = BP
+    { (key, value) }
+
 algebra :
 | rows = separated_nonempty_list(COMMA, row)
     { ParserContext.create_table rows }
@@ -149,15 +155,22 @@ algebra :
 | c = algebra; COMPOSE; KEY; x = var; ASSIGN; e = expr 
     { Clause.(MatchTfx.SetTo (x, e) <<| c) }
 | c = algebra; COMPOSE; DELETE; KEY; x = var
-    { Clause.(MatchTfx.Del (x) <<| c) }
+    { Clause.(MatchTfx.Del x <<| c) }
 | c = algebra; COMPOSE; IGNORE; KEY; x = var
     { Clause.(MatchTfx.WildCard x <<| c)  }
+| c = algebra; COMPOSE; CUBE_FILTER;
+  mappings = delimited(LBRACE, separated_list(COMMA, mapping), RBRACE)
+    {   mappings
+        |> List.map ~f:(fun (k, v) -> (k, Match.Ternary (Trit.Vector.of_string v)))
+        |> Map.of_alist_exn (module String)
+        |> MatchTfx.CubeFilter
+        |> Fn.flip Clause.(<<|) c }
 | c = algebra; COMPOSE; FILTER; b = formula 
-    { Clause.(MatchTfx.Filter (b) <<| c) }
+    { Clause.(MatchTfx.Filter b <<| c) }
 | c = algebra; COMPOSE; DATA; x = var; ASSIGN; e = expr
     { Clause.(c |>> OutTfx.SetTo(x, e))}
 | c = algebra; COMPOSE; DELETE; DATA; x = var
-    { Clause.(c |>> OutTfx.Del (x) )}
+    { Clause.(c |>> OutTfx.Del x )}
 | c = algebra; COMPOSE; RENAME; old_name = action; TO; new_name = action
     { Clause.(c |>> OutTfx.Rename (old_name, new_name))  }
 
@@ -170,6 +183,10 @@ expr :
     { Expr.bvi v w }
 | x = var; 
     { Expr.var x }
+| e1 = expr; BAND; e2 = expr 
+    { Expr.BinOp (BAnd, e1, e2) }
+| e1 = expr; BAR; e2 = expr 
+    { Expr.BinOp (BOr, e1, e2) }
 | LPAREN; e = expr; RPAREN
     { e }
 
@@ -181,7 +198,7 @@ formula :
 | e1 = expr; EQ; e2 = expr
     { BExpr.(e1 == e2) }
 | phi = formula; AND; psi = formula 
-    { BExpr.and_ phi psi }
+    { BExpr.and_ psi phi }
 | phi = formula; OR; psi = formula
     { BExpr.ors [phi; psi] }
 | LPAREN; phi = formula; RPAREN 
@@ -189,8 +206,8 @@ formula :
 
 action :
 | name = ID 
-    { Semantics.MagmaAction.make name }
+    { MagmaAction.make name }
 | a1 = action; SEMICOLON; a2 = action 
-    { Semantics.MagmaAction.(a1 @ a2) }
+    { MagmaAction.(a1 @ a2) }
 | LPAREN; a = action; RPAREN
     { a }

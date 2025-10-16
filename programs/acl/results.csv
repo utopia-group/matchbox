@@ -1,0 +1,2 @@
+name,typetime,num_fds,size_fds,size,num_joins,num_compose,num_override,num_filters,num_tblvars,num_literals,num_key_adds,num_key_dels,num_data_adds,num_data_dels,num_action_renames,eval_time,eval_in_size,eval_out_size,min_eval_size,min_eval_time
+acl_aws,0.010014,0,0,8,0,0,0,2,2,0,6,6,0,0,0,0.972986,1019,1020,0,0.000000

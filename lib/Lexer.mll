@@ -46,6 +46,7 @@ rule tokens = parse
 | "ignore" { IGNORE }
 | "true" { TRUE }
 | "false" { FALSE }
+| "cube_filter" { CUBE_FILTER }
 | "filter" { FILTER }
 | "rename" { RENAME }
 | "tcam" { TCAM }
@@ -53,6 +54,7 @@ rule tokens = parse
 | "lpm" { LPM }
 | "==" { EQ }
 | "&&" { AND }
+| "&" { BAND }
 | "||" { OR }
 | "=>" { IMP }
 | id as x         { ID x }

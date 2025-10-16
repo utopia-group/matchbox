@@ -1,0 +1,8 @@
+[
+    {
+        "name": "acl_aws",
+        "progpath": "./programs/acl/programs/acl_aws.mb",
+        "input": "./programs/acl/data/acl.json",
+        "output": "./programs/acl/data/acl_aws.json"
+    }
+]
