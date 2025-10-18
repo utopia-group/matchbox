@@ -1,182 +1,182 @@
 [
-    {
-        "name": "lo_ad",
-        "progpath": "./programs/retargeting/programs/lo_ad.mb",
-        "input": "./programs/retargeting/data/lo.json",
-        "output": "./programs/retargeting/data/lo_ad.json"
-    },
-    {
-        "name": "lo_ch",
-        "progpath": "./programs/retargeting/programs/lo_ch.mb",
-        "input": "./programs/retargeting/data/lo.json",
-        "output": "./programs/retargeting/data/lo_ch.json"
-    },
-    {
-        "name": "lo_db",
-        "progpath": "./programs/retargeting/programs/lo_db.mb",
-        "input": "./programs/retargeting/data/lo.json",
-        "output": "./programs/retargeting/data/lo_db.json"
-    },
+    // {
+    //     "name": "lo_ad",
+    //     "progpath": "./programs/retargeting/programs/lo_ad.mb",
+    //     "input": "./programs/retargeting/data/lo.json",
+    //     "output": "./programs/retargeting/data/lo_ad.json"
+    // },
+    // {
+    //     "name": "lo_ch",
+    //     "progpath": "./programs/retargeting/programs/lo_ch.mb",
+    //     "input": "./programs/retargeting/data/lo.json",
+    //     "output": "./programs/retargeting/data/lo_ch.json"
+    // },
+    // {
+    //     "name": "lo_db",
+    //     "progpath": "./programs/retargeting/programs/lo_db.mb",
+    //     "input": "./programs/retargeting/data/lo.json",
+    //     "output": "./programs/retargeting/data/lo_db.json"
+    // },
     {
         "name": "lo_ev",
         "progpath": "./programs/retargeting/programs/lo_ev.mb",
         "input": "./programs/retargeting/data/lo.json",
         "output": "./programs/retargeting/data/lo_ev.json"
-    },
-    {
-        "name": "lo_la",
-        "progpath": "./programs/retargeting/programs/lo_la.mb",
-        "input": "./programs/retargeting/data/lo.json",
-        "output": "./programs/retargeting/data/lo_la.json"
-    },
-    {
-        "name": "ad_lo",
-        "progpath": "./programs/retargeting/programs/ad_lo.mb",
-        "input": "./programs/retargeting/data/lo_ad.json",
-        "output": "./programs/retargeting/data/ad_lo.json"
-    },
-    {
-        "name": "ad_ch",
-        "progpath": "./programs/retargeting/programs/ad_ch.mb",
-        "input": "./programs/retargeting/data/lo_ad.json",
-        "output": "./programs/retargeting/data/ad_ch.json"
-    },
-    {
-        "name": "ad_db",
-        "progpath": "./programs/retargeting/programs/ad_db.mb",
-        "input": "./programs/retargeting/data/lo_ad.json",
-        "output": "./programs/retargeting/data/ad_db.json"
-    },
-    {
-        "name": "ad_ev",
-        "progpath": "./programs/retargeting/programs/ad_ev.mb",
-        "input": "./programs/retargeting/data/lo_ad.json",
-        "output": "./programs/retargeting/data/ad_ev.json"
-    },
-    {
-        "name": "ad_la",
-        "progpath": "./programs/retargeting/programs/ad_la.mb",
-        "input": "./programs/retargeting/data/lo_ad.json",
-        "output": "./programs/retargeting/data/ad_la.json"
-    },
-    {
-        "name": "ch_lo",
-        "progpath": "./programs/retargeting/programs/ch_lo.mb",
-        "input": "./programs/retargeting/data/lo_ch.json",
-        "output": "./programs/retargeting/data/ch_lo.json"
-    },
-    {
-        "name": "ch_ad",
-        "progpath": "./programs/retargeting/programs/ch_ad.mb",
-        "input": "./programs/retargeting/data/lo_ch.json",
-        "output": "./programs/retargeting/data/ch_ad.json"
-    },
-    {
-        "name": "ch_db",
-        "progpath": "./programs/retargeting/programs/ch_db.mb",
-        "input": "./programs/retargeting/data/lo_ch.json",
-        "output": "./programs/retargeting/data/ch_db.json"
-    },
-    {
-        "name": "ch_ev",
-        "progpath": "./programs/retargeting/programs/ch_ev.mb",
-        "input": "./programs/retargeting/data/lo_ch.json",
-        "output": "./programs/retargeting/data/ch_ev.json"
-    },
-    {
-        "name": "ch_la",
-        "progpath": "./programs/retargeting/programs/ch_la.mb",
-        "input": "./programs/retargeting/data/lo_ch.json",
-        "output": "./programs/retargeting/data/ch_la.json"
-    },
-    {
-        "name": "db_lo",
-        "progpath": "./programs/retargeting/programs/db_lo.mb",
-        "input": "./programs/retargeting/data/lo_db.json",
-        "output": "./programs/retargeting/data/db_lo.json"
-    },
-    {
-        "name": "db_ad",
-        "progpath": "./programs/retargeting/programs/db_ad.mb",
-        "input": "./programs/retargeting/data/lo_db.json",
-        "output": "./programs/retargeting/data/db_ad.json"
-    },
-    {
-        "name": "db_ch",
-        "progpath": "./programs/retargeting/programs/db_ch.mb",
-        "input": "./programs/retargeting/data/lo_db.json",
-        "output": "./programs/retargeting/data/db_ch.json"
-    },
-    {
-        "name": "db_ev",
-        "progpath": "./programs/retargeting/programs/db_ev.mb",
-        "input": "./programs/retargeting/data/lo_db.json",
-        "output": "./programs/retargeting/data/db_ev.json"
-    },
-    {
-        "name": "db_la",
-        "progpath": "./programs/retargeting/programs/db_la.mb",
-        "input": "./programs/retargeting/data/lo_db.json",
-        "output": "./programs/retargeting/data/db_la.json"
-    },
-    {
-        "name": "ev_lo",
-        "progpath": "./programs/retargeting/programs/ev_lo.mb",
-        "input": "./programs/retargeting/data/lo_ev.json",
-        "output": "./programs/retargeting/data/ev_lo.json"
-    },
-    {
-        "name": "ev_ad",
-        "progpath": "./programs/retargeting/programs/ev_ad.mb",
-        "input": "./programs/retargeting/data/lo_ev.json",
-        "output": "./programs/retargeting/data/ev_ad.json"
-    },
-    {
-        "name": "ev_ch",
-        "progpath": "./programs/retargeting/programs/ev_ch.mb",
-        "input": "./programs/retargeting/data/lo_ev.json",
-        "output": "./programs/retargeting/data/ev_ch.json"
-    },
-    {
-        "name": "ev_db",
-        "progpath": "./programs/retargeting/programs/ev_db.mb",
-        "input": "./programs/retargeting/data/lo_ev.json",
-        "output": "./programs/retargeting/data/ev_db.json"
-    },
-    {
-        "name": "ev_la",
-        "progpath": "./programs/retargeting/programs/ev_la.mb",
-        "input": "./programs/retargeting/data/lo_ev.json",
-        "output": "./programs/retargeting/data/ev_la.json"
-    },
-    {
-        "name": "la_lo",
-        "progpath": "./programs/retargeting/programs/la_lo.mb",
-        "input": "./programs/retargeting/data/lo_la.json",
-        "output": "./programs/retargeting/data/la_lo.json"
-    },
-    {
-        "name": "la_ad",
-        "progpath": "./programs/retargeting/programs/la_ad.mb",
-        "input": "./programs/retargeting/data/lo_la.json",
-        "output": "./programs/retargeting/data/la_ad.json"
-    },
-    {
-        "name": "la_ch",
-        "progpath": "./programs/retargeting/programs/la_ch.mb",
-        "input": "./programs/retargeting/data/lo_la.json",
-        "output": "./programs/retargeting/data/la_ch.json"
-    },
-    {
-        "name": "la_db",
-        "progpath": "./programs/retargeting/programs/la_db.mb",
-        "input": "./programs/retargeting/data/lo_la.json",
-        "output": "./programs/retargeting/data/la_db.json"
-    },
-    {
-        "name": "la_ev",
-        "progpath": "./programs/retargeting/programs/la_ev.mb",
-        "input": "./programs/retargeting/data/lo_la.json",
-        "output": "./programs/retargeting/data/la_ev.json"
     }
+    // {
+    //     "name": "lo_la",
+    //     "progpath": "./programs/retargeting/programs/lo_la.mb",
+    //     "input": "./programs/retargeting/data/lo.json",
+    //     "output": "./programs/retargeting/data/lo_la.json"
+    // },
+    // {
+    //     "name": "ad_lo",
+    //     "progpath": "./programs/retargeting/programs/ad_lo.mb",
+    //     "input": "./programs/retargeting/data/lo_ad.json",
+    //     "output": "./programs/retargeting/data/ad_lo.json"
+    // },
+    // {
+    //     "name": "ad_ch",
+    //     "progpath": "./programs/retargeting/programs/ad_ch.mb",
+    //     "input": "./programs/retargeting/data/lo_ad.json",
+    //     "output": "./programs/retargeting/data/ad_ch.json"
+    // },
+    // {
+    //     "name": "ad_db",
+    //     "progpath": "./programs/retargeting/programs/ad_db.mb",
+    //     "input": "./programs/retargeting/data/lo_ad.json",
+    //     "output": "./programs/retargeting/data/ad_db.json"
+    // },
+    // {
+    //     "name": "ad_ev",
+    //     "progpath": "./programs/retargeting/programs/ad_ev.mb",
+    //     "input": "./programs/retargeting/data/lo_ad.json",
+    //     "output": "./programs/retargeting/data/ad_ev.json"
+    // },
+    // {
+    //     "name": "ad_la",
+    //     "progpath": "./programs/retargeting/programs/ad_la.mb",
+    //     "input": "./programs/retargeting/data/lo_ad.json",
+    //     "output": "./programs/retargeting/data/ad_la.json"
+    // },
+    // {
+    //     "name": "ch_lo",
+    //     "progpath": "./programs/retargeting/programs/ch_lo.mb",
+    //     "input": "./programs/retargeting/data/lo_ch.json",
+    //     "output": "./programs/retargeting/data/ch_lo.json"
+    // },
+    // {
+    //     "name": "ch_ad",
+    //     "progpath": "./programs/retargeting/programs/ch_ad.mb",
+    //     "input": "./programs/retargeting/data/lo_ch.json",
+    //     "output": "./programs/retargeting/data/ch_ad.json"
+    // },
+    // {
+    //     "name": "ch_db",
+    //     "progpath": "./programs/retargeting/programs/ch_db.mb",
+    //     "input": "./programs/retargeting/data/lo_ch.json",
+    //     "output": "./programs/retargeting/data/ch_db.json"
+    // },
+    // {
+    //     "name": "ch_ev",
+    //     "progpath": "./programs/retargeting/programs/ch_ev.mb",
+    //     "input": "./programs/retargeting/data/lo_ch.json",
+    //     "output": "./programs/retargeting/data/ch_ev.json"
+    // },
+    // {
+    //     "name": "ch_la",
+    //     "progpath": "./programs/retargeting/programs/ch_la.mb",
+    //     "input": "./programs/retargeting/data/lo_ch.json",
+    //     "output": "./programs/retargeting/data/ch_la.json"
+    // },
+    // {
+    //     "name": "db_lo",
+    //     "progpath": "./programs/retargeting/programs/db_lo.mb",
+    //     "input": "./programs/retargeting/data/lo_db.json",
+    //     "output": "./programs/retargeting/data/db_lo.json"
+    // },
+    // {
+    //     "name": "db_ad",
+    //     "progpath": "./programs/retargeting/programs/db_ad.mb",
+    //     "input": "./programs/retargeting/data/lo_db.json",
+    //     "output": "./programs/retargeting/data/db_ad.json"
+    // },
+    // {
+    //     "name": "db_ch",
+    //     "progpath": "./programs/retargeting/programs/db_ch.mb",
+    //     "input": "./programs/retargeting/data/lo_db.json",
+    //     "output": "./programs/retargeting/data/db_ch.json"
+    // },
+    // {
+    //     "name": "db_ev",
+    //     "progpath": "./programs/retargeting/programs/db_ev.mb",
+    //     "input": "./programs/retargeting/data/lo_db.json",
+    //     "output": "./programs/retargeting/data/db_ev.json"
+    // },
+    // {
+    //     "name": "db_la",
+    //     "progpath": "./programs/retargeting/programs/db_la.mb",
+    //     "input": "./programs/retargeting/data/lo_db.json",
+    //     "output": "./programs/retargeting/data/db_la.json"
+    // },
+    // {
+    //     "name": "ev_lo",
+    //     "progpath": "./programs/retargeting/programs/ev_lo.mb",
+    //     "input": "./programs/retargeting/data/lo_ev.json",
+    //     "output": "./programs/retargeting/data/ev_lo.json"
+    // },
+    // {
+    //     "name": "ev_ad",
+    //     "progpath": "./programs/retargeting/programs/ev_ad.mb",
+    //     "input": "./programs/retargeting/data/lo_ev.json",
+    //     "output": "./programs/retargeting/data/ev_ad.json"
+    // },
+    // {
+    //     "name": "ev_ch",
+    //     "progpath": "./programs/retargeting/programs/ev_ch.mb",
+    //     "input": "./programs/retargeting/data/lo_ev.json",
+    //     "output": "./programs/retargeting/data/ev_ch.json"
+    // },
+    // {
+    //     "name": "ev_db",
+    //     "progpath": "./programs/retargeting/programs/ev_db.mb",
+    //     "input": "./programs/retargeting/data/lo_ev.json",
+    //     "output": "./programs/retargeting/data/ev_db.json"
+    // },
+    // {
+    //     "name": "ev_la",
+    //     "progpath": "./programs/retargeting/programs/ev_la.mb",
+    //     "input": "./programs/retargeting/data/lo_ev.json",
+    //     "output": "./programs/retargeting/data/ev_la.json"
+    // },
+    // {
+    //     "name": "la_lo",
+    //     "progpath": "./programs/retargeting/programs/la_lo.mb",
+    //     "input": "./programs/retargeting/data/lo_la.json",
+    //     "output": "./programs/retargeting/data/la_lo.json"
+    // },
+    // {
+    //     "name": "la_ad",
+    //     "progpath": "./programs/retargeting/programs/la_ad.mb",
+    //     "input": "./programs/retargeting/data/lo_la.json",
+    //     "output": "./programs/retargeting/data/la_ad.json"
+    // },
+    // {
+    //     "name": "la_ch",
+    //     "progpath": "./programs/retargeting/programs/la_ch.mb",
+    //     "input": "./programs/retargeting/data/lo_la.json",
+    //     "output": "./programs/retargeting/data/la_ch.json"
+    // },
+    // {
+    //     "name": "la_db",
+    //     "progpath": "./programs/retargeting/programs/la_db.mb",
+    //     "input": "./programs/retargeting/data/lo_la.json",
+    //     "output": "./programs/retargeting/data/la_db.json"
+    // },
+    // {
+    //     "name": "la_ev",
+    //     "progpath": "./programs/retargeting/programs/la_ev.mb",
+    //     "input": "./programs/retargeting/data/lo_la.json",
+    //     "output": "./programs/retargeting/data/la_ev.json"
+    // }
 ]

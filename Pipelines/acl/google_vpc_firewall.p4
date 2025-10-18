@@ -5,7 +5,9 @@ action deny () { meta.allow = false; }
 action seen () {
     meta.seen = true;
 }
-
+action not_seen () {
+    meta.seen = false;
+}
 
 action inbound () {
     meta.is_inbound = true;

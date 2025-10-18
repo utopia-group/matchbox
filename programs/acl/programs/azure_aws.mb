@@ -1,4 +1,4 @@
-tcam acl (
+tcam azure_acl (
     is_inbound : 2,
     srcAddr : 32,
     dstAddr : 32,
@@ -7,7 +7,7 @@ tcam acl (
     l4_dport : 16
 ) : {} [allow deny].
 
-assume acl : {
+assume azure_acl : {
     srcAddr : 32,
     proto : 8,
     l4_sport : 16
@@ -20,7 +20,7 @@ tcam inbound_acl (
     l4_sport : 16
 ) : {} [allow deny]
 o--
-    acl >>
+    azure_acl >>
     cube_filter {
         is_inbound -> 0b00
     } >>
@@ -28,7 +28,7 @@ o--
     delete key dstAddr >>
     delete key l4_dport.
 
-assume acl : {
+assume azure_acl : {
     dstAddr : 32,
     proto : 8,
     l4_dport : 16
@@ -41,7 +41,7 @@ tcam outbound_acl (
     l4_dport : 16
 ) : {} [allow deny]
 o--
-    acl >>
+    azure_acl >>
     cube_filter {
         is_inbound -> 0b01
     } >>

@@ -72,25 +72,21 @@ module DepFunDep = struct
     Map.find spec table
 
   let implies (spec : itfc_spec) (table : string) (fd : t) = 
-    (* printf "spec:\n%s\n"
-      (Map.find_exn spec table
-       |> List.map ~f:(fun v ->
-            Printf.sprintf "%s" (to_string v))
-       |> String.concat ~sep:"\n");
-    printf "fd:\n%s\n" (to_string fd); *)
     Option.value_map (find_fd spec table) 
       ~default:false
       ~f:(List.exists ~f:(fun fd' ->
-        BExpr.equal fd.refine fd'.refine
-        &&
-        Map.equal (=) fd.source fd'.source
-        && (
-          Map.fold2 ~init:true fd.target fd'.target ~f:(fun ~key:_ ~data acc -> 
-            match data with
-            | `Left _ -> false
-            | `Right _ -> acc
-            | `Both (w1, w2) -> if w1 = w2 then acc else false
-          )
+        BExpr.equal fd.refine fd'.refine &&
+        Map.fold2 ~init:true fd.source fd'.source ~f:(fun ~key:_ ~data acc -> 
+          match data with
+          | `Left _ -> acc
+          | `Right _ -> false
+          | `Both (w1, w2) -> if w1 = w2 then acc else false
+        ) &&
+        Map.fold2 ~init:true fd.target fd'.target ~f:(fun ~key:_ ~data acc -> 
+          match data with
+          | `Left _ -> false
+          | `Right _ -> acc
+          | `Both (w1, w2) -> if w1 = w2 then acc else false
         )
       ))
 
@@ -198,9 +194,11 @@ module DepFunDep = struct
       let matchset = Map.key_set goal.source in 
       assert (Set.is_subset matchset ~of_:xsset);
       check ctx c goal
-    | MapIn(c, Del x, _) | MapIn(c, WildCard x, _) ->
-      (* assert (not (Map.mem goal.source (Var.str x))); *)
+    | MapIn(c, Del x, _) ->
+      assert (not (Map.mem goal.source (Var.str x)));
       assert (not (Set.exists (BExpr.free_vars goal.refine) ~f:(Var.equal x)));
+      check ctx c goal
+    | MapIn(c, WildCard x, _) ->
       let goal' = 
         {goal with
          (* TODO: *)
@@ -219,6 +217,8 @@ module DepFunDep = struct
                       ~key:(Var.str x')
                       ~data:(Map.find_exn goal.source (Var.str x)))
              (Var.str x)
+         | BV (_, w) ->
+           Map.set goal.source ~key:(Var.str x) ~data:w
          | _ -> failwith "unimplemented"}
       in
       check ctx c {goal' with refine}

@@ -57,6 +57,9 @@ apply {
     } else {
         outbound_acl.apply();
     }
+    if (!meta.allow) {
+        standard_metadata(mark_to_drop);
+    }
 }
   
 

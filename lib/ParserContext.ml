@@ -25,11 +25,11 @@ let empty = {
 
 let (@) (p1 : t) (p2 : t) : t= 
     { typs = T.(p1.typs @ p2.typs);
-        rscs = R.(p1.rscs @ p2.rscs);
-        gfds = F.(p1.gfds @ p2.gfds);
-        assertions = F.(p1.assertions @ p2.assertions);
-        prog = p1.prog @ p2.prog;
-        stats = Stats.(p1.stats + p2.stats);
+      rscs = R.(p1.rscs @ p2.rscs);
+      gfds = F.(p1.gfds @ p2.gfds);
+      assertions = F.(p1.assertions @ p2.assertions);
+      prog = p1.prog @ p2.prog;
+      stats = Stats.(p1.stats + p2.stats);
     }
 
 let concat : t list -> t = 

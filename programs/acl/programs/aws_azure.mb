@@ -1,0 +1,31 @@
+tcam inbound_acl (
+    srcAddr : 32,
+    proto : 8,
+    l4_sport : 16
+) : {} [allow deny].
+tcam outbound_acl (
+    dstAddr : 32,
+    proto : 8,
+    l4_dport : 16
+) : {} [allow deny].
+
+tcam azure_acl (
+    is_inbound : 2,
+    srcAddr : 32,
+    dstAddr : 32,
+    proto : 8,
+    l4_sport : 16,
+    l4_dport : 16
+) : {} [allow deny]
+o--
+    (
+        inbound_acl >>
+        key is_inbound := 2[0] >>
+        ignore key dstAddr >>
+        ignore key l4_dport
+    ) |> (
+        outbound_acl >>
+        key is_inbound := 2[1] >>
+        ignore key srcAddr >>
+        ignore key l4_sport
+    ).

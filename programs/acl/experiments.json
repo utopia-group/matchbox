@@ -4,5 +4,23 @@
         "progpath": "./programs/acl/programs/acl_aws.mb",
         "input": "./programs/acl/data/acl.json",
         "output": "./programs/acl/data/acl_aws.json"
+    },
+    {
+        "name": "acl_azure",
+        "progpath": "./programs/acl/programs/acl_azure.mb",
+        "input": "./programs/acl/data/acl.json",
+        "output": "./programs/acl/data/acl_azure.json"
+    },
+    {
+        "name": "aws_azure",
+        "progpath": "./programs/acl/programs/aws_azure.mb",
+        "input": "./programs/acl/data/acl_aws.json",
+        "output": "./programs/acl/data/aws_azure.json"
+    },
+    {
+        "name": "azure_aws",
+        "progpath": "./programs/acl/programs/azure_aws.mb",
+        "input": "./programs/acl/data/acl_azure.json",
+        "output": "./programs/acl/data/azure_aws.json"
     }
 ]

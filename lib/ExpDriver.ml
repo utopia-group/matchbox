@@ -46,7 +46,7 @@ let run_ (json : Safe.t) (minimize : bool) : unit =
     Stats.print_header ();
     List.iter ls ~f:(fun json ->
       let {name;progpath;input;output} = of_yojson json |> Result.ok_or_failwith in
-      let pctx = parse_program progpath in 
+      let pctx = parse_program progpath in
       let pctx = ParserContext.fill_var_widths pctx in
       let pctx = ParserContext.typecheck pctx in 
       let config = RuntimeInterface.parse_trace_file pctx.typs input in 

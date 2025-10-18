@@ -1,0 +1,19 @@
+tcam acl (
+    is_inbound : 2,
+    srcAddr : 32,
+    dstAddr : 32,
+    proto : 8,
+    l4_sport : 16,
+    l4_dport : 16
+) : {} [allow deny].
+
+tcam azure_acl (
+    is_inbound : 2,
+    srcAddr : 32,
+    dstAddr : 32,
+    proto : 8,
+    l4_sport : 16,
+    l4_dport : 16
+) : {} [allow deny]
+o--
+    acl.
