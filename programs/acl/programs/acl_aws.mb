@@ -1,17 +1,26 @@
 tcam acl (
-    is_inbound : 2,
+    is_inbound : 1,
     srcAddr : 32,
     dstAddr : 32,
     proto : 8,
     l4_sport : 16,
     l4_dport : 16
 ) : {} [allow deny].
+tcam ipv4_state (
+    is_inbound : 1,
+    srcAddr : 32,
+    dstAddr : 32,
+    proto : 8,
+    l4_sport : 16,
+    l4_dport : 16
+) : {} [seen unseen].
 
 assume acl : {
+    is_inbound : 1,
     srcAddr : 32,
     proto : 8,
     l4_sport : 16
-    | true && is_inbound & 2[3] == 2[0] & 2[3] && true
+    | true && is_inbound & 1[1] == 1[0] & 1[1] && true
 } ---> {}.
 
 tcam inbound_acl (
@@ -22,17 +31,18 @@ tcam inbound_acl (
 o--
     acl >>
     cube_filter {
-        is_inbound -> 0b00
+        is_inbound -> 0b0
     } >>
     delete key is_inbound >>
     delete key dstAddr >>
     delete key l4_dport.
 
 assume acl : {
+    is_inbound : 1,
     dstAddr : 32,
     proto : 8,
     l4_dport : 16
-    | true && is_inbound & 2[3] == 2[1] & 2[3] && true
+    | true && is_inbound & 1[1] == 1[1] & 1[1] && true
 } ---> {}.
 
 tcam outbound_acl (
@@ -43,8 +53,19 @@ tcam outbound_acl (
 o--
     acl >>
     cube_filter {
-        is_inbound -> 0b01
+        is_inbound -> 0b1
     } >>
     delete key is_inbound >>
     delete key srcAddr >>
     delete key l4_sport.
+
+tcam aws_ipv4_state (
+    is_inbound : 1,
+    srcAddr : 32,
+    dstAddr : 32,
+    proto : 8,
+    l4_sport : 16,
+    l4_dport : 16
+) : {} [seen unseen]
+o--
+    ipv4_state.

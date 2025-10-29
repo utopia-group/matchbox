@@ -1,4 +1,4 @@
-tcam azure_acl (
+tcam google_acl (
     is_inbound : 1,
     srcAddr : 32,
     dstAddr : 32,
@@ -6,7 +6,7 @@ tcam azure_acl (
     l4_sport : 16,
     l4_dport : 16
 ) : {} [allow deny].
-tcam azure_ipv4_state (
+tcam google_ipv4_state (
     is_inbound : 1,
     srcAddr : 32,
     dstAddr : 32,
@@ -15,7 +15,7 @@ tcam azure_ipv4_state (
     l4_dport : 16
 ) : {} [seen unseen].
 
-assume azure_acl : {
+assume google_acl : {
     is_inbound : 1,
     srcAddr : 32,
     proto : 8,
@@ -29,7 +29,7 @@ tcam inbound_acl (
     l4_sport : 16
 ) : {} [allow deny]
 o--
-    azure_acl >>
+    google_acl >>
     cube_filter {
         is_inbound -> 0b0
     } >>
@@ -37,7 +37,7 @@ o--
     delete key dstAddr >>
     delete key l4_dport.
 
-assume azure_acl : {
+assume google_acl : {
     is_inbound : 1,
     dstAddr : 32,
     proto : 8,
@@ -51,7 +51,7 @@ tcam outbound_acl (
     l4_dport : 16
 ) : {} [allow deny]
 o--
-    azure_acl >>
+    google_acl >>
     cube_filter {
         is_inbound -> 0b1
     } >>
@@ -68,4 +68,4 @@ tcam aws_ipv4_state (
     l4_dport : 16
 ) : {} [seen unseen]
 o--
-    azure_ipv4_state.
+    google_ipv4_state.

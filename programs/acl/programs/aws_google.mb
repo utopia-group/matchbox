@@ -1,12 +1,14 @@
-tcam acl (
-    is_inbound : 1,
+tcam inbound_acl (
     srcAddr : 32,
+    proto : 8,
+    l4_sport : 16
+) : {} [allow deny].
+tcam outbound_acl (
     dstAddr : 32,
     proto : 8,
-    l4_sport : 16,
     l4_dport : 16
 ) : {} [allow deny].
-tcam ipv4_state (
+tcam aws_ipv4_state (
     is_inbound : 1,
     srcAddr : 32,
     dstAddr : 32,
@@ -15,7 +17,7 @@ tcam ipv4_state (
     l4_dport : 16
 ) : {} [seen unseen].
 
-tcam azure_acl (
+tcam google_acl (
     is_inbound : 1,
     srcAddr : 32,
     dstAddr : 32,
@@ -24,9 +26,19 @@ tcam azure_acl (
     l4_dport : 16
 ) : {} [allow deny]
 o--
-    acl.
+    (
+        inbound_acl >>
+        key is_inbound := 1[0] >>
+        ignore key dstAddr >>
+        ignore key l4_dport
+    ) |> (
+        outbound_acl >>
+        key is_inbound := 1[1] >>
+        ignore key srcAddr >>
+        ignore key l4_sport
+    ).
 
-tcam azure_ipv4_state (
+tcam google_ipv4_state (
     is_inbound : 1,
     srcAddr : 32,
     dstAddr : 32,
@@ -35,4 +47,4 @@ tcam azure_ipv4_state (
     l4_dport : 16
 ) : {} [seen unseen]
 o--
-    ipv4_state.
+    aws_ipv4_state.

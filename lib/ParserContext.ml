@@ -6,6 +6,7 @@ module F = FDBaseChecker.DepFunDep
 module L = BaseLogic
 
 type t = {
+    vars : int String.Map.t;
     typs : T.ctx;
     rscs : R.ctx;
     gfds : F.itfc_spec;
@@ -15,6 +16,7 @@ type t = {
 }
 
 let empty = {
+    vars = String.Map.empty;
     typs = String.Map.empty;
     rscs = String.Map.empty;
     gfds = String.Map.empty;
@@ -24,7 +26,13 @@ let empty = {
 }
 
 let (@) (p1 : t) (p2 : t) : t= 
-    { typs = T.(p1.typs @ p2.typs);
+    { vars = Map.merge p1.vars p2.vars ~f:(fun ~key -> function
+        | `Left v | `Right v -> Some v
+        | `Both (v1, v2) ->
+          if v1 = v2 then Some v1
+          else failwithf "Variable %s has contradictory widths: %d vs. %d" key v1 v2 ()
+      );
+      typs = T.(p1.typs @ p2.typs);
       rscs = R.(p1.rscs @ p2.rscs);
       gfds = F.(p1.gfds @ p2.gfds);
       assertions = F.(p1.assertions @ p2.assertions);
@@ -34,6 +42,16 @@ let (@) (p1 : t) (p2 : t) : t=
 
 let concat : t list -> t = 
     List.fold ~init:empty ~f:(@)
+
+let add_vars (vars : int String.Map.t) (p : t) : t = 
+  {p with 
+      vars = Map.merge p.vars vars ~f:(fun ~key -> function
+        | `Left v | `Right v -> Some v
+        | `Both (v1, v2) ->
+          if v1 = v2 then Some v1
+          else failwithf "Variable %s has contradictory widths: %d vs. %d" key v1 v2 ()
+      )
+  }
 
 let add_type (tbl : string) (tau : T.t) (p : t) : t = 
   {p with 
@@ -308,7 +326,7 @@ let functional ctx ({defined;definition} : BaseLogic.t) =
   let requirements = Map.find_exn ctx.gfds (Symbol.to_string defined) in
   let had_type_error = ref false in
   List.iter requirements ~f:(fun gfd ->
-    let new_spec = F.check ctx.gfds definition gfd in
+    let new_spec = F.check ctx.gfds ctx.vars definition gfd in
     let spec = F.remaining_obligations ctx.gfds new_spec in
     Map.iteri spec ~f:(fun ~key ~data ->
       List.iter data ~f:(fun fd ->

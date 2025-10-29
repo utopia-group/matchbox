@@ -100,6 +100,7 @@ matchstick :
         let actions = Type.ActionSet.of_list action_list in
         let typ = Type.{is_private = Option.is_some private_; hw; keys; actions; data} in
         empty
+        |> add_vars keys
         |> add_type table typ
         |> opt_add_def defined (complete_clause clause table typ)
         |> update_stats clause

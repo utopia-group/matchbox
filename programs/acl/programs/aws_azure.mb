@@ -8,9 +8,17 @@ tcam outbound_acl (
     proto : 8,
     l4_dport : 16
 ) : {} [allow deny].
+tcam aws_ipv4_state (
+    is_inbound : 1,
+    srcAddr : 32,
+    dstAddr : 32,
+    proto : 8,
+    l4_sport : 16,
+    l4_dport : 16
+) : {} [seen unseen].
 
 tcam azure_acl (
-    is_inbound : 2,
+    is_inbound : 1,
     srcAddr : 32,
     dstAddr : 32,
     proto : 8,
@@ -20,12 +28,23 @@ tcam azure_acl (
 o--
     (
         inbound_acl >>
-        key is_inbound := 2[0] >>
+        key is_inbound := 1[0] >>
         ignore key dstAddr >>
         ignore key l4_dport
     ) |> (
         outbound_acl >>
-        key is_inbound := 2[1] >>
+        key is_inbound := 1[1] >>
         ignore key srcAddr >>
         ignore key l4_sport
     ).
+
+tcam azure_ipv4_state (
+    is_inbound : 1,
+    srcAddr : 32,
+    dstAddr : 32,
+    proto : 8,
+    l4_sport : 16,
+    l4_dport : 16
+) : {} [seen unseen]
+o--
+    aws_ipv4_state.

@@ -42,9 +42,10 @@ module Insertion = struct
   let (%!!) = lookup_exn
 
 
-  let convert_table (schema : Type.ctx) : Safe.t -> string * Type.t = function
+  let convert_table (schema : Type.ctx) : Safe.t -> (string * Type.t) option = function
     | `String name -> 
-      let table_typ = Type.find_table_exn schema name in 
+      let open Option.Let_syntax in
+      let%map table_typ = Map.find schema name in 
       name, table_typ
     | json -> failwithf "failed to get table name from %s" (Safe.to_string json) ()
 
@@ -105,10 +106,11 @@ module Insertion = struct
   | json -> 
     failwithf "Priority must be an int, got %s" (Safe.to_string json) ()
 
-  let convert_row schema (json : Safe.t) : string * MatchAction.t * int =
+  let convert_row schema (json : Safe.t) : (string * MatchAction.t * int) option =
+    let open Option.Let_syntax in
     match json with 
     | `Assoc dict ->
-      let table, ttyp = dict %!! "table" |> convert_table schema in
+      let%map table, ttyp = dict %!! "table" |> convert_table schema in
       let matches = dict %!! "matches" |> convert_match ttyp in 
       let action = dict %!! "action" |> convert_action ttyp.actions in
       let data = dict %!! "data" |> convert_data ttyp.data in
@@ -123,7 +125,7 @@ let convert_trace schema (json : Safe.t) : BaseLogic.Config.t =
   let open BaseLogic in 
   match json with 
   | `List raw_rows ->
-    let rows = List.map raw_rows ~f:(Insertion.convert_row schema) in
+    let rows = List.filter_map raw_rows ~f:(Insertion.convert_row schema) in
     let tables = 
       List.map rows ~f:fst3
       |> List.dedup_and_sort ~compare:String.compare

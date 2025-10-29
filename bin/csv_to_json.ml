@@ -1,8 +1,10 @@
-(* 
-   Convert CSV data from Pipelines/retargeting/logical_inserts_1001.csv 
-   to JSON format in programs/logical_inserts_1001.json
-   
-   This reuses code from bin/utils.ml for parsing CSV and converting to internal format
+[@@@warning "-21"]
+
+(*
+    Convert CSV data from Pipelines/retargeting/logical_inserts_1001.csv
+    to JSON format in programs/logical_inserts_1001.json
+
+    This reuses code from bin/utils.ml for parsing CSV and converting to internal format
 *)
 
 open Core
@@ -10,13 +12,13 @@ open Stijl
 open Utils
 
 (* let schema =
-  [
-    ("ipv4", ["dstAddr"], [("fwd", ["dstAddr"; "port"]); ("nop", [])]);
-    ("ethernet", ["dstAddr"], [("fwd", ["port"]); ("nop", [])]);
-    ( "punt",
-      ["etherType"; "isValid"; "version"; "srcAddr"; "dstAddr"; "ttl"],
-      [("drop", [])] );
-  ] *)
+   [
+     ("ipv4", ["dstAddr"], [("fwd", ["dstAddr"; "port"]); ("nop", [])]);
+     ("ethernet", ["dstAddr"], [("fwd", ["port"]); ("nop", [])]);
+     ( "punt",
+       ["etherType"; "isValid"; "version"; "srcAddr"; "dstAddr"; "ttl"],
+       [("drop", [])] );
+   ] *)
 let schema =
   [
     ( "acl",
@@ -43,15 +45,8 @@ let get_short_field_name field_name =
   match String.split field_name ~on:'.' with parts -> List.last_exn parts
 
 (* Convert a match-action entry to JSON *)
-let entry_to_json (table_name : string) (entry : Semantics.MatchAction.t)
-    (schema : (string * string list * (string * string list) list) list) :
+let entry_to_json (table_name : string) (entry : Semantics.MatchAction.t) :
     Yojson.Basic.t =
-  (* Get schema for this table *)
-  let table_schema =
-    List.find_exn schema ~f:(fun (name, _, _) -> String.equal name table_name)
-  in
-  let _, _field_names, _action_specs = table_schema in
-
   (* Extract matches *)
   let matches = Semantics.MatchAction.get_matches entry in
   let match_json =
@@ -94,11 +89,28 @@ let entry_to_json (table_name : string) (entry : Semantics.MatchAction.t)
 let csv_to_json (input_csv : string) (output_json : string) : unit =
   (* Read CSV and parse into tables using existing read_csv_by_table function *)
   let tables = read_csv_by_table input_csv schema in
+  let open Semantics in
+  let ipv4_state =
+    tables |> List.hd_exn |> snd
+    |> List.map ~f:(fun ma ->
+           MatchAction.
+             {
+               ma with
+               matches =
+                 (match ma.action with
+                 | Name "allow" ->
+                   Map.update ma.matches "meta.is_inbound" ~f:(fun v ->
+                       Match.not (Option.value_exn v))
+                 | _ -> failwith "unreachable");
+               action = MagmaAction.Name "seen";
+             })
+  in
+  let tables = tables @ [("ipv4_state", ipv4_state)] in
 
   (* Convert all entries to JSON *)
   let json_entries =
     List.concat_map tables ~f:(fun (table_name, entries) ->
-        List.map entries ~f:(fun entry -> entry_to_json table_name entry schema))
+        List.map entries ~f:(fun entry -> entry_to_json table_name entry))
   in
 
   (* Write to JSON file *)
