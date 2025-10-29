@@ -1,5 +1,5 @@
-tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
-tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop].
+tcam ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop].
+tcam ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop].
 tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
 assume punt : {etherType : 16, isValid : 1, ttl : 8 | true} ---> {}.
@@ -25,11 +25,11 @@ o--
     rename drop to malformed >>
     rename nop to ok.
 
-tcam ev_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ev_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     ethernet.
 
-tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+tcam ev_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop]
 o--
     ipv4.
 

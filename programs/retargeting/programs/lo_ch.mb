@@ -1,24 +1,24 @@
-tcam ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
-tcam ethernet (dstAddr : 48) : {port : 9} [fwd nop].
+tcam ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop].
+tcam ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop].
 tcam punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
 tcam staging (ingress_port : 9) : {c : 4} [set_choice skip_pipe]
 o--
     |0b********* -> set_choice(0b0011)|.
 
-tcam ch_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+tcam ch_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop]
 o--
     ipv4.
 
-tcam ch_ipv42 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+tcam ch_ipv42 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop]
 o--
     ipv4.
 
-tcam ch_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ch_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     ethernet.
 
-tcam ch_ethernet2 (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ch_ethernet2 (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     ethernet.
 

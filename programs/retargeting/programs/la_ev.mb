@@ -1,6 +1,6 @@
 tcam nexthop (nexthop : 32) : {port : 9} [set_port drop].
-tcam la_ethernet (dstAddr : 48) : {nexthop : 32} [fwd nop].
-tcam la_ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop].
+tcam la_ethernet (ethernet.dstAddr : 48) : {nexthop : 32} [fwd nop].
+tcam la_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, nexthop : 32} [fwd nop].
 tcam la_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
 assume la_punt : {etherType : 16, isValid : 1, ttl : 8 | true} ---> {}.
@@ -26,18 +26,18 @@ o--
     rename drop to malformed >>
     rename nop to ok.
 
-tcam ev_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ev_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     la_ethernet >>
     nexthop >>
     rename set_port to fwd >>
     rename drop to nop.
 
-tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+tcam ev_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop]
 o--
     (
         la_ipv4 >>
-        delete data dstAddr >>
+        delete data ethernet.dstAddr >>
         nexthop
     ) * (
         la_ipv4 >>

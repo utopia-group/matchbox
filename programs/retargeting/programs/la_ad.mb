@@ -1,23 +1,23 @@
 tcam nexthop (nexthop : 32) : {port : 9} [set_port drop].
-tcam la_ethernet (dstAddr : 48) : {nexthop : 32} [fwd nop].
-tcam la_ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop].
+tcam la_ethernet (ethernet.dstAddr : 48) : {nexthop : 32} [fwd nop].
+tcam la_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, nexthop : 32} [fwd nop].
 tcam la_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
 tcam ipv4_fib (dstAddr : 32) : {port : 9} [fwd nop]
 o--
     la_ipv4 >>
-    delete data dstAddr >>
+    delete data ethernet.dstAddr >>
     nexthop >>
     rename set_port to fwd >>
     rename drop to nop.
 
-tcam ipv4_rewrite (dstAddr : 32) : {dstAddr : 48} [rewrite nop]
+tcam ipv4_rewrite (dstAddr : 32) : {ethernet.dstAddr : 48} [rewrite nop]
 o--
     la_ipv4 >>
     delete data nexthop >>
     rename fwd to rewrite.
 
-tcam ad_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ad_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     la_ethernet >>
     nexthop >>

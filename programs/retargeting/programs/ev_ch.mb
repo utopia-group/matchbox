@@ -1,26 +1,26 @@
 tcam ethernet_validate (etherType : 16, isValid : 1, ttl : 8) : {} [malformed ok].
 tcam ipv4_validate (version : 4, ttl : 8) : {} [malformed ok].
-tcam ev_ethernet (dstAddr : 48) : {port : 9} [fwd nop].
-tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
+tcam ev_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop].
+tcam ev_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop].
 tcam acl (eth_srcAddr : 48, eth_dstAddr : 48, ipv4_srcAddr : 32, ipv4_dstAddr : 32) : {} [drop nop].
 
 tcam staging (ingress_port : 9) : {c : 4} [set_choice skip_pipe]
 o--
     |0b********* -> set_choice(0b0011)|.
 
-tcam ch_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+tcam ch_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop]
 o--
     ev_ipv4.
 
-tcam ch_ipv42 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+tcam ch_ipv42 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop]
 o--
     ev_ipv4.
 
-tcam ch_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ch_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     ev_ethernet.
 
-tcam ch_ethernet2 (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ch_ethernet2 (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     ev_ethernet.
 

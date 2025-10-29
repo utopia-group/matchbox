@@ -1,21 +1,21 @@
 tcam ethernet_validate (etherType : 16, isValid : 1, ttl : 8) : {} [malformed ok].
 tcam ipv4_validate (version : 4, ttl : 8) : {} [malformed ok].
-tcam ev_ethernet (dstAddr : 48) : {port : 9} [fwd nop].
-tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
+tcam ev_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop].
+tcam ev_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop].
 tcam acl (eth_srcAddr : 48, eth_dstAddr : 48, ipv4_srcAddr : 32, ipv4_dstAddr : 32) : {} [drop nop].
 
 tcam ipv4_fib (dstAddr : 32) : {port : 9} [fwd nop]
 o--
     ev_ipv4 >>
-    delete data dstAddr.
+    delete data ethernet.dstAddr.
 
-tcam ipv4_rewrite (dstAddr : 32) : {dstAddr : 48} [rewrite nop]
+tcam ipv4_rewrite (dstAddr : 32) : {ethernet.dstAddr : 48} [rewrite nop]
 o--
     ev_ipv4 >>
     delete data port >>
     rename fwd to rewrite.
 
-tcam ad_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ad_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     ev_ethernet.
 

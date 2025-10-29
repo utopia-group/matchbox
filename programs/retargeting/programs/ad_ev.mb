@@ -1,6 +1,6 @@
 tcam ipv4_fib (dstAddr : 32) : {port : 9} [fwd nop].
-tcam ipv4_rewrite (dstAddr : 32) : {dstAddr : 48} [rewrite nop].
-tcam ad_ethernet (dstAddr : 48) : {port : 9} [fwd nop].
+tcam ipv4_rewrite (dstAddr : 32) : {ethernet.dstAddr : 48} [rewrite nop].
+tcam ad_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop].
 tcam ad_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
 assume ad_punt : {etherType : 16, isValid : 1, ttl : 8 | true} ---> {}.
@@ -26,11 +26,11 @@ o--
     rename drop to malformed >>
     rename nop to ok.
 
-tcam ev_ethernet (dstAddr : 48) : {port : 9} [fwd nop]
+tcam ev_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop]
 o--
     ad_ethernet.
 
-tcam ev_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop]
+tcam ev_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop]
 o--
     ipv4_fib * ipv4_rewrite >>
     rename fwd;rewrite to fwd >>

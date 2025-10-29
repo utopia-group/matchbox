@@ -11,27 +11,21 @@ open Core
 open Stijl
 open Utils
 
-(* let schema =
-   [
-     ("ipv4", ["dstAddr"], [("fwd", ["dstAddr"; "port"]); ("nop", [])]);
-     ("ethernet", ["dstAddr"], [("fwd", ["port"]); ("nop", [])]);
-     ( "punt",
-       ["etherType"; "isValid"; "version"; "srcAddr"; "dstAddr"; "ttl"],
-       [("drop", [])] );
-   ] *)
 let schema =
   [
-    ( "acl",
-      [
-        "meta.is_inbound";
-        "hdr.ipv4.srcAddr";
-        "hdr.ipv4.dstAddr";
-        "hdr.ipv4.proto";
-        "meta.l4_sport";
-        "meta.l4_dport";
-      ],
-      [("allow", []); ("deny", [])] );
+    ("ipv4", ["dstAddr"], [("fwd", ["ethernet.dstAddr"; "port"]); ("nop", [])]);
+    ("ethernet", ["ethernet.dstAddr"], [("fwd", ["port"]); ("nop", [])]);
+    ( "punt",
+      ["etherType"; "isValid"; "version"; "srcAddr"; "dstAddr"; "ttl"],
+      [("drop", [])] );
   ]
+
+(* let schema =
+  [
+    ( "acl",
+      ["is_inbound"; "srcAddr"; "dstAddr"; "proto"; "l4_sport"; "l4_dport"],
+      [("allow", []); ("deny", [])] );
+  ] *)
 
 (* Convert match value to JSON-compatible string *)
 let match_to_json_string = function
@@ -40,10 +34,6 @@ let match_to_json_string = function
     sprintf "%s/%d" (Bit.Vector.to_string bv) prefix_len
   | Semantics.Match.Ternary tv -> Trit.Vector.to_string tv
 
-(* Get short field name from full path (e.g., "dstAddr" from "hdr.ipv4.dstAddr") *)
-let get_short_field_name field_name =
-  match String.split field_name ~on:'.' with parts -> List.last_exn parts
-
 (* Convert a match-action entry to JSON *)
 let entry_to_json (table_name : string) (entry : Semantics.MatchAction.t) :
     Yojson.Basic.t =
@@ -51,9 +41,8 @@ let entry_to_json (table_name : string) (entry : Semantics.MatchAction.t) :
   let matches = Semantics.MatchAction.get_matches entry in
   let match_json =
     Map.fold matches ~init:[] ~f:(fun ~key ~data acc ->
-        let short_name = get_short_field_name key in
         let value_str = match_to_json_string data in
-        (short_name, `String value_str) :: acc)
+        (key, `String value_str) :: acc)
     |> List.rev
     |> fun pairs -> `Assoc pairs
   in
@@ -89,7 +78,7 @@ let entry_to_json (table_name : string) (entry : Semantics.MatchAction.t) :
 let csv_to_json (input_csv : string) (output_json : string) : unit =
   (* Read CSV and parse into tables using existing read_csv_by_table function *)
   let tables = read_csv_by_table input_csv schema in
-  let open Semantics in
+  (* let open Semantics in
   let ipv4_state =
     tables |> List.hd_exn |> snd
     |> List.map ~f:(fun ma ->
@@ -105,7 +94,7 @@ let csv_to_json (input_csv : string) (output_json : string) : unit =
                action = MagmaAction.Name "seen";
              })
   in
-  let tables = tables @ [("ipv4_state", ipv4_state)] in
+  let tables = tables @ [("ipv4_state", ipv4_state)] in *)
 
   (* Convert all entries to JSON *)
   let json_entries =

@@ -1,8 +1,8 @@
 tcam staging (ingress_port : 9) : {c : 4} [set_choice skip_pipe].
-tcam ch_ipv4 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
-tcam ch_ipv42 (dstAddr : 32) : {dstAddr : 48, port : 9} [fwd nop].
-tcam ch_ethernet (dstAddr : 48) : {port : 9} [fwd nop].
-tcam ch_ethernet2 (dstAddr : 48) : {port : 9} [fwd nop].
+tcam ch_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop].
+tcam ch_ipv42 (dstAddr : 32) : {ethernet.dstAddr : 48, port : 9} [fwd nop].
+tcam ch_ethernet (ethernet.dstAddr : 48) : {port : 9} [fwd nop].
+tcam ch_ethernet2 (ethernet.dstAddr : 48) : {port : 9} [fwd nop].
 tcam ch_punt (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 tcam ch_punt2 (etherType : 16, isValid : 1, version : 4, srcAddr : 32, dstAddr : 32, ttl : 8) : {} [drop nop].
 
@@ -25,7 +25,7 @@ o--
 
 assert lookup : {port : 9 | true} ---> {nexthop : 32}.
 
-tcam la_ethernet (dstAddr : 48) : {nexthop : 32} [fwd nop]
+tcam la_ethernet (ethernet.dstAddr : 48) : {nexthop : 32} [fwd nop]
 o--
     ch_ethernet >> (
         lookup >>
@@ -35,11 +35,11 @@ o--
     rename _1 to fwd >>
     rename _2 to nop.
 
-tcam la_ipv4 (dstAddr : 32) : {dstAddr : 48, nexthop : 32} [fwd nop]
+tcam la_ipv4 (dstAddr : 32) : {ethernet.dstAddr : 48, nexthop : 32} [fwd nop]
 o--
     (
         ch_ipv4 >>
-        delete data dstAddr >> (
+        delete data ethernet.dstAddr >> (
             lookup >>
             delete key nexthop >>
             delete data port 
