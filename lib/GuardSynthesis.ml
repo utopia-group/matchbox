@@ -335,8 +335,9 @@ let equivalent_of_size_query k hw keys avar data phi =
 
 
 let find_equivalent_of_size k hw keys avar data phi =
-  equivalent_of_size_query k hw keys avar data phi
-  |> solver ~f:Fun.id
+  let program = equivalent_of_size_query k hw keys avar data phi in
+  (* Out_channel.write_all "minimize.smt2" ~data:(SMT.p_to_string program); *)
+  solver program ~f:Fun.id
 
 
 let tickify =
@@ -375,7 +376,7 @@ let encode_table table =
   in
   hw, keys, avar, data, phi
 
-let minimum_size_table (table : MatchActionTable.t) = 
+(* let minimum_size_table (table : MatchActionTable.t) = 
   let hw, keys, avar, data, phi = encode_table table in
   let rec loop k = 
     if k > List.length table then failwith "couldn't find minimum table";
@@ -383,7 +384,27 @@ let minimum_size_table (table : MatchActionTable.t) =
     | None -> loop (k + 1)
     | Some _ -> k
   in
-  loop 1
+  loop 1 *)
+
+let minimum_size_table (table : MatchActionTable.t) = 
+  let hw, keys, avar, data, phi = encode_table table in
+  let n = List.length table in
+  let rec binary_search lo hi best = 
+    if lo > hi then best
+    else
+      let mid = (lo + hi) / 2 in
+      printf "Verifying k = %d...\n%!" mid;
+      match find_equivalent_of_size mid hw keys avar data phi with 
+      | Some _ -> 
+          (* Found equivalent at mid, try smaller *)
+          binary_search lo (mid - 1) mid
+      | None -> 
+          (* Not equivalent at mid, try larger *)
+          binary_search (mid + 1) hi best
+  in
+  match binary_search 1 n n with
+  | k when k <= n -> k
+  | _ -> failwith "couldn't find minimum table"
 
 let minimize (config : BaseLogic.Config.t) = 
   BaseLogic.Config.fold config ~init:0 ~f:(fun ~key ~data acc -> 

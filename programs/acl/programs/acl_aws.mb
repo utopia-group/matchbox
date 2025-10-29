@@ -16,7 +16,6 @@ tcam ipv4_state (
 ) : {} [seen unseen].
 
 assume acl : {
-    is_inbound : 1,
     srcAddr : 32,
     proto : 8,
     l4_sport : 16
@@ -38,7 +37,6 @@ o--
     delete key l4_dport.
 
 assume acl : {
-    is_inbound : 1,
     dstAddr : 32,
     proto : 8,
     l4_dport : 16

@@ -16298,7 +16298,7 @@
       "l4_sport": "****************"
     },
     "action": [
-      "allow"
+      "deny"
     ],
     "data": {},
     "priority": 100
@@ -32602,7 +32602,7 @@
       "l4_sport": "****************"
     },
     "action": [
-      "seen"
+      "unseen"
     ],
     "data": {},
     "priority": 100

@@ -18,7 +18,7 @@ let run_program config (pctx : ParserContext.t) (minimize : bool)
   let c = Clock.start () in
   let config' = BaseInterpreter.eval config pctx.prog in
   let eval_time = Clock.stop c in  
-  (* Do not output ghost tables *)
+  (* Do not output private tables *)
   let config' = BaseLogic.Config.{
     symbols = Set.filter config'.symbols 
       ~f:(fun s -> not (Map.find_exn pctx.typs s).is_private);

@@ -231,8 +231,8 @@ module DepFunDep = struct
       let phi = Semantics.Match.map_to_bexpr cube in 
       let goal' =
         {goal with
-         source = Map.fold cube ~init:goal.source ~f:(fun ~key ~data:_ acc ->
-           Map.set acc ~key ~data:(Map.find_exn vars key));
+         (* source = Map.fold cube ~init:goal.source ~f:(fun ~key ~data:_ acc ->
+           Map.set acc ~key ~data:(Map.find_exn vars key)); *)
          refine =
            (* if Map.existsi goal.source ~f:(fun ~key ~data:_ -> Map.mem cube key) then *)
              BExpr.and_ phi goal.refine
