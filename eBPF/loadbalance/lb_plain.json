@@ -1,0 +1,1302 @@
+[
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 24,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 20,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 16,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 20,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 16,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 16,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 16,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 20,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 16,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 24,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 20,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 16,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 20,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 20,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 24,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 24,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 20,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 20,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 24,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 24,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 16,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 24,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 10,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 12,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 8,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 32,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 2,
+        "per_cpu_limit": 100
+      }
+    }
+  ],
+  [
+    {
+      "table": "plain_lb",
+      "matches": {},
+      "action": [
+        "load_balance"
+      ],
+      "data": {
+        "num_cpus": 4,
+        "per_cpu_limit": 100
+      }
+    }
+  ]
+]
