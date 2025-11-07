@@ -18,7 +18,7 @@ This directory contains Python programs that generate configuration tables for v
 
 ### 1. Firewall (`firewall/fw.py`)
 
-Generates firewall configuration tables for access control of the form `(IP, port) -> allow/deny`.
+Generates firewall configuration tables for access control of the form `(IP, (port_low, port_high)) -> allow/deny`. Semantically, this rule implies that any flow from the given `IP` and port in the range `(port_low, port_high)` should be allowed (or denied).
 
 #### Usage
 ```bash
@@ -32,13 +32,12 @@ python fw.py [options]
 - `--output_file`: Output JSON file (default: `firewall_{state_type}.json`)
 
 **Rule Format:**
-- Input file should contain one rule per line: `IP_MASK,PORT`
-- Example: `10.1.1.0/24,80`
+- Classbench generated seed (see `rules/` for samples).
 
 **Generated Configuration:**
 Generates a list of firewall tables in JSON format, where each entry itself is a list of rules. Each rule contains:
 - Table: `firewall`
-- Matches on IP mask and port (for system-wide states: also includes random CPU ID assignment)
+- Matches on IP mask and port range (for system-wide states: also includes random CPU ID assignment)
 - Action: `allow`
 
 
@@ -65,7 +64,7 @@ Generates a list of rate limiting configurations in JSON format, where each entr
 
 ### 3. Router (`router/route.py`)
 
-Generates routing configuration tables for packet forwarding decisions of the form `IP -> destination_port`.
+Generates routing configuration tables for packet forwarding decisions of the form `IP, src_port -> destination_port`.
 
 #### Usage
 ```bash
@@ -81,6 +80,6 @@ python route.py [options]
 **Generated Configuration:**
 Generates a list of port forwarding tables in JSON format, where each entry itself is a list of rules. Each rule contains:
 - Table: `port_forward`
-- Matches on IP mask (and CPU ID for system-wide)
+- Matches on IP mask and src port (and CPU ID for system-wide)
 - Action: `forward`
 - Includes destination port in action data

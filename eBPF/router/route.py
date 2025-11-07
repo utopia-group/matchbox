@@ -44,10 +44,10 @@ if __name__ == "__main__":
 
     # If ip_file is not provided use a default set of IPs
     if not rules_file:
-        rule_list = [
-            ("10.10.1.1/32", 1000),
-            ("10.1.1.1/24", 5000),
-        ]
+        rule_list = {
+            "10.10.1.1/32": (1000, 1000),
+            "10.1.1.1/24": (5000, 5000),
+        }
     else:
         # Load IPs from file
         try:
@@ -56,8 +56,15 @@ if __name__ == "__main__":
                 for line in f:
                     line = line.strip()
                     if line:
-                        ip_mask, port = line.split(',')
-                        rule_list[ip_mask.strip()] = int(port.strip())
+                        parts = line.split('\t')
+                        ip = parts[0][1:]  # The first IP starts with a '@'
+                        src_port_range = parts[2].split(':')
+                        dst_port_range = parts[3].split(':')
+
+                        # Use just one port from the ranges.
+                        src_port = random.randint(int(src_port_range[0].strip()), int(src_port_range[1].strip()))
+                        dst_port = random.randint(int(dst_port_range[0].strip()), int(dst_port_range[1].strip()))
+                        rule_list[ip.strip()] = (src_port, dst_port)
         except Exception as e:
             print(f"Error reading IP file: {e}")
             sys.exit(1)
@@ -68,7 +75,7 @@ if __name__ == "__main__":
         num_cpus = random.choice([2, 4, 8, 10, 12, 16, 20, 24, 32])
 
         config = []
-        for rule in rule_list:
+        for rule in rule_list.items():
             rule_config = {}
             rule_config["table"] = "port_forward"
 
@@ -84,7 +91,8 @@ if __name__ == "__main__":
                 }
             rule_config["action"] = ["forward"]
             rule_config["data"] = {
-                "port": port
+                "src_port": port[0],
+                "dst_port": port[1],
             }
             config.append(rule_config)
 
