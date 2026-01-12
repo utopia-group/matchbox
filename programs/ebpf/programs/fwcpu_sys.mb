@@ -1,0 +1,67 @@
+tcam acl0 (ip_mask : 32) : {} [allow deny].
+tcam acl1 (ip_mask : 32) : {} [allow deny].
+tcam acl2 (ip_mask : 32) : {} [allow deny].
+tcam acl3 (ip_mask : 32) : {} [allow deny].
+tcam acl4 (ip_mask : 32) : {} [allow deny].
+tcam acl5 (ip_mask : 32) : {} [allow deny].
+tcam acl6 (ip_mask : 32) : {} [allow deny].
+tcam acl7 (ip_mask : 32) : {} [allow deny].
+tcam acl8 (ip_mask : 32) : {} [allow deny].
+tcam acl9 (ip_mask : 32) : {} [allow deny].
+tcam acl10 (ip_mask : 32) : {} [allow deny].
+tcam acl11 (ip_mask : 32) : {} [allow deny].
+tcam acl12 (ip_mask : 32) : {} [allow deny].
+tcam acl13 (ip_mask : 32) : {} [allow deny].
+tcam acl14 (ip_mask : 32) : {} [allow deny].
+tcam acl15 (ip_mask : 32) : {} [allow deny].
+tcam acl16 (ip_mask : 32) : {} [allow deny].
+tcam acl17 (ip_mask : 32) : {} [allow deny].
+tcam acl18 (ip_mask : 32) : {} [allow deny].
+tcam acl19 (ip_mask : 32) : {} [allow deny].
+tcam acl20 (ip_mask : 32) : {} [allow deny].
+tcam acl21 (ip_mask : 32) : {} [allow deny].
+tcam acl22 (ip_mask : 32) : {} [allow deny].
+tcam acl23 (ip_mask : 32) : {} [allow deny].
+tcam acl24 (ip_mask : 32) : {} [allow deny].
+tcam acl25 (ip_mask : 32) : {} [allow deny].
+tcam acl26 (ip_mask : 32) : {} [allow deny].
+tcam acl27 (ip_mask : 32) : {} [allow deny].
+tcam acl28 (ip_mask : 32) : {} [allow deny].
+tcam acl29 (ip_mask : 32) : {} [allow deny].
+tcam acl30 (ip_mask : 32) : {} [allow deny].
+tcam acl31 (ip_mask : 32) : {} [allow deny].
+
+tcam acl (ip_mask : 32, cpu_id : 5) : {} [allow deny]
+o--
+    (acl0 >> key cpu_id := 5[0]) |>
+    (acl1 >> key cpu_id := 5[1]) |>
+    (acl2 >> key cpu_id := 5[2]) |>
+    (acl3 >> key cpu_id := 5[3]) |>
+    (acl4 >> key cpu_id := 5[4]) |>
+    (acl5 >> key cpu_id := 5[5]) |>
+    (acl6 >> key cpu_id := 5[6]) |>
+    (acl7 >> key cpu_id := 5[7]) |>
+    (acl8 >> key cpu_id := 5[8]) |>
+    (acl9 >> key cpu_id := 5[9]) |>
+    (acl10 >> key cpu_id := 5[10]) |>
+    (acl11 >> key cpu_id := 5[11]) |>
+    (acl12 >> key cpu_id := 5[12]) |>
+    (acl13 >> key cpu_id := 5[13]) |>
+    (acl14 >> key cpu_id := 5[14]) |>
+    (acl15 >> key cpu_id := 5[15]) |>
+    (acl16 >> key cpu_id := 5[16]) |>
+    (acl17 >> key cpu_id := 5[17]) |>
+    (acl18 >> key cpu_id := 5[18]) |>
+    (acl19 >> key cpu_id := 5[19]) |>
+    (acl20 >> key cpu_id := 5[20]) |>
+    (acl21 >> key cpu_id := 5[21]) |>
+    (acl22 >> key cpu_id := 5[22]) |>
+    (acl23 >> key cpu_id := 5[23]) |>
+    (acl24 >> key cpu_id := 5[24]) |>
+    (acl25 >> key cpu_id := 5[25]) |>
+    (acl26 >> key cpu_id := 5[26]) |>
+    (acl27 >> key cpu_id := 5[27]) |>
+    (acl28 >> key cpu_id := 5[28]) |>
+    (acl29 >> key cpu_id := 5[29]) |>
+    (acl30 >> key cpu_id := 5[30]) |>
+    (acl31 >> key cpu_id := 5[31]).

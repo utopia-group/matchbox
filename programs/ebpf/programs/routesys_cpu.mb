@@ -1,0 +1,417 @@
+tcam port_forward (ip_mask : 32, cpu_id : 5) : {src_port : 16, dst_port : 16} [forward nop].
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[0] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward0 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[0]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[1] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward1 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[1]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[2] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward2 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[2]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[3] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward3 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[3]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[4] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward4 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[4]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[5] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward5 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[5]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[6] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward6 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[6]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[7] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward7 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[7]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[8] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward8 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[8]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[9] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward9 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[9]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[10] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward10 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[10]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[11] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward11 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[11]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[12] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward12 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[12]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[13] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward13 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[13]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[14] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward14 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[14]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[15] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward15 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[15]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[16] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward16 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[16]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[17] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward17 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[17]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[18] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward18 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[18]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[19] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward19 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[19]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[20] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward20 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[20]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[21] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward21 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[21]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[22] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward22 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[22]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[23] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward23 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[23]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[24] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward24 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[24]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[25] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward25 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[25]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[26] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward26 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[26]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[27] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward27 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[27]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[28] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward28 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[28]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[29] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward29 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[29]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[30] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward30 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[30]
+    } >>
+    delete key cpu_id.
+
+assume port_forward : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[31] & 5[31] && true
+} ---> {src_port : 16, dst_port : 16}.
+
+tcam port_forward31 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    port_forward >>
+    cube_filter {
+        cpu_id -> 5[31]
+    } >>
+    delete key cpu_id.

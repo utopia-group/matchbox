@@ -30,7 +30,7 @@ tcam inbound_acl (
 o--
     google_acl >>
     cube_filter {
-        is_inbound -> 0b0
+        is_inbound -> 1[0]
     } >>
     delete key is_inbound >>
     delete key dstAddr >>
@@ -51,7 +51,7 @@ tcam outbound_acl (
 o--
     google_acl >>
     cube_filter {
-        is_inbound -> 0b1
+        is_inbound -> 1[1]
     } >>
     delete key is_inbound >>
     delete key srcAddr >>

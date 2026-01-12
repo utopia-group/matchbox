@@ -1,0 +1,417 @@
+tcam acl (ip_mask : 32, cpu_id : 5) : {} [allow deny].
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[0] & 5[31] && true
+} ---> {}.
+
+tcam acl0 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[0]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[1] & 5[31] && true
+} ---> {}.
+
+tcam acl1 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[1]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[2] & 5[31] && true
+} ---> {}.
+
+tcam acl2 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[2]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[3] & 5[31] && true
+} ---> {}.
+
+tcam acl3 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[3]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[4] & 5[31] && true
+} ---> {}.
+
+tcam acl4 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[4]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[5] & 5[31] && true
+} ---> {}.
+
+tcam acl5 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[5]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[6] & 5[31] && true
+} ---> {}.
+
+tcam acl6 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[6]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[7] & 5[31] && true
+} ---> {}.
+
+tcam acl7 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[7]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[8] & 5[31] && true
+} ---> {}.
+
+tcam acl8 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[8]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[9] & 5[31] && true
+} ---> {}.
+
+tcam acl9 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[9]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[10] & 5[31] && true
+} ---> {}.
+
+tcam acl10 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[10]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[11] & 5[31] && true
+} ---> {}.
+
+tcam acl11 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[11]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[12] & 5[31] && true
+} ---> {}.
+
+tcam acl12 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[12]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[13] & 5[31] && true
+} ---> {}.
+
+tcam acl13 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[13]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[14] & 5[31] && true
+} ---> {}.
+
+tcam acl14 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[14]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[15] & 5[31] && true
+} ---> {}.
+
+tcam acl15 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[15]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[16] & 5[31] && true
+} ---> {}.
+
+tcam acl16 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[16]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[17] & 5[31] && true
+} ---> {}.
+
+tcam acl17 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[17]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[18] & 5[31] && true
+} ---> {}.
+
+tcam acl18 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[18]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[19] & 5[31] && true
+} ---> {}.
+
+tcam acl19 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[19]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[20] & 5[31] && true
+} ---> {}.
+
+tcam acl20 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[20]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[21] & 5[31] && true
+} ---> {}.
+
+tcam acl21 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[21]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[22] & 5[31] && true
+} ---> {}.
+
+tcam acl22 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[22]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[23] & 5[31] && true
+} ---> {}.
+
+tcam acl23 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[23]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[24] & 5[31] && true
+} ---> {}.
+
+tcam acl24 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[24]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[25] & 5[31] && true
+} ---> {}.
+
+tcam acl25 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[25]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[26] & 5[31] && true
+} ---> {}.
+
+tcam acl26 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[26]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[27] & 5[31] && true
+} ---> {}.
+
+tcam acl27 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[27]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[28] & 5[31] && true
+} ---> {}.
+
+tcam acl28 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[28]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[29] & 5[31] && true
+} ---> {}.
+
+tcam acl29 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[29]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[30] & 5[31] && true
+} ---> {}.
+
+tcam acl30 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[30]
+    } >>
+    delete key cpu_id.
+
+assume acl : {
+    ip_mask : 32
+    | true && cpu_id & 5[31] == 5[31] & 5[31] && true
+} ---> {}.
+
+tcam acl31 (ip_mask : 32) : {} [allow deny]
+o--
+    acl >>
+    cube_filter {
+        cpu_id -> 5[31]
+    } >>
+    delete key cpu_id.

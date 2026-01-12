@@ -1,0 +1,362 @@
+[
+    {
+        "name": "fwcpu_fwsys_1",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu1.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_1",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys1.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_1",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu1.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_1",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys1.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_1",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu1.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_1",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys1.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_7",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu7.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_7",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys7.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_7",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu7.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_7",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys7.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_7",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu7.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_7",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys7.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_13",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu13.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_13",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys13.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_13",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu13.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_13",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys13.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_13",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu13.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_13",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys13.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_19",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu19.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_19",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys19.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_19",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu19.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_19",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys19.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_19",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu19.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_19",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys19.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_25",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu25.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_25",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys25.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_25",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu25.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_25",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys25.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_25",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu25.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_25",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys25.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_31",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu31.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_31",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys31.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_31",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu31.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_31",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys31.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_31",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu31.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_31",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys31.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_37",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu37.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_37",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys37.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_37",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu37.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_37",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys37.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_37",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu37.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_37",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys37.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_43",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu43.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_43",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys43.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_43",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu43.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_43",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys43.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_43",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu43.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_43",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys43.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_49",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu49.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_49",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys49.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_49",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu49.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_49",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys49.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_49",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu49.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_49",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys49.json",
+        "output": null
+    },
+    {
+        "name": "fwcpu_fwsys_55",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/fwcpu55.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu_55",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/fwsys55.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys_55",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/limitcpu55.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu_55",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/limitsys55.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys_55",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "programs/ebpf/data/experiments10/routecpu55.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu_55",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "programs/ebpf/data/experiments10/routesys55.json",
+        "output": null
+    }
+]

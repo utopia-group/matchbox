@@ -1,0 +1,67 @@
+tcam port_forward0 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward1 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward2 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward3 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward4 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward5 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward6 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward7 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward8 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward9 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward10 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward11 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward12 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward13 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward14 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward15 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward16 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward17 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward18 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward19 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward20 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward21 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward22 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward23 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward24 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward25 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward26 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward27 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward28 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward29 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward30 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+tcam port_forward31 (ip_mask : 32) : {src_port : 16, dst_port : 16} [forward nop].
+
+tcam port_forward (ip_mask : 32, cpu_id : 5) : {src_port : 16, dst_port : 16} [forward nop]
+o--
+    (port_forward0 >> key cpu_id := 5[0]) |>
+    (port_forward1 >> key cpu_id := 5[1]) |>
+    (port_forward2 >> key cpu_id := 5[2]) |>
+    (port_forward3 >> key cpu_id := 5[3]) |>
+    (port_forward4 >> key cpu_id := 5[4]) |>
+    (port_forward5 >> key cpu_id := 5[5]) |>
+    (port_forward6 >> key cpu_id := 5[6]) |>
+    (port_forward7 >> key cpu_id := 5[7]) |>
+    (port_forward8 >> key cpu_id := 5[8]) |>
+    (port_forward9 >> key cpu_id := 5[9]) |>
+    (port_forward10 >> key cpu_id := 5[10]) |>
+    (port_forward11 >> key cpu_id := 5[11]) |>
+    (port_forward12 >> key cpu_id := 5[12]) |>
+    (port_forward13 >> key cpu_id := 5[13]) |>
+    (port_forward14 >> key cpu_id := 5[14]) |>
+    (port_forward15 >> key cpu_id := 5[15]) |>
+    (port_forward16 >> key cpu_id := 5[16]) |>
+    (port_forward17 >> key cpu_id := 5[17]) |>
+    (port_forward18 >> key cpu_id := 5[18]) |>
+    (port_forward19 >> key cpu_id := 5[19]) |>
+    (port_forward20 >> key cpu_id := 5[20]) |>
+    (port_forward21 >> key cpu_id := 5[21]) |>
+    (port_forward22 >> key cpu_id := 5[22]) |>
+    (port_forward23 >> key cpu_id := 5[23]) |>
+    (port_forward24 >> key cpu_id := 5[24]) |>
+    (port_forward25 >> key cpu_id := 5[25]) |>
+    (port_forward26 >> key cpu_id := 5[26]) |>
+    (port_forward27 >> key cpu_id := 5[27]) |>
+    (port_forward28 >> key cpu_id := 5[28]) |>
+    (port_forward29 >> key cpu_id := 5[29]) |>
+    (port_forward30 >> key cpu_id := 5[30]) |>
+    (port_forward31 >> key cpu_id := 5[31]).

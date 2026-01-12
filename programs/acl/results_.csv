@@ -1,0 +1,7 @@
+name,typetime,num_fds,size_fds,size,num_joins,num_compose,num_override,num_filters,num_tblvars,num_literals,num_key_adds,num_key_dels,num_data_adds,num_data_dels,num_action_renames,eval_time,eval_in_size,eval_out_size,min_eval_size,min_eval_time
+aws_azure,0.012159,0,0,10,0,0,1,0,3,0,0,0,0,0,0,0.008821,21,21,0,0.000000
+aws_google,0.005960,0,0,10,0,0,1,0,3,0,0,0,0,0,0,0.005007,21,21,0,0.000000
+azure_aws,0.008821,2,18,9,0,0,0,2,3,0,6,6,0,0,0,0.471115,2038,2039,0,0.000000
+azure_google,0.003815,0,0,2,0,0,0,0,2,0,0,0,0,0,0,0.000954,2038,2038,0,0.000000
+google_aws,0.008821,2,18,9,0,0,0,2,3,0,6,6,0,0,0,0.530958,2038,2039,0,0.000000
+google_azure,0.002146,0,0,2,0,0,0,0,2,0,0,0,0,0,0,0.001192,2038,2038,0,0.000000

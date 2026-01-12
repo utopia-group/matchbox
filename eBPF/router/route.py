@@ -8,8 +8,36 @@ import json
 import random
 import argparse
 
+
+def parse_ip_cidr(ip_cidr):
+    """
+    Parse IP address with CIDR notation and convert to binary format.
+
+    Args:
+        ip_cidr: String like "192.168.1.0/24"
+
+    Returns:
+        Binary string with /prefix notation like "11000000101010000000000100000000/24"
+    """
+    if "/" not in ip_cidr:
+        ip_cidr = f"{ip_cidr}/32"
+
+    ip_part, prefix = ip_cidr.split("/")
+    octets = ip_part.split(".")
+
+    # Convert each octet to 8-bit binary
+    binary_parts = []
+    for octet in octets:
+        binary_parts.append(format(int(octet), "08b"))
+
+    binary_ip = "".join(binary_parts)
+    return f"{binary_ip}/{prefix}"
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate forwarding configuration tables.")
+    parser = argparse.ArgumentParser(
+        description="Generate forwarding configuration tables."
+    )
     parser.add_argument(
         "--state_type",
         type=str,
@@ -56,47 +84,92 @@ if __name__ == "__main__":
                 for line in f:
                     line = line.strip()
                     if line:
-                        parts = line.split('\t')
+                        parts = line.split("\t")
                         ip = parts[0][1:]  # The first IP starts with a '@'
-                        src_port_range = parts[2].split(':')
-                        dst_port_range = parts[3].split(':')
+                        src_port_range = parts[2].split(":")
+                        dst_port_range = parts[3].split(":")
 
                         # Use just one port from the ranges.
-                        src_port = random.randint(int(src_port_range[0].strip()), int(src_port_range[1].strip()))
-                        dst_port = random.randint(int(dst_port_range[0].strip()), int(dst_port_range[1].strip()))
+                        src_port = random.randint(
+                            int(src_port_range[0].strip()),
+                            int(src_port_range[1].strip()),
+                        )
+                        dst_port = random.randint(
+                            int(dst_port_range[0].strip()),
+                            int(dst_port_range[1].strip()),
+                        )
                         rule_list[ip.strip()] = (src_port, dst_port)
         except Exception as e:
             print(f"Error reading IP file: {e}")
             sys.exit(1)
 
-    all_configs = []
-    for _ in range(num_configs):
-        # Generation variables -- at each generation, the following variables introduce randomness.
-        num_cpus = random.choice([2, 4, 8, 10, 12, 16, 20, 24, 32])
+    # Process rule_list to convert IP addresses and ports to binary format
+    processed_rules = []
+    for ip_mask, (src_port, dst_port) in rule_list.items():
+        binary_ip_mask = parse_ip_cidr(ip_mask)
+        binary_src_port = format(src_port, "016b")
+        binary_dst_port = format(dst_port, "016b")
+        processed_rules.append((binary_ip_mask, (binary_src_port, binary_dst_port)))
+    rule_list = processed_rules
 
-        config = []
-        for rule in rule_list.items():
-            rule_config = {}
-            rule_config["table"] = "port_forward"
+    num_cpus = 32
 
-            ip_mask, port = rule
-            if state_type == "per_cpu":
-                rule_config["matches"] = {
-                    "ip_mask": ip_mask
+    config = []
+    if state_type == "per_cpu":
+        # Per CPU mode: create separate tables for each CPU
+        for cpu_id in range(num_cpus):
+            for rule in rule_list:
+                rule_config = {}
+                rule_config["table"] = f"port_forward{cpu_id}"
+                ip_mask, port = rule
+                rule_config["matches"] = {"ip_mask": ip_mask}
+                rule_config["action"] = ["forward"]
+                rule_config["data"] = {
+                    "src_port": port[0],
+                    "dst_port": port[1],
                 }
-            else:
+                rule_config["priority"] = 100
+                config.append(rule_config)
+            config.append(
+                {
+                    "table": f"port_forward{cpu_id}",
+                    "matches": {"ip_mask": "00000000000000000000000000000000/0"},
+                    "action": ["nop"],
+                    "data": {},
+                    "priority": 101,
+                }
+            )
+    else:
+        # System-wide mode: single table with cpu_id as a match field
+        for cpu_id in range(num_cpus):
+            for rule in rule_list:
+                rule_config = {}
+                rule_config["table"] = "port_forward"
+
+                ip_mask, port = rule
                 rule_config["matches"] = {
                     "ip_mask": ip_mask,
-                    "cpu_id": random.randint(0, num_cpus - 1)
+                    "cpu_id": format(cpu_id, "05b"),
                 }
-            rule_config["action"] = ["forward"]
-            rule_config["data"] = {
-                "src_port": port[0],
-                "dst_port": port[1],
+                rule_config["action"] = ["forward"]
+                rule_config["data"] = {
+                    "src_port": port[0],
+                    "dst_port": port[1],
+                }
+                rule_config["priority"] = 100
+                config.append(rule_config)
+        config.append(
+            {
+                "table": "port_forward",
+                "matches": {
+                    "ip_mask": "00000000000000000000000000000000/0",
+                    "cpu_id": "*****",
+                },
+                "action": ["nop"],
+                "data": {},
+                "priority": 101,
             }
-            config.append(rule_config)
-
-        all_configs.append(config)
+        )
 
     with open(output_file, "w") as f:
-        json.dump(all_configs, f, indent=2)
+        json.dump(config, f, indent=2)

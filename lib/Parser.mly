@@ -48,7 +48,7 @@
 %token TCAM
 %token LPM
 %token CAM
-%token LIMIT
+// %token LIMIT
 %token ROWS
 %token ASSUME
 %token ASSERT
@@ -73,14 +73,21 @@ matchstix :
 tmatchstick : m = terminated(matchstick, DOT) { m }
 
 matchstick :
-| LIMIT; table = ID; TO; n = INT; option(ROWS);
-    { ParserContext.(empty |> add_resource_limit table n) }
+// | LIMIT; table = ID; TO; n = INT; option(ROWS);
+//     { ParserContext.(empty |> add_resource_limit table n) }
 | ASSUME; table = ID; COLON;
   LBRACE; source = typed_vars; BAR; phi = formula; RBRACE; FDARROW;
   target = delimited(LBRACE, typed_vars, RBRACE);
     {   let open ParserContext in
         let typ = FDBaseChecker.DepFunDep.{refine = phi; source; target} in
-        {empty with gfds = Map.add_multi empty.gfds ~key:table ~data:typ}
+        {empty with
+         gfds = Map.add_multi empty.gfds ~key:table ~data:typ;
+         stats =
+         {empty.stats with
+          num_fds = empty.stats.num_fds + 1;
+          size_fds = empty.stats.size_fds + BExpr.size phi
+         }
+        }
     }
 | ASSERT; table = ID; COLON;
   LBRACE; source = typed_vars; BAR; phi = formula; RBRACE; FDARROW;
@@ -131,8 +138,8 @@ row :
     { (keys, action, data) }
 
 mapping :
-| key = ID; ARROW; value = BP
-    { (key, value) }
+| key = ID; ARROW; w = INT; v = delimited(LSQUARE, INT, RSQUARE)
+    { (key, w, v) }
 
 algebra :
 | rows = separated_nonempty_list(COMMA, row)
@@ -162,7 +169,7 @@ algebra :
 | c = algebra; COMPOSE; CUBE_FILTER;
   mappings = delimited(LBRACE, separated_list(COMMA, mapping), RBRACE)
     {   mappings
-        |> List.map ~f:(fun (k, v) -> (k, Match.Ternary (Trit.Vector.of_string v)))
+        |> List.map ~f:(fun (k, w, i) -> (k, Match.Exact (Bit.Vector.of_int ~width:w i)))
         |> Map.of_alist_exn (module String)
         |> MatchTfx.CubeFilter
         |> Fn.flip Clause.(<<|) c }

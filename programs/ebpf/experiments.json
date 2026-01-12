@@ -1,0 +1,38 @@
+[
+    {
+        "name": "fwcpu_fwsys",
+        "progpath": "./programs/ebpf/programs/fwcpu_sys.mb",
+        "input": "./programs/ebpf/data/fwcpu.json",
+        "output": null
+    },
+    {
+        "name": "fwsys_fwcpu",
+        "progpath": "./programs/ebpf/programs/fwsys_cpu.mb",
+        "input": "./programs/ebpf/data/fwsys.json",
+        "output": null
+    },
+    {
+        "name": "limitcpu_limitsys",
+        "progpath": "./programs/ebpf/programs/limitcpu_sys.mb",
+        "input": "./programs/ebpf/data/limitcpu.json",
+        "output": null
+    },
+    {
+        "name": "limitsys_limitcpu",
+        "progpath": "./programs/ebpf/programs/limitsys_cpu.mb",
+        "input": "./programs/ebpf/data/limitsys.json",
+        "output": null
+    },
+    {
+        "name": "routecpu_routesys",
+        "progpath": "./programs/ebpf/programs/routecpu_sys.mb",
+        "input": "./programs/ebpf/data/routecpu.json",
+        "output": null
+    },
+    {
+        "name": "routesys_routecpu",
+        "progpath": "./programs/ebpf/programs/routesys_cpu.mb",
+        "input": "./programs/ebpf/data/routesys.json",
+        "output": null
+    }
+]

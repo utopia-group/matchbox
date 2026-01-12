@@ -54,7 +54,7 @@ let run_ (json : Safe.t) (minimize : bool) : unit =
       Option.iter output ~f:(fun output ->
         Safe.to_file output (RuntimeInterface.config_to_json config')
       );
-      Stats.println name pctx.stats
+      if not (String.is_prefix name ~prefix:"acl") then Stats.println name pctx.stats
     )
   | json -> 
     failwithf "unrecognized experiment format %s" (Safe.to_string json) ()

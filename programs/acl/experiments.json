@@ -2,55 +2,55 @@
     {
         "name": "acl_aws",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "./programs/acl/data/acl_small.json",
+        "input": "./programs/acl/data/acl.json",
         "output": "./programs/acl/data/acl_aws.json"
+    },
+    {
+        "name": "acl_azure",
+        "progpath": "./programs/acl/programs/acl_azure.mb",
+        "input": "./programs/acl/data/acl.json",
+        "output": "./programs/acl/data/acl_azure.json"
+    },
+    {
+        "name": "acl_google",
+        "progpath": "./programs/acl/programs/acl_google.mb",
+        "input": "./programs/acl/data/acl.json",
+        "output": "./programs/acl/data/acl_google.json"
+    },
+    {
+        "name": "aws_azure",
+        "progpath": "./programs/acl/programs/aws_azure.mb",
+        "input": "./programs/acl/data/acl_aws.json",
+        "output": "./programs/acl/data/aws_azure.json"
+    },
+    {
+        "name": "aws_google",
+        "progpath": "./programs/acl/programs/aws_google.mb",
+        "input": "./programs/acl/data/acl_aws.json",
+        "output": "./programs/acl/data/aws_google.json"
+    },
+    {
+        "name": "azure_aws",
+        "progpath": "./programs/acl/programs/azure_aws.mb",
+        "input": "./programs/acl/data/acl_azure.json",
+        "output": "./programs/acl/data/azure_aws.json"
+    },
+    {
+        "name": "azure_google",
+        "progpath": "./programs/acl/programs/azure_google.mb",
+        "input": "./programs/acl/data/acl_azure.json",
+        "output": "./programs/acl/data/azure_google.json"
+    },
+    {
+        "name": "google_aws",
+        "progpath": "./programs/acl/programs/google_aws.mb",
+        "input": "./programs/acl/data/acl_google.json",
+        "output": "./programs/acl/data/google_aws.json"
+    },
+    {
+        "name": "google_azure",
+        "progpath": "./programs/acl/programs/google_azure.mb",
+        "input": "./programs/acl/data/acl_google.json",
+        "output": "./programs/acl/data/google_azure.json"
     }
-    // {
-    //     "name": "acl_azure",
-    //     "progpath": "./programs/acl/programs/acl_azure.mb",
-    //     "input": "./programs/acl/data/acl.json",
-    //     "output": "./programs/acl/data/acl_azure.json"
-    // },
-    // {
-    //     "name": "acl_google",
-    //     "progpath": "./programs/acl/programs/acl_google.mb",
-    //     "input": "./programs/acl/data/acl.json",
-    //     "output": "./programs/acl/data/acl_google.json"
-    // },
-    // {
-    //     "name": "aws_azure",
-    //     "progpath": "./programs/acl/programs/aws_azure.mb",
-    //     "input": "./programs/acl/data/acl_aws.json",
-    //     "output": "./programs/acl/data/aws_azure.json"
-    // },
-    // {
-    //     "name": "aws_google",
-    //     "progpath": "./programs/acl/programs/aws_google.mb",
-    //     "input": "./programs/acl/data/acl_aws.json",
-    //     "output": "./programs/acl/data/aws_google.json"
-    // },
-    // {
-    //     "name": "azure_aws",
-    //     "progpath": "./programs/acl/programs/azure_aws.mb",
-    //     "input": "./programs/acl/data/acl_azure.json",
-    //     "output": "./programs/acl/data/azure_aws.json"
-    // },
-    // {
-    //     "name": "azure_google",
-    //     "progpath": "./programs/acl/programs/azure_google.mb",
-    //     "input": "./programs/acl/data/acl_azure.json",
-    //     "output": "./programs/acl/data/azure_google.json"
-    // },
-    // {
-    //     "name": "google_aws",
-    //     "progpath": "./programs/acl/programs/google_aws.mb",
-    //     "input": "./programs/acl/data/acl_google.json",
-    //     "output": "./programs/acl/data/google_aws.json"
-    // },
-    // {
-    //     "name": "google_azure",
-    //     "progpath": "./programs/acl/programs/google_azure.mb",
-    //     "input": "./programs/acl/data/acl_google.json",
-    //     "output": "./programs/acl/data/google_azure.json"
-    // }
 ]

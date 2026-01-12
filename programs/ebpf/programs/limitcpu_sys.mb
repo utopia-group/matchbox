@@ -1,0 +1,67 @@
+tcam rate_limit0 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit1 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit2 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit3 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit4 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit5 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit6 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit7 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit8 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit9 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit10 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit11 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit12 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit13 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit14 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit15 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit16 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit17 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit18 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit19 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit20 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit21 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit22 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit23 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit24 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit25 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit26 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit27 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit28 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit29 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit30 (ip_mask : 32) : {limit : 8} [limit nop].
+tcam rate_limit31 (ip_mask : 32) : {limit : 8} [limit nop].
+
+tcam rate_limit (ip_mask : 32, cpu_id : 5) : {limit : 8} [limit nop]
+o--
+    (rate_limit0 >> key cpu_id := 5[0]) |>
+    (rate_limit1 >> key cpu_id := 5[1]) |>
+    (rate_limit2 >> key cpu_id := 5[2]) |>
+    (rate_limit3 >> key cpu_id := 5[3]) |>
+    (rate_limit4 >> key cpu_id := 5[4]) |>
+    (rate_limit5 >> key cpu_id := 5[5]) |>
+    (rate_limit6 >> key cpu_id := 5[6]) |>
+    (rate_limit7 >> key cpu_id := 5[7]) |>
+    (rate_limit8 >> key cpu_id := 5[8]) |>
+    (rate_limit9 >> key cpu_id := 5[9]) |>
+    (rate_limit10 >> key cpu_id := 5[10]) |>
+    (rate_limit11 >> key cpu_id := 5[11]) |>
+    (rate_limit12 >> key cpu_id := 5[12]) |>
+    (rate_limit13 >> key cpu_id := 5[13]) |>
+    (rate_limit14 >> key cpu_id := 5[14]) |>
+    (rate_limit15 >> key cpu_id := 5[15]) |>
+    (rate_limit16 >> key cpu_id := 5[16]) |>
+    (rate_limit17 >> key cpu_id := 5[17]) |>
+    (rate_limit18 >> key cpu_id := 5[18]) |>
+    (rate_limit19 >> key cpu_id := 5[19]) |>
+    (rate_limit20 >> key cpu_id := 5[20]) |>
+    (rate_limit21 >> key cpu_id := 5[21]) |>
+    (rate_limit22 >> key cpu_id := 5[22]) |>
+    (rate_limit23 >> key cpu_id := 5[23]) |>
+    (rate_limit24 >> key cpu_id := 5[24]) |>
+    (rate_limit25 >> key cpu_id := 5[25]) |>
+    (rate_limit26 >> key cpu_id := 5[26]) |>
+    (rate_limit27 >> key cpu_id := 5[27]) |>
+    (rate_limit28 >> key cpu_id := 5[28]) |>
+    (rate_limit29 >> key cpu_id := 5[29]) |>
+    (rate_limit30 >> key cpu_id := 5[30]) |>
+    (rate_limit31 >> key cpu_id := 5[31]).

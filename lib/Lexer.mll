@@ -18,7 +18,7 @@ rule tokens = parse
 | "key" { KEY }
 | "data" { DATA }
 | "to" { TO }
-| "limit" { LIMIT }
+(* | "limit" { LIMIT } *)
 | "rows" { ROWS }
 | "assume" { ASSUME }
 | "assert" { ASSERT }
