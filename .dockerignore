@@ -1,0 +1,10 @@
+_build/
+_output/
+deps/gpl/_build/
+.venv/
+__pycache__/
+*.tmp
+*.patch
+.DS_Store
+.git/
+programs/*/data/experiments*

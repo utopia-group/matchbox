@@ -1,0 +1,4 @@
+cases-exp-indent=2
+space-around-lists=false
+space-around-records=false
+parse-docstrings=false
