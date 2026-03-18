@@ -20,12 +20,12 @@ check: all
 # ── Experiment Reproduction ──────────────────────────────────────────────────
 
 reproduce: all
-	python3 reproduce.py
+	python3 experiments.py
 
 run: all
-	python3 reproduce.py --step run
+	python3 experiments.py --step run
 
 report:
-	python3 reproduce.py --step report
+	python3 experiments.py --step report
 
 .PHONY: all clean check reproduce run report

@@ -5,6 +5,5 @@ __pycache__
 *.tmp
 *.patch
 
-# Generated experiment data (created by reproduce.py --step sample)
+# Generated experiment data (created by experiments.py --step sample)
 programs/*/data/experiments*
-pldi2026-paper153.pdf

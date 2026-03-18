@@ -12,12 +12,12 @@ Experiment JSONs and results CSVs overwrite the tracked files so you can
 `git diff` to verify correctness.
 
 Usage:
-  python reproduce.py                  # full end-to-end reproduction
-  python reproduce.py --step run       # just run experiments (samples must exist)
-  python reproduce.py --step report    # just generate figures + print stats (results must exist)
-  python reproduce.py --case retarget  # only the switch evolution case study
-  python reproduce.py --case acl       # only the cloud firewall case study
-  python reproduce.py --case ebpf      # only the eBPF case study
+  python experiments.py                  # full end-to-end reproduction
+  python experiments.py --step run       # just run experiments (samples must exist)
+  python experiments.py --step report    # just generate figures + print stats (results must exist)
+  python experiments.py --case retarget  # only the switch evolution case study
+  python experiments.py --case acl       # only the cloud firewall case study
+  python experiments.py --case ebpf      # only the eBPF case study
 
 Steps (executed in order):
   build     — compile OCaml binaries via dune
@@ -684,7 +684,7 @@ def _setup_plot_style():
     import matplotlib.pyplot as plt
     plt.style.use("seaborn-v0_8-whitegrid")
     plt.rcParams["font.family"] = "serif"
-    plt.rcParams["font.serif"] = ["Linux Libertine", "Libertine", "Times New Roman", "Times"]
+    plt.rcParams["font.serif"] = ["Linux Libertine O", "Linux Libertine", "Libertine", "Times New Roman", "Times"]
     plt.rcParams["mathtext.fontset"] = "stix"
     plt.rcParams["font.size"] = 12
     plt.rcParams["axes.labelsize"] = 14

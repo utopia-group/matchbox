@@ -12,7 +12,7 @@ docker build -t matchbox-artifact .
 docker run --rm -it matchbox-artifact
 ```
 
-The container runs `python3 reproduce.py` automatically, executing all experiments
+The container runs `python3 experiments.py` automatically, executing all experiments
 and generating figures (~25 min). To get an interactive shell instead (e.g., to
 run individual steps):
 
@@ -21,7 +21,13 @@ docker run --rm -it matchbox-artifact bash
 ```
 
 Each `docker run` starts a fresh container. To preserve results between commands,
-use a single interactive session.
+use a single interactive session. To copy generated figures to the host:
+
+```
+docker cp <id>:/artifact/_output/figure-15.pdf .
+```
+
+Get `<id>` via `docker ps -a`.
 
 **Native requirements:** OCaml 4.14+ with opam, Python 3 with matplotlib/pandas/numpy,
 LaTeX with libertine fonts (for plot rendering). Then:
@@ -30,14 +36,14 @@ LaTeX with libertine fonts (for plot rendering). Then:
 opam pin add gpl deps/gpl --no-action
 opam install . --deps-only --yes
 make
-python3 reproduce.py
+python3 experiments.py
 ```
 
 **Quick smoke test (~10 seconds):**
 Run only the eBPF case study, the fastest of the three:
 
 ```
-python3 reproduce.py --case ebpf
+python3 experiments.py --case ebpf
 ```
 
 This builds the compiler, generates configs, runs 60 translations, produces
@@ -46,15 +52,15 @@ Verify the output matches the paper's Figure 18 and Table 3.
 
 ## Step-by-Step Instructions
 
-`reproduce.py` runs five steps in order. Each can be run independently via `--step`.
+`experiments.py` runs five steps in order. Each can be run independently via `--step`.
 
 | Step       | Command                                | What it does                                      |
 |------------|----------------------------------------|---------------------------------------------------|
-| `build`    | `python3 reproduce.py --step build`    | Compile OCaml binaries via `dune build`            |
-| `generate` | `python3 reproduce.py --step generate` | Create base JSON configs from synthetic/ClassBench data |
-| `sample`   | `python3 reproduce.py --step sample`   | Subsample at 10 uniform sizes, write experiment JSONs |
-| `run`      | `python3 reproduce.py --step run`      | Run all translations via `stijl exp`               |
-| `report`   | `python3 reproduce.py --step report`   | Generate Figures 15-18, print Tables 1-3 and inline stats |
+| `build`    | `python3 experiments.py --step build`    | Compile OCaml binaries via `dune build`            |
+| `generate` | `python3 experiments.py --step generate` | Create base JSON configs from synthetic/ClassBench data |
+| `sample`   | `python3 experiments.py --step sample`   | Subsample at 10 uniform sizes, write experiment JSONs |
+| `run`      | `python3 experiments.py --step run`      | Run all translations via `stijl exp`               |
+| `report`   | `python3 experiments.py --step report`   | Generate Figures 15-18, print Tables 1-3 and inline stats |
 
 Use `--case retarget`, `--case acl`, or `--case ebpf` to restrict to one case study.
 Flags are repeatable: `--case retarget --case acl` runs two of three.
@@ -88,7 +94,7 @@ individually.
 ### Using the original results
 
 The repository ships the original paper results in `programs/*/results.csv` and
-`_output/figure-{15..18}.pdf`. Running `python3 reproduce.py --step report`
+`_output/figure-{15..18}.pdf`. Running `python3 experiments.py --step report`
 without `--step run` will generate figures and statistics from these committed
 results, so you can inspect the paper's data without re-running experiments.
 
@@ -111,7 +117,7 @@ should be identical.
 **Claim 1 (Table 1, Section 8.1):** The 30 retargeting MatchStix programs have
 AST sizes 3-47 (median 20.5), at most 3 GFD annotations (10 of 30 programs
 require any), and type-check efficiently.
-Verify: `python3 reproduce.py --step report`
+Verify: `python3 experiments.py --step report`
 
 **Claim 2 (Section 8.1):** Retargeting compilation averages ~0.6 ms per input
 rule on configurations of 6 to 10,517 rules. Translations from
@@ -127,7 +133,7 @@ Verify: compare `_output/figure-16.pdf` with paper Figure 16.
 **Claim 4 (Table 2, Section 8.2):** The 6 cloud firewall programs use 2-10 AST
 nodes, at most 2 GFD annotations (only 2 programs require any), and type-check
 efficiently.
-Verify: `python3 reproduce.py --step report`
+Verify: `python3 experiments.py --step report`
 
 **Claim 5 (Figure 17, Section 8.2):** Cloud firewall compilation scales linearly,
 averaging ~0.5 us per rule, on configs up to 10,695 entries. Output size is
@@ -137,7 +143,7 @@ Verify: compare `_output/figure-17.pdf` with paper Figure 17.
 **Claim 6 (Table 3, Section 8.3):** The 6 eBPF programs use 64-95 AST nodes
 (median 79.5) and up to 32 GFD annotations. System-wide-to-per-CPU translations
 require more annotations and are more expensive to type-check.
-Verify: `python3 reproduce.py --step report`
+Verify: `python3 experiments.py --step report`
 
 **Claim 7 (Figure 18, Section 8.3):** eBPF compilation averages ~2 us per rule
 on configurations of 64 to 1,793 rules. System-wide to per-CPU translations
@@ -162,7 +168,7 @@ columns (AST size, annotation count, input/output config sizes) should match exa
 ## Repository Layout
 
 ```
-reproduce.py                  - Main reproduction script
+experiments.py                - Main reproduction script
 Dockerfile                    - Docker build (two-stage: OCaml build + Python runtime)
 Makefile                      - make / make check / make reproduce
 programs/retargeting/         - Switch evolution case study (Section 8.1)

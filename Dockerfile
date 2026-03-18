@@ -39,7 +39,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir --break-system-packages \
-      matplotlib pandas numpy
+      matplotlib pandas numpy \
+    && rm -rf ~/.cache/matplotlib
 
 WORKDIR /artifact
 COPY --from=builder /home/opam/matchbox /artifact
@@ -53,4 +54,4 @@ if [ "$1" = "exec" ]; then shift; while [ "$1" = "--" ]; do shift; done; exec "$
 echo "dune shim: unsupported: $*" >&2; exit 1\n' \
   > /usr/local/bin/dune && chmod +x /usr/local/bin/dune
 
-CMD ["python3", "reproduce.py"]
+CMD ["python3", "experiments.py"]
