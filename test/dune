@@ -12,3 +12,10 @@
   acl_translation_tests)
  (action
   (run %{exe:stijl_test.exe} --verbose)))
+
+(test
+ (name verifier_test)
+ (libraries stijl gpl alcotest core)
+ (modules verifier_test)
+ (action
+  (run %{exe:verifier_test.exe})))

@@ -12,6 +12,7 @@ type t = {
     gfds : F.itfc_spec;
     assertions: F.itfc_spec;
     prog : L.t list;
+    props : Property.t list;
     stats : Stats.t
 }
 
@@ -22,6 +23,7 @@ let empty = {
     gfds = String.Map.empty;
     assertions = String.Map.empty;
     prog = [];
+    props = [];
     stats = Stats.empty;
 }
 
@@ -37,8 +39,12 @@ let (@) (p1 : t) (p2 : t) : t=
       gfds = F.(p1.gfds @ p2.gfds);
       assertions = F.(p1.assertions @ p2.assertions);
       prog = p1.prog @ p2.prog;
+      props = p1.props @ p2.props;
       stats = Stats.(p1.stats + p2.stats);
     }
+
+let add_property (prop : Property.t) (p : t) : t =
+  {p with props = List.append p.props [prop]}
 
 let concat : t list -> t = 
     List.fold ~init:empty ~f:(@)

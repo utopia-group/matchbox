@@ -52,6 +52,7 @@
 %token ROWS
 %token ASSUME
 %token ASSERT
+%token ACTIONVAR
 %token FORALL
 %token PRIVATE
 
@@ -96,7 +97,13 @@ matchstick :
         let typ = FDBaseChecker.DepFunDep.{refine = phi; source; target} in
         add_assertion table typ empty
     }
-| private_ = option(PRIVATE); hw = hardware; table = ID; 
+| ASSERT; table = ID; COLON;
+  LBRACE; pre = formula; RBRACE; IMP;
+  LBRACE; g = post_guarantee; RBRACE;
+    {   let open ParserContext in
+        add_property Property.{table; pre; post = [g]} empty
+    }
+| private_ = option(PRIVATE); hw = hardware; table = ID;
   keys = delimited(LPAREN, typed_vars, RPAREN);
   COLON;
   data = delimited(LBRACE, typed_vars, RBRACE);
@@ -209,8 +216,14 @@ formula :
     { BExpr.and_ psi phi }
 | phi = formula; OR; psi = formula
     { BExpr.ors [phi; psi] }
-| LPAREN; phi = formula; RPAREN 
+| LPAREN; phi = formula; RPAREN
     { phi }
+
+post_guarantee :
+| ACTIONVAR; EQ; a = action
+    { Property.ActionEq a }
+| phi = formula
+    { Property.Pred phi }
 
 action :
 | name = ID 

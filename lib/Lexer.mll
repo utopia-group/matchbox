@@ -22,6 +22,7 @@ rule tokens = parse
 | "rows" { ROWS }
 | "assume" { ASSUME }
 | "assert" { ASSERT }
+| "$action" { ACTIONVAR }
 | "forall" { FORALL }
 | "private" { PRIVATE }
 | "o--" { MATCHSTICK }
