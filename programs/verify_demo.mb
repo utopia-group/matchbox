@@ -1,0 +1,18 @@
+// Demo of Z3-backed Hoare-style property verification.
+//
+//   stijl verify programs/verify_demo.mb
+//
+// An ACL on the destination port: SSH (22) is dropped, everything else allowed.
+// (Inline table rows, so no --config is needed.)
+
+tcam acl (dport : 16) : {} [drop allow]
+o--
+    | 0b0000000000010110 -> drop()  |,   // dport == 22  -> drop
+    | 0b**************** -> allow() |.    // otherwise    -> allow
+
+// Holds: every SSH packet is dropped.
+assert acl : { dport == 16[22] } => { $action == drop }.
+
+// Fails: port-80 traffic is allowed, not dropped. `verify` prints a
+// counterexample packet (dport = 80).
+assert acl : { dport == 16[80] } => { $action == drop }.
