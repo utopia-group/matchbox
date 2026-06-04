@@ -1,0 +1,34 @@
+(lang dune 3.19)
+
+(name gpl)
+
+(generate_opam_files true)
+
+(source
+ (github ericthewry/gpl))
+
+(authors "Eric Campbell")
+
+(maintainers "Eric Campbell")
+
+(license LICENSE)
+
+(documentation https://url/to/documentation)
+
+(package
+ (name gpl)
+ (synopsis "The Guarded Pipeline Language (GPL)")
+ (description
+  "An intermediate representation of network programs for symbolic compilation")
+ (depends
+  ocaml
+  dune
+  (core
+   (>= v0.16.2))
+  bignum
+  ppx_jane
+  ppx_deriving)
+ (tags
+  ("verification" "intermediate representation" "networking")))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

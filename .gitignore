@@ -1,21 +1,9 @@
-.DS_Store
 _build
-.ocamlformat
-.ocamlformat-ignore
 .venv
-*.png
-*.pdf
+__pycache__
+.DS_Store
 *.tmp
 *.patch
-programs/retargeting/data/experiments10_1M
-programs/retargeting/data/lo_1M.json
-programs/retargeting/data/experiments10_50K
-programs/retargeting/data/lo_50K.json
-programs/retargeting/data/experiments10_5K
-programs/retargeting/data/lo_5K.json
-programs/acl/data/experiments10
-programs/ebpf/data/experiments10
-programs/retargeting/data/experiments5
-programs/retargeting/data/experiments10
-programs/retargeting/data/experiments10_alt
-programs/retargeting/data/experiments10_50K
+
+# Generated experiment data (created by experiments.py --step sample)
+programs/*/data/experiments*

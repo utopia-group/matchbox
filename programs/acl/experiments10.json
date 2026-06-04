@@ -2,541 +2,541 @@
     {
         "name": "acl_aws_1",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1.json",
-        "output": "programs/acl/data/experiments10_alt/acl1_aws.json"
+        "input": "programs/acl/data/experiments10/acl1.json",
+        "output": "programs/acl/data/experiments10/acl1_aws.json"
     },
     {
         "name": "acl_azure_1",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1.json",
-        "output": "programs/acl/data/experiments10_alt/acl1_azure.json"
+        "input": "programs/acl/data/experiments10/acl1.json",
+        "output": "programs/acl/data/experiments10/acl1_azure.json"
     },
     {
         "name": "acl_google_1",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1.json",
-        "output": "programs/acl/data/experiments10_alt/acl1_google.json"
+        "input": "programs/acl/data/experiments10/acl1.json",
+        "output": "programs/acl/data/experiments10/acl1_google.json"
     },
     {
         "name": "aws_azure_1",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws1_azure.json"
+        "input": "programs/acl/data/experiments10/acl1_aws.json",
+        "output": "programs/acl/data/experiments10/aws1_azure.json"
     },
     {
         "name": "aws_google_1",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws1_google.json"
+        "input": "programs/acl/data/experiments10/acl1_aws.json",
+        "output": "programs/acl/data/experiments10/aws1_google.json"
     },
     {
         "name": "azure_aws_1",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure1_aws.json"
+        "input": "programs/acl/data/experiments10/acl1_azure.json",
+        "output": "programs/acl/data/experiments10/azure1_aws.json"
     },
     {
         "name": "azure_google_1",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure1_google.json"
+        "input": "programs/acl/data/experiments10/acl1_azure.json",
+        "output": "programs/acl/data/experiments10/azure1_google.json"
     },
     {
         "name": "google_aws_1",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1_google.json",
-        "output": "programs/acl/data/experiments10_alt/google1_aws.json"
+        "input": "programs/acl/data/experiments10/acl1_google.json",
+        "output": "programs/acl/data/experiments10/google1_aws.json"
     },
     {
         "name": "google_azure_1",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1_google.json",
-        "output": "programs/acl/data/experiments10_alt/google1_azure.json"
+        "input": "programs/acl/data/experiments10/acl1_google.json",
+        "output": "programs/acl/data/experiments10/google1_azure.json"
     },
     {
         "name": "acl_aws_594",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594.json",
-        "output": "programs/acl/data/experiments10_alt/acl594_aws.json"
+        "input": "programs/acl/data/experiments10/acl594.json",
+        "output": "programs/acl/data/experiments10/acl594_aws.json"
     },
     {
         "name": "acl_azure_594",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594.json",
-        "output": "programs/acl/data/experiments10_alt/acl594_azure.json"
+        "input": "programs/acl/data/experiments10/acl594.json",
+        "output": "programs/acl/data/experiments10/acl594_azure.json"
     },
     {
         "name": "acl_google_594",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594.json",
-        "output": "programs/acl/data/experiments10_alt/acl594_google.json"
+        "input": "programs/acl/data/experiments10/acl594.json",
+        "output": "programs/acl/data/experiments10/acl594_google.json"
     },
     {
         "name": "aws_azure_594",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws594_azure.json"
+        "input": "programs/acl/data/experiments10/acl594_aws.json",
+        "output": "programs/acl/data/experiments10/aws594_azure.json"
     },
     {
         "name": "aws_google_594",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws594_google.json"
+        "input": "programs/acl/data/experiments10/acl594_aws.json",
+        "output": "programs/acl/data/experiments10/aws594_google.json"
     },
     {
         "name": "azure_aws_594",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure594_aws.json"
+        "input": "programs/acl/data/experiments10/acl594_azure.json",
+        "output": "programs/acl/data/experiments10/azure594_aws.json"
     },
     {
         "name": "azure_google_594",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure594_google.json"
+        "input": "programs/acl/data/experiments10/acl594_azure.json",
+        "output": "programs/acl/data/experiments10/azure594_google.json"
     },
     {
         "name": "google_aws_594",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594_google.json",
-        "output": "programs/acl/data/experiments10_alt/google594_aws.json"
+        "input": "programs/acl/data/experiments10/acl594_google.json",
+        "output": "programs/acl/data/experiments10/google594_aws.json"
     },
     {
         "name": "google_azure_594",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl594_google.json",
-        "output": "programs/acl/data/experiments10_alt/google594_azure.json"
+        "input": "programs/acl/data/experiments10/acl594_google.json",
+        "output": "programs/acl/data/experiments10/google594_azure.json"
     },
     {
         "name": "acl_aws_1188",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188.json",
-        "output": "programs/acl/data/experiments10_alt/acl1188_aws.json"
+        "input": "programs/acl/data/experiments10/acl1188.json",
+        "output": "programs/acl/data/experiments10/acl1188_aws.json"
     },
     {
         "name": "acl_azure_1188",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188.json",
-        "output": "programs/acl/data/experiments10_alt/acl1188_azure.json"
+        "input": "programs/acl/data/experiments10/acl1188.json",
+        "output": "programs/acl/data/experiments10/acl1188_azure.json"
     },
     {
         "name": "acl_google_1188",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188.json",
-        "output": "programs/acl/data/experiments10_alt/acl1188_google.json"
+        "input": "programs/acl/data/experiments10/acl1188.json",
+        "output": "programs/acl/data/experiments10/acl1188_google.json"
     },
     {
         "name": "aws_azure_1188",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws1188_azure.json"
+        "input": "programs/acl/data/experiments10/acl1188_aws.json",
+        "output": "programs/acl/data/experiments10/aws1188_azure.json"
     },
     {
         "name": "aws_google_1188",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws1188_google.json"
+        "input": "programs/acl/data/experiments10/acl1188_aws.json",
+        "output": "programs/acl/data/experiments10/aws1188_google.json"
     },
     {
         "name": "azure_aws_1188",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure1188_aws.json"
+        "input": "programs/acl/data/experiments10/acl1188_azure.json",
+        "output": "programs/acl/data/experiments10/azure1188_aws.json"
     },
     {
         "name": "azure_google_1188",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure1188_google.json"
+        "input": "programs/acl/data/experiments10/acl1188_azure.json",
+        "output": "programs/acl/data/experiments10/azure1188_google.json"
     },
     {
         "name": "google_aws_1188",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188_google.json",
-        "output": "programs/acl/data/experiments10_alt/google1188_aws.json"
+        "input": "programs/acl/data/experiments10/acl1188_google.json",
+        "output": "programs/acl/data/experiments10/google1188_aws.json"
     },
     {
         "name": "google_azure_1188",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1188_google.json",
-        "output": "programs/acl/data/experiments10_alt/google1188_azure.json"
+        "input": "programs/acl/data/experiments10/acl1188_google.json",
+        "output": "programs/acl/data/experiments10/google1188_azure.json"
     },
     {
         "name": "acl_aws_1782",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782.json",
-        "output": "programs/acl/data/experiments10_alt/acl1782_aws.json"
+        "input": "programs/acl/data/experiments10/acl1782.json",
+        "output": "programs/acl/data/experiments10/acl1782_aws.json"
     },
     {
         "name": "acl_azure_1782",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782.json",
-        "output": "programs/acl/data/experiments10_alt/acl1782_azure.json"
+        "input": "programs/acl/data/experiments10/acl1782.json",
+        "output": "programs/acl/data/experiments10/acl1782_azure.json"
     },
     {
         "name": "acl_google_1782",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782.json",
-        "output": "programs/acl/data/experiments10_alt/acl1782_google.json"
+        "input": "programs/acl/data/experiments10/acl1782.json",
+        "output": "programs/acl/data/experiments10/acl1782_google.json"
     },
     {
         "name": "aws_azure_1782",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws1782_azure.json"
+        "input": "programs/acl/data/experiments10/acl1782_aws.json",
+        "output": "programs/acl/data/experiments10/aws1782_azure.json"
     },
     {
         "name": "aws_google_1782",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws1782_google.json"
+        "input": "programs/acl/data/experiments10/acl1782_aws.json",
+        "output": "programs/acl/data/experiments10/aws1782_google.json"
     },
     {
         "name": "azure_aws_1782",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure1782_aws.json"
+        "input": "programs/acl/data/experiments10/acl1782_azure.json",
+        "output": "programs/acl/data/experiments10/azure1782_aws.json"
     },
     {
         "name": "azure_google_1782",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure1782_google.json"
+        "input": "programs/acl/data/experiments10/acl1782_azure.json",
+        "output": "programs/acl/data/experiments10/azure1782_google.json"
     },
     {
         "name": "google_aws_1782",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782_google.json",
-        "output": "programs/acl/data/experiments10_alt/google1782_aws.json"
+        "input": "programs/acl/data/experiments10/acl1782_google.json",
+        "output": "programs/acl/data/experiments10/google1782_aws.json"
     },
     {
         "name": "google_azure_1782",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl1782_google.json",
-        "output": "programs/acl/data/experiments10_alt/google1782_azure.json"
+        "input": "programs/acl/data/experiments10/acl1782_google.json",
+        "output": "programs/acl/data/experiments10/google1782_azure.json"
     },
     {
         "name": "acl_aws_2376",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376.json",
-        "output": "programs/acl/data/experiments10_alt/acl2376_aws.json"
+        "input": "programs/acl/data/experiments10/acl2376.json",
+        "output": "programs/acl/data/experiments10/acl2376_aws.json"
     },
     {
         "name": "acl_azure_2376",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376.json",
-        "output": "programs/acl/data/experiments10_alt/acl2376_azure.json"
+        "input": "programs/acl/data/experiments10/acl2376.json",
+        "output": "programs/acl/data/experiments10/acl2376_azure.json"
     },
     {
         "name": "acl_google_2376",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376.json",
-        "output": "programs/acl/data/experiments10_alt/acl2376_google.json"
+        "input": "programs/acl/data/experiments10/acl2376.json",
+        "output": "programs/acl/data/experiments10/acl2376_google.json"
     },
     {
         "name": "aws_azure_2376",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws2376_azure.json"
+        "input": "programs/acl/data/experiments10/acl2376_aws.json",
+        "output": "programs/acl/data/experiments10/aws2376_azure.json"
     },
     {
         "name": "aws_google_2376",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws2376_google.json"
+        "input": "programs/acl/data/experiments10/acl2376_aws.json",
+        "output": "programs/acl/data/experiments10/aws2376_google.json"
     },
     {
         "name": "azure_aws_2376",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure2376_aws.json"
+        "input": "programs/acl/data/experiments10/acl2376_azure.json",
+        "output": "programs/acl/data/experiments10/azure2376_aws.json"
     },
     {
         "name": "azure_google_2376",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure2376_google.json"
+        "input": "programs/acl/data/experiments10/acl2376_azure.json",
+        "output": "programs/acl/data/experiments10/azure2376_google.json"
     },
     {
         "name": "google_aws_2376",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376_google.json",
-        "output": "programs/acl/data/experiments10_alt/google2376_aws.json"
+        "input": "programs/acl/data/experiments10/acl2376_google.json",
+        "output": "programs/acl/data/experiments10/google2376_aws.json"
     },
     {
         "name": "google_azure_2376",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2376_google.json",
-        "output": "programs/acl/data/experiments10_alt/google2376_azure.json"
+        "input": "programs/acl/data/experiments10/acl2376_google.json",
+        "output": "programs/acl/data/experiments10/google2376_azure.json"
     },
     {
         "name": "acl_aws_2970",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970.json",
-        "output": "programs/acl/data/experiments10_alt/acl2970_aws.json"
+        "input": "programs/acl/data/experiments10/acl2970.json",
+        "output": "programs/acl/data/experiments10/acl2970_aws.json"
     },
     {
         "name": "acl_azure_2970",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970.json",
-        "output": "programs/acl/data/experiments10_alt/acl2970_azure.json"
+        "input": "programs/acl/data/experiments10/acl2970.json",
+        "output": "programs/acl/data/experiments10/acl2970_azure.json"
     },
     {
         "name": "acl_google_2970",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970.json",
-        "output": "programs/acl/data/experiments10_alt/acl2970_google.json"
+        "input": "programs/acl/data/experiments10/acl2970.json",
+        "output": "programs/acl/data/experiments10/acl2970_google.json"
     },
     {
         "name": "aws_azure_2970",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws2970_azure.json"
+        "input": "programs/acl/data/experiments10/acl2970_aws.json",
+        "output": "programs/acl/data/experiments10/aws2970_azure.json"
     },
     {
         "name": "aws_google_2970",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws2970_google.json"
+        "input": "programs/acl/data/experiments10/acl2970_aws.json",
+        "output": "programs/acl/data/experiments10/aws2970_google.json"
     },
     {
         "name": "azure_aws_2970",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure2970_aws.json"
+        "input": "programs/acl/data/experiments10/acl2970_azure.json",
+        "output": "programs/acl/data/experiments10/azure2970_aws.json"
     },
     {
         "name": "azure_google_2970",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure2970_google.json"
+        "input": "programs/acl/data/experiments10/acl2970_azure.json",
+        "output": "programs/acl/data/experiments10/azure2970_google.json"
     },
     {
         "name": "google_aws_2970",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970_google.json",
-        "output": "programs/acl/data/experiments10_alt/google2970_aws.json"
+        "input": "programs/acl/data/experiments10/acl2970_google.json",
+        "output": "programs/acl/data/experiments10/google2970_aws.json"
     },
     {
         "name": "google_azure_2970",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl2970_google.json",
-        "output": "programs/acl/data/experiments10_alt/google2970_azure.json"
+        "input": "programs/acl/data/experiments10/acl2970_google.json",
+        "output": "programs/acl/data/experiments10/google2970_azure.json"
     },
     {
         "name": "acl_aws_3564",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564.json",
-        "output": "programs/acl/data/experiments10_alt/acl3564_aws.json"
+        "input": "programs/acl/data/experiments10/acl3564.json",
+        "output": "programs/acl/data/experiments10/acl3564_aws.json"
     },
     {
         "name": "acl_azure_3564",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564.json",
-        "output": "programs/acl/data/experiments10_alt/acl3564_azure.json"
+        "input": "programs/acl/data/experiments10/acl3564.json",
+        "output": "programs/acl/data/experiments10/acl3564_azure.json"
     },
     {
         "name": "acl_google_3564",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564.json",
-        "output": "programs/acl/data/experiments10_alt/acl3564_google.json"
+        "input": "programs/acl/data/experiments10/acl3564.json",
+        "output": "programs/acl/data/experiments10/acl3564_google.json"
     },
     {
         "name": "aws_azure_3564",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws3564_azure.json"
+        "input": "programs/acl/data/experiments10/acl3564_aws.json",
+        "output": "programs/acl/data/experiments10/aws3564_azure.json"
     },
     {
         "name": "aws_google_3564",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws3564_google.json"
+        "input": "programs/acl/data/experiments10/acl3564_aws.json",
+        "output": "programs/acl/data/experiments10/aws3564_google.json"
     },
     {
         "name": "azure_aws_3564",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure3564_aws.json"
+        "input": "programs/acl/data/experiments10/acl3564_azure.json",
+        "output": "programs/acl/data/experiments10/azure3564_aws.json"
     },
     {
         "name": "azure_google_3564",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure3564_google.json"
+        "input": "programs/acl/data/experiments10/acl3564_azure.json",
+        "output": "programs/acl/data/experiments10/azure3564_google.json"
     },
     {
         "name": "google_aws_3564",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564_google.json",
-        "output": "programs/acl/data/experiments10_alt/google3564_aws.json"
+        "input": "programs/acl/data/experiments10/acl3564_google.json",
+        "output": "programs/acl/data/experiments10/google3564_aws.json"
     },
     {
         "name": "google_azure_3564",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl3564_google.json",
-        "output": "programs/acl/data/experiments10_alt/google3564_azure.json"
+        "input": "programs/acl/data/experiments10/acl3564_google.json",
+        "output": "programs/acl/data/experiments10/google3564_azure.json"
     },
     {
         "name": "acl_aws_4158",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158.json",
-        "output": "programs/acl/data/experiments10_alt/acl4158_aws.json"
+        "input": "programs/acl/data/experiments10/acl4158.json",
+        "output": "programs/acl/data/experiments10/acl4158_aws.json"
     },
     {
         "name": "acl_azure_4158",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158.json",
-        "output": "programs/acl/data/experiments10_alt/acl4158_azure.json"
+        "input": "programs/acl/data/experiments10/acl4158.json",
+        "output": "programs/acl/data/experiments10/acl4158_azure.json"
     },
     {
         "name": "acl_google_4158",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158.json",
-        "output": "programs/acl/data/experiments10_alt/acl4158_google.json"
+        "input": "programs/acl/data/experiments10/acl4158.json",
+        "output": "programs/acl/data/experiments10/acl4158_google.json"
     },
     {
         "name": "aws_azure_4158",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws4158_azure.json"
+        "input": "programs/acl/data/experiments10/acl4158_aws.json",
+        "output": "programs/acl/data/experiments10/aws4158_azure.json"
     },
     {
         "name": "aws_google_4158",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws4158_google.json"
+        "input": "programs/acl/data/experiments10/acl4158_aws.json",
+        "output": "programs/acl/data/experiments10/aws4158_google.json"
     },
     {
         "name": "azure_aws_4158",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure4158_aws.json"
+        "input": "programs/acl/data/experiments10/acl4158_azure.json",
+        "output": "programs/acl/data/experiments10/azure4158_aws.json"
     },
     {
         "name": "azure_google_4158",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure4158_google.json"
+        "input": "programs/acl/data/experiments10/acl4158_azure.json",
+        "output": "programs/acl/data/experiments10/azure4158_google.json"
     },
     {
         "name": "google_aws_4158",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158_google.json",
-        "output": "programs/acl/data/experiments10_alt/google4158_aws.json"
+        "input": "programs/acl/data/experiments10/acl4158_google.json",
+        "output": "programs/acl/data/experiments10/google4158_aws.json"
     },
     {
         "name": "google_azure_4158",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4158_google.json",
-        "output": "programs/acl/data/experiments10_alt/google4158_azure.json"
+        "input": "programs/acl/data/experiments10/acl4158_google.json",
+        "output": "programs/acl/data/experiments10/google4158_azure.json"
     },
     {
         "name": "acl_aws_4752",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752.json",
-        "output": "programs/acl/data/experiments10_alt/acl4752_aws.json"
+        "input": "programs/acl/data/experiments10/acl4752.json",
+        "output": "programs/acl/data/experiments10/acl4752_aws.json"
     },
     {
         "name": "acl_azure_4752",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752.json",
-        "output": "programs/acl/data/experiments10_alt/acl4752_azure.json"
+        "input": "programs/acl/data/experiments10/acl4752.json",
+        "output": "programs/acl/data/experiments10/acl4752_azure.json"
     },
     {
         "name": "acl_google_4752",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752.json",
-        "output": "programs/acl/data/experiments10_alt/acl4752_google.json"
+        "input": "programs/acl/data/experiments10/acl4752.json",
+        "output": "programs/acl/data/experiments10/acl4752_google.json"
     },
     {
         "name": "aws_azure_4752",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws4752_azure.json"
+        "input": "programs/acl/data/experiments10/acl4752_aws.json",
+        "output": "programs/acl/data/experiments10/aws4752_azure.json"
     },
     {
         "name": "aws_google_4752",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws4752_google.json"
+        "input": "programs/acl/data/experiments10/acl4752_aws.json",
+        "output": "programs/acl/data/experiments10/aws4752_google.json"
     },
     {
         "name": "azure_aws_4752",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure4752_aws.json"
+        "input": "programs/acl/data/experiments10/acl4752_azure.json",
+        "output": "programs/acl/data/experiments10/azure4752_aws.json"
     },
     {
         "name": "azure_google_4752",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure4752_google.json"
+        "input": "programs/acl/data/experiments10/acl4752_azure.json",
+        "output": "programs/acl/data/experiments10/azure4752_google.json"
     },
     {
         "name": "google_aws_4752",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752_google.json",
-        "output": "programs/acl/data/experiments10_alt/google4752_aws.json"
+        "input": "programs/acl/data/experiments10/acl4752_google.json",
+        "output": "programs/acl/data/experiments10/google4752_aws.json"
     },
     {
         "name": "google_azure_4752",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl4752_google.json",
-        "output": "programs/acl/data/experiments10_alt/google4752_azure.json"
+        "input": "programs/acl/data/experiments10/acl4752_google.json",
+        "output": "programs/acl/data/experiments10/google4752_azure.json"
     },
     {
         "name": "acl_aws_5346",
         "progpath": "./programs/acl/programs/acl_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346.json",
-        "output": "programs/acl/data/experiments10_alt/acl5346_aws.json"
+        "input": "programs/acl/data/experiments10/acl5346.json",
+        "output": "programs/acl/data/experiments10/acl5346_aws.json"
     },
     {
         "name": "acl_azure_5346",
         "progpath": "./programs/acl/programs/acl_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346.json",
-        "output": "programs/acl/data/experiments10_alt/acl5346_azure.json"
+        "input": "programs/acl/data/experiments10/acl5346.json",
+        "output": "programs/acl/data/experiments10/acl5346_azure.json"
     },
     {
         "name": "acl_google_5346",
         "progpath": "./programs/acl/programs/acl_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346.json",
-        "output": "programs/acl/data/experiments10_alt/acl5346_google.json"
+        "input": "programs/acl/data/experiments10/acl5346.json",
+        "output": "programs/acl/data/experiments10/acl5346_google.json"
     },
     {
         "name": "aws_azure_5346",
         "progpath": "./programs/acl/programs/aws_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws5346_azure.json"
+        "input": "programs/acl/data/experiments10/acl5346_aws.json",
+        "output": "programs/acl/data/experiments10/aws5346_azure.json"
     },
     {
         "name": "aws_google_5346",
         "progpath": "./programs/acl/programs/aws_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346_aws.json",
-        "output": "programs/acl/data/experiments10_alt/aws5346_google.json"
+        "input": "programs/acl/data/experiments10/acl5346_aws.json",
+        "output": "programs/acl/data/experiments10/aws5346_google.json"
     },
     {
         "name": "azure_aws_5346",
         "progpath": "./programs/acl/programs/azure_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure5346_aws.json"
+        "input": "programs/acl/data/experiments10/acl5346_azure.json",
+        "output": "programs/acl/data/experiments10/azure5346_aws.json"
     },
     {
         "name": "azure_google_5346",
         "progpath": "./programs/acl/programs/azure_google.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346_azure.json",
-        "output": "programs/acl/data/experiments10_alt/azure5346_google.json"
+        "input": "programs/acl/data/experiments10/acl5346_azure.json",
+        "output": "programs/acl/data/experiments10/azure5346_google.json"
     },
     {
         "name": "google_aws_5346",
         "progpath": "./programs/acl/programs/google_aws.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346_google.json",
-        "output": "programs/acl/data/experiments10_alt/google5346_aws.json"
+        "input": "programs/acl/data/experiments10/acl5346_google.json",
+        "output": "programs/acl/data/experiments10/google5346_aws.json"
     },
     {
         "name": "google_azure_5346",
         "progpath": "./programs/acl/programs/google_azure.mb",
-        "input": "programs/acl/data/experiments10_alt/acl5346_google.json",
-        "output": "programs/acl/data/experiments10_alt/google5346_azure.json"
+        "input": "programs/acl/data/experiments10/acl5346_google.json",
+        "output": "programs/acl/data/experiments10/google5346_azure.json"
     }
 ]

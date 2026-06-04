@@ -1,0 +1,5 @@
+(library
+ (name gpl)
+ (public_name gpl)
+ (libraries core bignum)
+ (preprocess (pps ppx_jane ppx_deriving.std)))

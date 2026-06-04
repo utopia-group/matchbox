@@ -22,13 +22,16 @@
  (description "A longer description")
  (depends
   ocaml
-  dune
-  (core
-   (>= v0.16.2))
-  (core_unix
-   (>= v0.16.0))
+  (dune (>= 3.19))
+  (core (>= v0.16.2))
+  (core_unix (>= v0.16.0))
   gpl
-  alcotest)
+  (ke (>= 0.6))
+  (yojson (>= 2.2.2))
+  (ppx_jane (>= v0.16.0))
+  (ppx_deriving_yojson (>= 3.9.1))
+  (menhir (>= 20240715))
+  (alcotest (>= 1.9.0)))
  (tags
   (topics "to describe" your project)))
 

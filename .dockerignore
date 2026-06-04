@@ -1,0 +1,8 @@
+_build/
+deps/gpl/_build/
+.venv/
+__pycache__/
+*.tmp
+*.patch
+.DS_Store
+programs/*/data/experiments*
