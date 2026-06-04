@@ -1,21 +1,36 @@
 ##
 # MatchBox — PLDI 2026 Artifact
 #
-# Build:       make
+# Build:       make                     (produces ./matchbox)
+# Install:     make install             (to $(PREFIX)/bin, default /usr/local)
 # Tests:       make check
 # Reproduce:   make reproduce          (full end-to-end)
 #              make run                 (experiments only, uses existing data)
 #              make report              (figures + stats from existing results)
 
-all:
+PREFIX ?= /usr/local
+BINDIR  = $(PREFIX)/bin
+
+all: matchbox
+
+matchbox:
 	dune build
+	cp -f _build/install/default/bin/matchbox ./matchbox
+
+install: all
+	install -d $(BINDIR)
+	install -m 755 ./matchbox $(BINDIR)/matchbox
+
+uninstall:
+	rm -f $(BINDIR)/matchbox
 
 clean:
 	rm -fr _build
 	rm -fr ./doc
+	rm -f ./matchbox
 
 check: all
-	dune build ./test/stijl_test.exe && ./_build/default/test/stijl_test.exe test -- ${TEST}
+	dune build ./test/matchbox_test.exe && ./_build/default/test/matchbox_test.exe test -- ${TEST}
 
 # ── Experiment Reproduction ──────────────────────────────────────────────────
 
@@ -28,4 +43,4 @@ run: all
 report:
 	python3 experiments.py --step report
 
-.PHONY: all clean check reproduce run report
+.PHONY: all matchbox install uninstall clean check reproduce run report

@@ -50,6 +50,33 @@ This builds the compiler, generates configs, runs 60 translations, produces
 `programs/ebpf/results.csv` and `_output/figure-18.pdf`, and prints Table 3 statistics.
 Verify the output matches the paper's Figure 18 and Table 3.
 
+## Building with make
+
+| Target           | What it does                                                        |
+|------------------|----------------------------------------------------------------------|
+| `make`           | Build the compiler and place the `matchbox` binary in the repo root |
+| `make install`   | Install `matchbox` to `$(PREFIX)/bin` (default `/usr/local`)        |
+| `make uninstall` | Remove the installed binary                                         |
+| `make check`     | Build and run the unit tests (filter with `TEST=<name>`)            |
+| `make reproduce` | Full end-to-end reproduction (`python3 experiments.py`)             |
+| `make run`       | Run experiments only, using existing data                           |
+| `make report`    | Generate figures and statistics from existing results               |
+| `make clean`     | Remove build artifacts and the local `matchbox` binary              |
+
+Installing to the default `/usr/local` typically requires `sudo make install`.
+To install somewhere user-writable instead:
+
+```
+make install PREFIX=~/.local
+```
+
+After `make`, the binary can be run directly:
+
+```
+./matchbox --help
+./matchbox verify programs/verify_demo.mb
+```
+
 ## Step-by-Step Instructions
 
 `experiments.py` runs five steps in order. Each can be run independently via `--step`.
@@ -59,7 +86,7 @@ Verify the output matches the paper's Figure 18 and Table 3.
 | `build`    | `python3 experiments.py --step build`    | Compile OCaml binaries via `dune build`            |
 | `generate` | `python3 experiments.py --step generate` | Create base JSON configs from synthetic/ClassBench data |
 | `sample`   | `python3 experiments.py --step sample`   | Subsample at 10 uniform sizes, write experiment JSONs |
-| `run`      | `python3 experiments.py --step run`      | Run all translations via `stijl exp`               |
+| `run`      | `python3 experiments.py --step run`      | Run all translations via `matchbox exp`               |
 | `report`   | `python3 experiments.py --step report`   | Generate Figures 15-18, print Tables 1-3 and inline stats |
 
 Use `--case retarget`, `--case acl`, or `--case ebpf` to restrict to one case study.
@@ -170,7 +197,7 @@ columns (AST size, annotation count, input/output config sizes) should match exa
 ```
 experiments.py                - Main reproduction script
 Dockerfile                    - Docker build (two-stage: OCaml build + Python runtime)
-Makefile                      - make / make check / make reproduce
+Makefile                      - make / make install / make check / make reproduce
 programs/retargeting/         - Switch evolution case study (Section 8.1)
 programs/acl/                 - Cloud firewall case study (Section 8.2)
 programs/ebpf/                - eBPF case study (Section 8.3)

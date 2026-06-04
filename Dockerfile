@@ -20,8 +20,8 @@ WORKDIR /home/opam
 COPY --chown=opam:opam deps/gpl ./gpl
 RUN opam pin add gpl ./gpl --no-action
 
-# Install OCaml deps (cached unless stijl.opam changes)
-COPY --chown=opam:opam stijl.opam ./stijl.opam
+# Install OCaml deps (cached unless matchbox.opam changes)
+COPY --chown=opam:opam matchbox.opam ./matchbox.opam
 RUN opam install . --deps-only --yes
 
 # Build
@@ -45,9 +45,9 @@ RUN pip3 install --no-cache-dir --break-system-packages \
 WORKDIR /artifact
 COPY --from=builder /home/opam/matchbox /artifact
 
-# Install the stijl binary and a dune shim so `dune exec -- stijl` works
+# Install the matchbox binary and a dune shim so `dune exec -- matchbox` works
 # without the full OCaml toolchain.
-COPY --from=builder /home/opam/matchbox/_build/install/default/bin/stijl /usr/local/bin/stijl
+COPY --from=builder /home/opam/matchbox/_build/install/default/bin/matchbox /usr/local/bin/matchbox
 RUN printf '#!/bin/sh\n\
 if [ "$1" = "build" ]; then echo "Already built"; exit 0; fi\n\
 if [ "$1" = "exec" ]; then shift; while [ "$1" = "--" ]; do shift; done; exec "$@"; fi\n\

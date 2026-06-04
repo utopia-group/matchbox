@@ -1,6 +1,6 @@
 // Demo of Z3-backed Hoare-style property verification.
 //
-//   stijl verify programs/verify_demo.mb
+//   matchbox verify programs/verify_demo.mb
 //
 // An ACL on the destination port: SSH (22) is dropped, everything else allowed.
 // (Inline table rows, so no --config is needed.)

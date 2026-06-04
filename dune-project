@@ -1,7 +1,7 @@
 (lang dune 3.19)
 (using menhir 3.0)
 
-(name stijl)
+(name matchbox)
 
 (generate_opam_files true)
 
@@ -17,7 +17,7 @@
 (documentation https://url/to/documentation)
 
 (package
- (name stijl)
+ (name matchbox)
  (synopsis "A short synopsis")
  (description "A longer description")
  (depends

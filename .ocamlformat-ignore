@@ -36,6 +36,6 @@ lib/GuardSynthesis.ml
 
 (* bin/eval_retargeting.ml *)
 
-test/stijl_test.ml
+test/matchbox_test.ml
 
 bin/main.ml

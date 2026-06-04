@@ -1,5 +1,5 @@
 open Core
-open Stijl
+open Matchbox
 open Semantics
 open BaseLogic
 

@@ -1,6 +1,6 @@
 open Core
 open Alcotest
-open Stijl
+open Matchbox
 open Semantics
 
 let mk_symbol name ins out = BaseLogic.Symbol.make name ins out

@@ -1,8 +1,8 @@
 (test
- (name stijl_test)
- (libraries stijl gpl alcotest core)
+ (name matchbox_test)
+ (libraries matchbox gpl alcotest core)
  (modules
-  stijl_test
+  matchbox_test
   controller_tests
   synthesizer_tests
   interpreter_tests
@@ -11,25 +11,25 @@
   classbench_parsing_tests
   acl_translation_tests)
  (action
-  (run %{exe:stijl_test.exe} --verbose)))
+  (run %{exe:matchbox_test.exe} --verbose)))
 
 (test
  (name verifier_test)
- (libraries stijl gpl alcotest core)
+ (libraries matchbox gpl alcotest core)
  (modules verifier_test)
  (action
   (run %{exe:verifier_test.exe})))
 
 (test
  (name incremental_test)
- (libraries stijl gpl alcotest core)
+ (libraries matchbox gpl alcotest core)
  (modules incremental_test)
  (action
   (run %{exe:incremental_test.exe})))
 
 (test
  (name incremental_quickcheck_test)
- (libraries stijl gpl alcotest core)
+ (libraries matchbox gpl alcotest core)
  (preprocess
   (pps ppx_jane))
  (modules incremental_quickcheck_test)

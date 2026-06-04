@@ -1,5 +1,5 @@
 open Core
-open Stijl
+open Matchbox
 open Alcotest
 
 let f i = BaseLogic.Symbol.make (sprintf "F%d" i) [] 0

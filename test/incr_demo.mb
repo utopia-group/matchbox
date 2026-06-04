@@ -1,6 +1,6 @@
 // Demo for the incremental execution mode:
 //
-//   stijl incr test/incr_demo.mb \
+//   matchbox incr test/incr_demo.mb \
 //     --config test/incr_demo.json \
 //     --updates test/incr_demo_updates.json --check --time
 //

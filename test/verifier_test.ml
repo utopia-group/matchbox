@@ -1,10 +1,10 @@
 open Core
-open Stijl
+open Matchbox
 open Semantics
 
 (* Standalone test for the Z3-backed [Verifier].
 
-   NB: this is a *separate* test executable from [stijl_test], whose committed
+   NB: this is a *separate* test executable from [matchbox_test], whose committed
    modules currently do not compile against the present [lib/] (they reference
    removed names like [BaseLogic.ProvRow] / [Action] / the [Table] constructor).
    Keeping the verifier test standalone lets it build and run independently. *)

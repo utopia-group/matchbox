@@ -23,7 +23,7 @@ Steps (executed in order):
   build     — compile OCaml binaries via dune
   generate  — create base JSON configs (skipped if they already exist)
   sample    — subsample base configs at 10 uniform sizes + generate experiment JSONs
-  run       — run all experiments via `stijl exp`
+  run       — run all experiments via `matchbox exp`
   report    — generate paper figures + print summary statistics (Tables 1-3)
 """
 
@@ -601,7 +601,7 @@ def run_exp(exp_json, results_csv, label, batch_size=0):
     """Run experiments and write results CSV.
 
     If batch_size > 0, split experiments into batches of that size and run
-    each in a separate stijl process.  This bounds peak memory usage for
+    each in a separate matchbox process.  This bounds peak memory usage for
     expensive translation chains (e.g., retargeting la_db at large sizes).
     """
     if not Path(exp_json).exists():
@@ -613,7 +613,7 @@ def run_exp(exp_json, results_csv, label, batch_size=0):
     t0 = time.time()
 
     if batch_size <= 0 or expected <= batch_size:
-        sh_to_file(f"dune exec -- stijl exp {exp_json}", results_csv)
+        sh_to_file(f"dune exec -- matchbox exp {exp_json}", results_csv)
     else:
         # Run in batches, each in its own process to limit memory
         tmp_json = Path(exp_json).with_suffix(".batch.json")
@@ -623,7 +623,7 @@ def run_exp(exp_json, results_csv, label, batch_size=0):
                 batch = experiments[i:i + batch_size]
                 tmp_json.write_text(json.dumps(batch))
                 tmp_csv = Path(results_csv).with_suffix(f".batch{i}.csv")
-                sh_to_file(f"dune exec -- stijl exp {tmp_json}", tmp_csv)
+                sh_to_file(f"dune exec -- matchbox exp {tmp_json}", tmp_csv)
                 with open(results_csv, "a" if not first else "w") as out:
                     for j, line in enumerate(open(tmp_csv)):
                         if j == 0 and not first:
@@ -639,7 +639,7 @@ def run_exp(exp_json, results_csv, label, batch_size=0):
     print(f"  {elapsed:.1f}s  ->  {Path(results_csv).relative_to(ROOT)}  ({actual}/{expected} experiments)")
     if actual < expected:
         print(f"  WARNING: only {actual} of {expected} experiments completed!")
-        print("  The stijl process may have been killed (OOM). Try closing other")
+        print("  The matchbox process may have been killed (OOM). Try closing other")
         print("  applications or running individual case studies with --case.")
 
 

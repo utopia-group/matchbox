@@ -4,8 +4,8 @@
 (ocamllex Lexer)
 
 (library
- (name stijl)
- (public_name stijl)
+ (name matchbox)
+ (public_name matchbox)
  (libraries core core_unix gpl ke yojson)
  (preprocess
   (pps ppx_jane ppx_deriving_yojson)))

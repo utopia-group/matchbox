@@ -1,5 +1,5 @@
 open Core
-open Stijl
+open Matchbox
 open Alcotest
 
 (* Initial type context for translating classbench_acl.p4 to distributed_acl.p4 *)

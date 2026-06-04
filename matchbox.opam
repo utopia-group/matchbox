@@ -11,7 +11,7 @@ doc: "https://url/to/documentation"
 bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml"
-  "dune" {>= "3.19" & >= "3.19"}
+  "dune" {>= "3.19"}
   "core" {>= "v0.16.2"}
   "core_unix" {>= "v0.16.0"}
   "gpl"
@@ -22,7 +22,6 @@ depends: [
   "menhir" {>= "20240715"}
   "alcotest" {>= "1.9.0"}
   "odoc" {with-doc}
-  "menhir" {>= "20180523"}
 ]
 build: [
   ["dune" "subst"] {dev}

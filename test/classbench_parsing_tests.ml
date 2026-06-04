@@ -1,5 +1,5 @@
 open Core
-open Stijl
+open Matchbox
 open Alcotest
 
 let test_parsing_classbench_rules () =

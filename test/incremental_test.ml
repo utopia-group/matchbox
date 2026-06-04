@@ -1,5 +1,5 @@
 open Core
-open Stijl
+open Matchbox
 open Semantics
 open BaseLogic
 
@@ -9,7 +9,7 @@ open BaseLogic
    from-scratch [BaseInterpreter.eval_program] on the current base config.
 
    NB: like [verifier_test], this is a *separate* test executable from
-   [stijl_test], whose committed modules do not compile against the present
+   [matchbox_test], whose committed modules do not compile against the present
    [lib/]. *)
 
 (* ------------------------------------------------------------------ *)

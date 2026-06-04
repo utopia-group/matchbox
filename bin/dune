@@ -1,13 +1,13 @@
 (library
  (name utils)
  (modules utils)
- (libraries core stijl))
+ (libraries core matchbox))
 
 (executable
- (public_name stijl)
+ (public_name matchbox)
  (name main)
  (modules main)
- (libraries stijl core_unix.command_unix)
+ (libraries matchbox core_unix.command_unix)
  (preprocess
   (pps ppx_jane)))
 

@@ -2,7 +2,7 @@
 
 open Core
 open Gpl
-open Stijl
+open Matchbox
 (* open Controller_tests *)
 
 (* let cvc5 = "/usr/bin/cvc5 --lang=sygus" *)
@@ -393,7 +393,7 @@ let incremental () =
 
 let () =
   let open Alcotest in
-  run "Stijl"
+  run "Matchbox"
     [
       (* "Interpreter", [
         test_case "Empty table handling" `Quick Interpreter_tests.test_empty_table;
