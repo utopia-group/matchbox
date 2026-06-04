@@ -8,7 +8,7 @@ let print_error_position (lexbuf : Lexing.lexbuf) =
 let parse_program filepath =
   let channel = In_channel.create filepath in
   let lexbuf = Lexing.from_channel channel in
-  let program = 
+  let program =
     try Ok (Parser.matchstix Lexer.tokens lexbuf) with
     | Parser.Error ->
       let error_msg = Fmt.str "%s: syntax error@." (print_error_position lexbuf) in
@@ -16,3 +16,10 @@ let parse_program filepath =
   in
   In_channel.close channel;
   program
+
+let parse_string source =
+  let lexbuf = Lexing.from_string source in
+  try Ok (Parser.matchstix Lexer.tokens lexbuf) with
+  | Parser.Error ->
+    let error_msg = Fmt.str "%s: syntax error@." (print_error_position lexbuf) in
+    failwith error_msg

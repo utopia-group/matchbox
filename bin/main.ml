@@ -21,13 +21,55 @@ let main =
         |> Printf.printf "%s%!"      
   ]
 
+(* Print the per-table rows of a reconstructed counterexample config. *)
+let print_cex_tables tables =
+  List.iter tables ~f:(fun (name, rows) ->
+    Printf.printf "          table %s:\n" name;
+    List.iter rows ~f:(fun row ->
+      Printf.printf "            %s\n" (Semantics.MatchAction.to_string row)))
+
+let verify_all_configs path =
+  let parsed = Parse.parse_program path |> Result.ok_or_failwith in
+  let ctx = ParserContext.(typecheck (fill_var_widths parsed)) in
+  if List.is_empty ctx.props then
+    Printf.printf "No properties (assert <table> : { .. } => { .. }) found in %s\n%!" path
+  else begin
+    let any_failed = ref false in
+    SymbolicVerifier.check_all ctx
+    |> List.iter ~f:(fun ((p : Property.t), result) ->
+      match result with
+      | SymbolicVerifier.Valid ->
+        Printf.printf "VALID:    %s |= %s   (for all configs)\n%!" p.table
+          (Property.to_string p)
+      | SymbolicVerifier.Counterexample {packet; tables} ->
+        any_failed := true;
+        let pkt =
+          List.map packet ~f:(fun (k, v) -> Printf.sprintf "%s=%s" k v)
+          |> String.concat ~sep:", "
+        in
+        Printf.printf "VIOLATED: %s |/= %s\n          counterexample packet: %s\n%!"
+          p.table (Property.to_string p) pkt;
+        print_cex_tables tables
+      | SymbolicVerifier.Unsupported msg ->
+        any_failed := true;
+        Printf.printf "UNSUPPORTED: %s : %s\n%!" p.table msg
+      | SymbolicVerifier.Unknown msg ->
+        any_failed := true;
+        Printf.printf "UNKNOWN:  %s : %s\n%!" p.table msg);
+    if !any_failed then exit 1
+  end
+
 let verify =
   let open Command.Let_syntax in
   Command.basic ~summary:"Verify Hoare properties (assert ... => ...) in a program via Z3"
   [%map_open
     let path = anon ("program" %: string)
     and input_file = flag "--config" (optional string) ~doc:"JSON file of runtime rules (needed for tables whose rows come from a config)"
+    and all_configs = flag "--all-configs" no_arg
+      ~doc:"Verify symbolically for EVERY base-table configuration (assumed GFDs become axioms; no --config needed)"
     in fun () ->
+      if all_configs then verify_all_configs path
+      else
       let parsed = Parse.parse_program path |> Result.ok_or_failwith in
       let ctx = ParserContext.typecheck parsed in
       let init_config =
@@ -147,11 +189,87 @@ let exp =
       ExpDriver.run path minimize
   ]
 
-let () = Command_unix.run @@ Command.group 
+let synth =
+  let open Command.Let_syntax in
+  Command.basic
+    ~summary:"Synthesize the definition of a table declared with `o-- ??` from its asserted Hoare properties, valid for ALL base-table configurations"
+  [%map_open
+    let path = anon ("program" %: string)
+    and out = flag "-o" (optional string) ~doc:"FILE write the completed program here"
+    and max_size = flag "--max-size" (optional_with_default 8 int)
+      ~doc:"N maximum AST size of the synthesized clause (default 8)"
+    and timeout = flag "--timeout" (optional_with_default 120 int)
+      ~doc:"SECONDS overall search budget (default 120)"
+    and allow_literals = flag "--allow-literals" no_arg
+      ~doc:"Allow inline table literals (rows mined from the spec) as leaves"
+    and enable_filters = flag "--enable-filters" no_arg
+      ~doc:"Allow property-derived `filter` guards (usually requires matching assume GFDs)"
+    and verbose = flag "--verbose" no_arg ~doc:"Print search progress and statistics"
+    in fun () ->
+      let raw = Parse.parse_program path |> Result.ok_or_failwith in
+      let ctx = ParserContext.(typecheck (fill_var_widths raw)) in
+      let target =
+        match Set.to_list ctx.holes with
+        | [target] -> target
+        | [] ->
+          failwith "no hole found: declare the synthesis target with `o-- ??`"
+        | _ ->
+          failwith "synth currently supports exactly one `o-- ??` hole table"
+      in
+      match
+        Synthesizer.synth ~max_size ~timeout_ms:(timeout * 1000)
+          ~allow_literals ~enable_filters ~verbose ctx ~target
+      with
+      | Synthesizer.Exhausted {reason; stats} ->
+        Printf.printf "FAILED to synthesize %s: %s\n  [%s]\n%!" target reason
+          (Synthesizer.stats_to_string stats);
+        exit 1
+      | Synthesizer.Found {clause; size; stats} ->
+        let typ = Type.find_table_exn ctx.typs target in
+        let decl = Emit.table_decl_to_string ~name:target typ (`Def clause) in
+        (* acceptance gate: emit the completed program, re-parse, re-typecheck,
+           and re-verify the target's properties symbolically *)
+        let completed =
+          let filled =
+            { raw with
+              ParserContext.prog =
+                raw.prog
+                @ [BaseLogic.{defined = Symbol.make target [] (-1);
+                              definition = clause}] }
+          in
+          Emit.program_to_string ~holes:(Set.remove raw.holes target) filled
+        in
+        let reparsed =
+          Parse.parse_string completed |> Result.ok_or_failwith
+          |> ParserContext.fill_var_widths |> ParserContext.typecheck
+        in
+        let gate_ok =
+          SymbolicVerifier.check_all reparsed
+          |> List.for_all ~f:(fun ((p : Property.t), r) ->
+               (not (String.equal p.table target))
+               || (match r with SymbolicVerifier.Valid -> true | _ -> false))
+        in
+        if not gate_ok then begin
+          Printf.printf
+            "INTERNAL ERROR: synthesized program failed re-verification\n%s\n%!"
+            decl;
+          exit 2
+        end;
+        Printf.printf "%s\n%!" decl;
+        if verbose then
+          Printf.printf "// size %d; %s\n%!" size
+            (Synthesizer.stats_to_string stats);
+        Option.iter out ~f:(fun out ->
+          Out_channel.write_all out ~data:(completed ^ "\n");
+          Printf.printf "// wrote %s\n%!" out)
+  ]
+
+let () = Command_unix.run @@ Command.group
 ~summary:"matchbox toolkit"
 [
   "exp", exp;
   "incr", incr;
   "strike", main;
+  "synth", synth;
   "verify", verify
 ]

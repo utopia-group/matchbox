@@ -52,6 +52,7 @@
 %token ROWS
 %token ASSUME
 %token ASSERT
+%token HOLE
 %token ACTIONVAR
 %token FORALL
 %token PRIVATE
@@ -108,20 +109,31 @@ matchstick :
   COLON;
   data = delimited(LBRACE, typed_vars, RBRACE);
   action_list = delimited(LSQUARE, nonempty_list(action), RSQUARE);
-  clause = option(preceded(MATCHSTICK, algebra));
+  body = option(preceded(MATCHSTICK, algebra_or_hole));
     {   let open ParserContext in
         let defined = Symbol.make table [] (-1) in
         let actions = Type.ActionSet.of_list action_list in
         let typ = Type.{is_private = Option.is_some private_; hw; keys; actions; data} in
-        empty
-        |> add_vars keys
-        |> add_type table typ
-        |> opt_add_def defined (complete_clause clause table typ)
-        |> update_stats clause
+        let ctx =
+          empty
+          |> add_vars keys
+          |> add_type table typ
+        in
+        match body with
+        | None -> ctx
+        | Some `Hole -> add_hole table ctx
+        | Some (`Clause clause) ->
+          ctx
+          |> opt_add_def defined (complete_clause (Some clause) table typ)
+          |> update_stats (Some clause)
     }
 
+algebra_or_hole :
+| HOLE { `Hole }
+| a = algebra { `Clause a }
+
 hardware :
-| LPM { Hardware.LPM } 
+| LPM { Hardware.LPM }
 | TCAM { Hardware.TCAM }
 | CAM { Hardware.CAM }
 

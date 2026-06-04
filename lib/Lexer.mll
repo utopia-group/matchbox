@@ -26,6 +26,7 @@ rule tokens = parse
 | "forall" { FORALL }
 | "private" { PRIVATE }
 | "o--" { MATCHSTICK }
+| "??" { HOLE }
 | "->" { ARROW }
 | "--->" { FDARROW }
 | ">>" { COMPOSE }

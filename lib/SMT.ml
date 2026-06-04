@@ -39,6 +39,7 @@ let real i = Sexp.Atom (Printf.sprintf "%f" i)
 
 let int_sort = Sexp.Atom "Int"
 let real_sort = Sexp.Atom "Real"
+let bool_sort = Sexp.Atom "Bool"
 let check_sat = Sexp.(List [Atom "check-sat"])
 
 let check_sat_using tactical = 
@@ -87,9 +88,12 @@ let rec subst (sexp : expr) (x : string) (e : expr) : expr =
   | Atom _ -> sexp
   | List es -> List (List.map es ~f:(fun sexp -> subst sexp x e))
 
-let get_value variables = 
-  let xs = List.map variables ~f:(fun x -> Sexp.Atom x) in 
+let get_value variables =
+  let xs = List.map variables ~f:(fun x -> Sexp.Atom x) in
   Sexp.(List [Atom "get-value"; List xs])
+
+let set_option key value =
+  Sexp.(List [Atom "set-option"; Atom (":" ^ key); Atom value])
 
 let assert_ (sexp : expr) : command = Sexp.List [(Atom "assert"); sexp]
 let minimize (sexp : expr) : command = Sexp.List [(Atom "minimize"); sexp]
@@ -295,13 +299,38 @@ end
 
 let check (resp : response) : string Model.t option =
   if !Runner.debug then Printf.printf "%s\n%!" (List.map resp ~f:(Sexp.to_string) |> String.concat ~sep:"\n");
-  match resp with 
+  match resp with
   | [] -> failwith "Received empty response from solver"
-  | (Atom "sat") :: rst -> 
-    begin match List.hd rst with 
+  | (Atom "sat") :: rst ->
+    begin match List.hd rst with
     | Some model_sexp -> Some (Model.extract model_sexp)
-    | None -> Some (Model.empty) 
+    | None -> Some (Model.empty)
     end
   | (Atom "unsat"):: _ -> None
   | _ -> failwithf "Did not recognize response from solver %s" (Sexp.to_string (Sexp.List resp)) ()
+
+(* Like [check], but distinguishes unknown (e.g. solver timeout) from
+   unsat instead of failing, and keys get-value bindings by the rendered
+   term so callers can query values of arbitrary terms, not just consts. *)
+let sat_result (resp : response) :
+    [`Sat of (string * string) list | `Unsat | `Unknown of string] =
+  match resp with
+  | [] -> `Unknown "empty response from solver"
+  | Atom "sat" :: rst ->
+    let binds =
+      match rst with
+      | Sexp.List pairs :: _ ->
+        List.filter_map pairs ~f:(function
+          | Sexp.List [term; value] ->
+            Some (Sexp.to_string term, Sexp.to_string value)
+          | _ -> None)
+      | _ -> []
+    in
+    `Sat binds
+  | Atom "unsat" :: _ -> `Unsat
+  | Atom "unknown" :: _ -> `Unknown "solver returned unknown"
+  | resp ->
+    `Unknown
+      (Printf.sprintf "unrecognized solver response %s"
+         (Sexp.to_string (Sexp.List resp)))
 

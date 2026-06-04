@@ -36,33 +36,31 @@ module ActionMapper = struct
         | Some a -> 
             (mapper, a)
     
-    let _findpair mapper a1 a2 = 
-        let lo = Int.min a1 a2 in 
-        let hi = Int.max a1 a2 in 
-        match Map.find mapper.pair lo with 
+    (* Pairs are ORDERED: MagmaAction.Pair (a, b) and Pair (b, a) are
+       distinct actions (join operand order is semantic). *)
+    let _findpair mapper a1 a2 =
+        match Map.find mapper.pair a1 with
         | None -> None
-        | Some inner_map -> 
-            Map.find inner_map hi
+        | Some inner_map ->
+            Map.find inner_map a2
 
     let _addpair_exn mapper a1 a2 a12 =
-        let lo = Int.min a1 a2 in 
-        let hi = Int.max a1 a2 in 
-        let pair = 
-            match Map.find mapper.pair lo with 
-            | None -> 
-                let data = Int.Map.singleton hi a12 in 
-                Map.add_exn mapper.pair ~key:lo ~data
+        let pair =
+            match Map.find mapper.pair a1 with
+            | None ->
+                let data = Int.Map.singleton a2 a12 in
+                Map.add_exn mapper.pair ~key:a1 ~data
             | Some map ->
-                match Map.find map hi with 
-                | None -> 
-                    let data = Map.add_exn map ~key:hi ~data:a12 in 
-                    Map.add_exn mapper.pair ~key:lo ~data
+                match Map.find map a2 with
+                | None ->
+                    let data = Map.add_exn map ~key:a2 ~data:a12 in
+                    Map.set mapper.pair ~key:a1 ~data
                 | Some a12' ->
                     failwithf "tried to add (%d, %d) |=> %d, but had already mapped it to %d"
                         a1 a2 a12 a12' ()
         in
         let unpair = Map.add_exn mapper.unpair ~key:a12 ~data:(a1,a2) in
-        { mapper with pair; unpair} 
+        { mapper with pair; unpair}
 
 
 

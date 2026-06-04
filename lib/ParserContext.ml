@@ -13,6 +13,7 @@ type t = {
     assertions: F.itfc_spec;
     prog : L.t list;
     props : Property.t list;
+    holes : String.Set.t;  (* tables declared with `o-- ??`, to be synthesized *)
     stats : Stats.t
 }
 
@@ -24,6 +25,7 @@ let empty = {
     assertions = String.Map.empty;
     prog = [];
     props = [];
+    holes = String.Set.empty;
     stats = Stats.empty;
 }
 
@@ -40,11 +42,15 @@ let (@) (p1 : t) (p2 : t) : t=
       assertions = F.(p1.assertions @ p2.assertions);
       prog = p1.prog @ p2.prog;
       props = p1.props @ p2.props;
+      holes = Set.union p1.holes p2.holes;
       stats = Stats.(p1.stats + p2.stats);
     }
 
 let add_property (prop : Property.t) (p : t) : t =
   {p with props = List.append p.props [prop]}
+
+let add_hole (table : string) (p : t) : t =
+  {p with holes = Set.add p.holes table}
 
 let concat : t list -> t = 
     List.fold ~init:empty ~f:(@)
@@ -221,8 +227,9 @@ let create_table rows =
     (List.map rows ~f:(fun (keys, action, data) ->
       MatchAction.make TCAM
         (keys
-         |> List.mapi ~f:(fun i bv ->
-            (Int.to_string i, bv |> Trit.Vector.of_string |> Match.Ternary))
+         (* Match.of_string: star-free patterns become Exact (so e.g.
+            is_total's enumeration check sees them), starred ones Ternary *)
+         |> List.mapi ~f:(fun i bv -> (Int.to_string i, Match.of_string bv))
          |> Map.of_alist_exn (module String))
         (MagmaAction.make action)
         (data

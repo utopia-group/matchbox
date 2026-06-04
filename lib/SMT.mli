@@ -22,6 +22,8 @@ val bv' : Bit.Vector.t -> expr
 val int_sort : sort
 val int : int -> expr
 
+val bool_sort : sort
+
 val real_sort : sort
 val real : float -> expr
 
@@ -31,6 +33,7 @@ val get_model : command
 val declare_const : string -> sort -> command
 val declare_fun : string -> sort list -> sort -> command
 val get_value : string list -> command
+val set_option : string -> string -> command
 val assert_ : expr -> command
 val minimize : expr -> command
 val maximize : expr -> command
@@ -110,7 +113,12 @@ module Model : sig
 end 
 
 
-type response 
+type response
 
 val run : Runner.t -> program -> response
 val check : response -> string Model.t option
+
+val sat_result :
+  response -> [`Sat of (string * string) list | `Unsat | `Unknown of string]
+(** Like [check] but distinguishes unknown/timeouts from unsat, and keys
+    get-value bindings by the rendered term. *)

@@ -30,7 +30,11 @@ clean:
 	rm -f ./matchbox
 
 check: all
+ifdef TEST
 	dune build ./test/matchbox_test.exe && ./_build/default/test/matchbox_test.exe test -- ${TEST}
+else
+	dune runtest
+endif
 
 # ── Experiment Reproduction ──────────────────────────────────────────────────
 

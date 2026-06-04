@@ -1,12 +1,14 @@
+; synthesizer_tests and surface_synthesizer_tests target an extinct API
+; (Clause.Invert, ActionTfx, BaseSynthesizer.synth); they are intentionally
+; not listed so they can never be force-compiled. The files remain on disk
+; for reference. The live synthesizer suite is synth_tests below.
 (test
  (name matchbox_test)
  (libraries matchbox gpl alcotest core)
  (modules
   matchbox_test
   controller_tests
-  synthesizer_tests
   interpreter_tests
-  surface_synthesizer_tests
   surface_interpreter_tests
   classbench_parsing_tests
   acl_translation_tests)
@@ -19,6 +21,23 @@
  (modules verifier_test)
  (action
   (run %{exe:verifier_test.exe})))
+
+(test
+ (name emit_test)
+ (libraries matchbox gpl alcotest core)
+ (modules emit_test)
+ (deps
+  (source_tree ../programs)
+  incr_demo.mb)
+ (action
+  (run %{exe:emit_test.exe})))
+
+(test
+ (name synth_tests)
+ (libraries matchbox gpl alcotest core)
+ (modules synth_tests)
+ (action
+  (run %{exe:synth_tests.exe})))
 
 (test
  (name incremental_test)

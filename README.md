@@ -77,6 +77,55 @@ After `make`, the binary can be run directly:
 ./matchbox verify programs/verify_demo.mb
 ```
 
+## Verification and Synthesis
+
+Beyond the paper's compiler experiments, the binary ships a Z3-backed
+verifier and a program synthesizer (both need `z3` on the PATH).
+
+**Concrete verification** checks Hoare properties
+(`assert <table> : { pre } => { post }.`) of the table a program *produces
+from one given configuration* (inline rows, or `--config rules.json`):
+
+```
+./matchbox verify programs/verify_demo.mb
+```
+
+**Symbolic verification** (`--all-configs`) checks the same properties for
+*every* configuration of the base tables. Base tables are encoded as
+uninterpreted functions (`hit`/`action`/`data` over their keys), assumed
+GFDs (`assume t : {keys | φ} ---> {data}.`) become solver axioms, and all
+axioms are instantiated finitely, so queries are quantifier-free. A
+violation reports a packet *and* a small reconstructed configuration
+witnessing it:
+
+```
+./matchbox verify --all-configs programs/symbolic_demo.mb
+./matchbox verify --all-configs programs/delete_key_demo.mb
+```
+
+**Synthesis** completes a table declared with a hole (`o-- ??.`) so that
+every property asserted on it holds for all base-table configurations.
+The search is type-directed (bottom-up over the combinator algebra, gated
+by the typing and GFD rules) with CEGIS: counterexample configs from the
+symbolic oracle concretely reject later candidates. Hole values (dispatch
+constants, action alignments, literal rows) are mined from the spec.
+
+```
+./matchbox synth programs/synth/route_compose.mb
+./matchbox synth programs/synth/acl_from_spec.mb --allow-literals
+```
+
+Benchmark instances live in `programs/synth/`; `--verbose` prints search
+statistics. Notes on scope: with base tables universally quantified,
+Hoare-only properties pin down behavior that is *structurally forced*
+(dispatch guards, filters, literal rows, action renames) -- for shapes
+whose behavior is fully config-dependent (`ident_db_lo`, `route_compose`,
+`adch_join`) the declared goal type alone determines the program and the
+instances carry a vacuous property. The symbolic fragment excludes
+`key x := <var>` copies, key overwrites, LPM patterns, and nonces;
+delete/ignore-key rely on the discharged GFD obligations (programs must
+typecheck) and are verified but not synthesized in v1.
+
 ## Step-by-Step Instructions
 
 `experiments.py` runs five steps in order. Each can be run independently via `--step`.
