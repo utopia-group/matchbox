@@ -138,9 +138,17 @@ let convert_trace schema (json : Safe.t) : BaseLogic.Config.t =
     )
   | _ -> failwithf "expected trace to be a toplevel list, got %s" (Safe.to_string json) ()
 
-let parse_trace_file schema filename : BaseLogic.Config.t = 
+let parse_trace_file schema filename : BaseLogic.Config.t =
   Safe.from_file filename
   |> convert_trace schema
+
+(* Like [parse_trace_file], but keeps rows in file order with their
+   priorities (the materialized [Config.t] drops both). Used by
+   [Incremental.bootstrap], which needs priorities to rank rows. *)
+let parse_raw_rows schema filename : (string * Semantics.MatchAction.t * int) list =
+  match Safe.from_file filename with
+  | `List raw_rows -> List.filter_map raw_rows ~f:(Insertion.convert_row schema)
+  | json -> failwithf "expected trace to be a toplevel list, got %s" (Safe.to_string json) ()
 
 let config_to_json (config : BaseLogic.Config.t) : Safe.t =
   let rows =

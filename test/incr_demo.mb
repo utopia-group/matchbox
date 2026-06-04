@@ -1,0 +1,24 @@
+// Demo for the incremental execution mode:
+//
+//   stijl incr test/incr_demo.mb \
+//     --config test/incr_demo.json \
+//     --updates test/incr_demo_updates.json --check --time
+//
+// `route` composes a FIB with a nexthop table, so nexthop updates shadow /
+// un-shadow route rows; `guarded` only depends on `acl`, so acl updates must
+// leave `route` untouched (empty delta).
+
+tcam fib (dst : 8) : {nh : 8} [fwd nop].
+tcam nexthop (nh : 8) : {port : 8} [set_port drop].
+tcam acl (dst : 8) : {} [allow deny].
+
+tcam route (dst : 8) : {port : 8} [fwd nop]
+o--
+    fib >>
+    nexthop >>
+    rename set_port to fwd >>
+    rename drop to nop.
+
+tcam guarded (dst : 8) : {} [allow deny]
+o--
+    acl.

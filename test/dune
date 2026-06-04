@@ -19,3 +19,19 @@
  (modules verifier_test)
  (action
   (run %{exe:verifier_test.exe})))
+
+(test
+ (name incremental_test)
+ (libraries stijl gpl alcotest core)
+ (modules incremental_test)
+ (action
+  (run %{exe:incremental_test.exe})))
+
+(test
+ (name incremental_quickcheck_test)
+ (libraries stijl gpl alcotest core)
+ (preprocess
+  (pps ppx_jane))
+ (modules incremental_quickcheck_test)
+ (action
+  (run %{exe:incremental_quickcheck_test.exe})))

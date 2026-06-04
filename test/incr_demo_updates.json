@@ -1,0 +1,14 @@
+[
+    {"table": "fib", "matches": {"dst": "00000011"}, "action": ["fwd"], "data": {"nh": "00000010"}, "priority": 100},
+
+    {"op": "insert", "table": "nexthop", "matches": {"nh": "00000010"}, "action": ["set_port"], "data": {"port": "11111111"}, "priority": 50},
+
+    {"op": "delete", "table": "nexthop", "matches": {"nh": "00000010"}, "priority": 50},
+
+    [
+        {"op": "delete", "table": "fib", "matches": {"dst": "00000001"}, "priority": 100},
+        {"table": "fib", "matches": {"dst": "00000100"}, "action": ["fwd"], "data": {"nh": "00000100"}, "priority": 100}
+    ],
+
+    {"table": "acl", "matches": {"dst": "00000001"}, "action": ["deny"], "data": {}, "priority": 50}
+]

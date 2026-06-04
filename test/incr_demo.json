@@ -1,0 +1,8 @@
+[
+    {"table": "fib", "matches": {"dst": "00000001"}, "action": ["fwd"], "data": {"nh": "00000001"}, "priority": 100},
+    {"table": "fib", "matches": {"dst": "00000010"}, "action": ["fwd"], "data": {"nh": "00000010"}, "priority": 100},
+    {"table": "nexthop", "matches": {"nh": "00000001"}, "action": ["set_port"], "data": {"port": "00001010"}, "priority": 100},
+    {"table": "nexthop", "matches": {"nh": "00000010"}, "action": ["set_port"], "data": {"port": "00010100"}, "priority": 100},
+    {"table": "nexthop", "matches": {"nh": "********"}, "action": ["drop"], "data": {"port": "00000000"}, "priority": 1000},
+    {"table": "acl", "matches": {"dst": "********"}, "action": ["allow"], "data": {}, "priority": 1000}
+]
